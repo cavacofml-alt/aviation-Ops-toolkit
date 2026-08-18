@@ -197,8 +197,9 @@ into a guarantee. Every check in there exists because something once broke.
   needs real station and index figures from the aircraft's weight and balance
   manual. **Do not invent them** — index values are specific to the operator's
   reference station and formula constant.
-- **AHM Audit is a shortcut, not a login.** The default address is
-  `http://192.168.2.15:5000/Account/Login`. If that application exposes an
+- **AHM Audit is a shortcut, not a login.** The address field has no default
+  value now (repo is public) — enter the local server's address, e.g.
+  `http://<server-address>:5000/Account/Login`. If that application exposes an
   authentication endpoint, the form could post to it properly.
 - **Code protection is unresolved.** Browser code cannot be hidden; the only real
   option is moving the engine behind an API, at the cost of offline use and of
