@@ -1,0 +1,3379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="author" content="Luís Cavaco">
+<meta name="description" content="Aviation Ops Toolkit — IATA message validator, ULD layout generator and secure ZIP. Built by Luís Cavaco.">
+<!--
+  Aviation Ops Toolkit
+  Created by Luís Cavaco.
+  Single self-contained file: no dependencies, no network, no telemetry.
+-->
+<title>Aviation Ops Toolkit</title>
+<style>
+/* ============================================================================
+   EFIS THEME — colours follow flight-deck convention:
+   red = warning · amber = caution · cyan = advisory · green = normal
+   ============================================================================ */
+:root{
+  --bg:#060a10; --panel:#0c131c; --panel2:#0a1017; --line:#1c2836; --line-2:#2b3d52;
+  --text:#c9d8e6; --dim:#5d7186; --faint:#33475c;
+  --green:#22d07a; --cyan:#25c6e8; --amber:#ffb02e; --red:#ff4f4f; --magenta:#e264dc; --teal:#12b5a5;
+  --green-soft:rgba(34,208,122,.10); --cyan-soft:rgba(37,198,232,.10);
+  --amber-soft:rgba(255,176,46,.10); --red-soft:rgba(255,79,79,.10); --teal-soft:rgba(18,181,165,.10);
+  --magenta-soft:rgba(226,92,220,.10);
+  --term-bg:#0a1017; --term-fg:#c9d8e6; --input-bg:#0a1017; --hover:rgba(255,255,255,.04);
+  --radius:10px; --radius-sm:8px; --shadow:0 1px 2px rgba(0,0,0,.25);
+  --head-bg:#0c131c; --head-sub:#7f93ab;
+  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --sans:'Barlow Semi Condensed','Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+/* Daylight theme — for bright ramp offices and printing.
+   Accents are darkened so they keep contrast on white. */
+html[data-theme="light"]{
+  --bg:#eef2f7; --panel:#ffffff; --panel2:#f4f7fb; --line:#d4dce7; --line-2:#b7c4d4;
+  --text:#15212e; --dim:#5b6c7e; --faint:#8b9aab;
+  --green:#0a7f45; --cyan:#0a6f92; --amber:#8a5200; --red:#c62828; --magenta:#8e24aa; --teal:#0d8579;
+  --green-soft:rgba(10,127,69,.10); --cyan-soft:rgba(10,111,146,.10);
+  --amber-soft:rgba(138,82,0,.10); --red-soft:rgba(198,40,40,.10); --teal-soft:rgba(13,133,121,.10);
+  --magenta-soft:rgba(142,36,170,.10);
+  --term-bg:#ffffff; --term-fg:#15212e; --input-bg:#ffffff; --hover:rgba(21,33,46,.05);
+  --shadow:0 1px 3px rgba(15,32,64,.10); --head-bg:#0f2040; --head-sub:#8fa8cc;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{background:var(--bg)}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--sans);
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--cyan); color:var(--bg)}
+button,input,select,textarea{font-family:inherit; font-size:inherit; color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--cyan); outline-offset:2px}
+a{color:var(--cyan)}
+
+/* ---------- layout shell ---------- */
+.app{display:flex; min-height:100vh}
+
+.sidebar{
+  width:238px; flex-shrink:0; background:var(--panel2);
+  border-right:1px solid var(--line); display:flex; flex-direction:column; z-index:31;
+}
+.sb-brand{padding:18px 18px 16px; border-bottom:1px solid var(--line)}
+.sb-brand .row{display:flex; align-items:center; gap:9px}
+.sb-brand .dia{color:var(--green); font-size:14px; line-height:1}
+.sb-brand .name{font-size:15px; font-weight:600; letter-spacing:2.5px; text-transform:uppercase}
+.sb-brand .sub{font-family:var(--mono); font-size:9px; letter-spacing:1.5px; color:var(--faint); margin-top:7px}
+.sb-nav{padding:14px 0 6px}
+.sb-label{font-family:var(--mono); font-size:9px; letter-spacing:2.5px; color:var(--faint); padding:0 18px 8px}
+.sb-item{
+  width:100%; text-align:left; background:none; border:0; border-left:2px solid transparent;
+  padding:11px 18px; display:flex; align-items:center; gap:11px; color:var(--dim);
+}
+.sb-item:hover{background:var(--hover)}
+.sb-item .code{
+  font-family:var(--mono); font-size:10px; font-weight:600; letter-spacing:.5px;
+  color:var(--dim); background:var(--panel); border:1px solid var(--line-2);
+  padding:3px 6px; border-radius:6px; flex-shrink:0; min-width:40px; text-align:center;
+}
+.sb-item:hover .code{color:var(--text)}
+.sb-item[data-accent="green"] .code{color:var(--green); border-color:var(--green)}
+.sb-item[data-accent="cyan"] .code{color:var(--cyan); border-color:var(--cyan)}
+.sb-item[data-accent="magenta"] .code{color:var(--magenta); border-color:var(--magenta)}
+.sb-item[data-accent="amber"] .code{color:var(--amber); border-color:var(--amber)}
+.sb-item .label{font-size:14.5px; letter-spacing:.6px; line-height:1.25; font-weight:500}
+.sb-item[aria-current="page"]{background:var(--panel); color:var(--text)}
+.sb-item[aria-current="page"] .label{font-weight:600}
+.sb-item[data-accent="green"] .code{color:var(--green); border-color:var(--green)}
+.sb-item[data-accent="cyan"] .code{color:var(--cyan); border-color:var(--cyan)}
+.sb-item[data-accent="magenta"] .code{color:var(--magenta); border-color:var(--magenta)}
+.sb-item[data-accent="amber"] .code{color:var(--amber); border-color:var(--amber)}
+.sb-item[data-accent="green"][aria-current="page"]{border-left-color:var(--green)}
+.sb-item[data-accent="green"][aria-current="page"] .code{color:var(--green); border-color:var(--green)}
+.sb-item[data-accent="cyan"][aria-current="page"]{border-left-color:var(--cyan)}
+.sb-item[data-accent="cyan"][aria-current="page"] .code{color:var(--cyan); border-color:var(--cyan)}
+.sb-item[data-accent="magenta"][aria-current="page"]{border-left-color:var(--magenta)}
+.sb-item[data-accent="magenta"][aria-current="page"] .code{color:var(--magenta); border-color:var(--magenta)}
+.sb-foot{
+  margin-top:auto; padding:14px 18px; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:9px; line-height:1.8; color:var(--faint);
+}
+.sb-foot .live{display:flex; align-items:center; gap:6px; margin-bottom:5px; color:var(--green); letter-spacing:1.5px}
+.sb-foot .led{width:6px; height:6px; border-radius:50%; background:var(--green)}
+
+.body{flex:1; min-width:0; display:flex; flex-direction:column}
+.topbar{
+  height:56px; padding:0 22px; border-bottom:1px solid var(--line);
+  display:flex; align-items:center; justify-content:space-between; gap:14px;
+  position:sticky; top:0; background:var(--bg); z-index:20;
+}
+.topbar .left{display:flex; align-items:center; gap:13px; min-width:0}
+.topbar .title{font-size:18px; font-weight:600; letter-spacing:2px; text-transform:uppercase;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.topbar .badge{font-family:var(--mono); font-size:9px; letter-spacing:1.5px; padding:2px 6px;
+  border-radius:var(--radius-sm); flex-shrink:0; border:1px solid currentColor}
+.topbar .sys{font-family:var(--mono); font-size:10px; color:var(--green); letter-spacing:1.5px;
+  white-space:nowrap; display:inline-flex; align-items:center; gap:7px; cursor:help}
+.topbar .sys .led{width:6px; height:6px; border-radius:50%; background:var(--green); flex-shrink:0}
+.homebtn{display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;
+  background:none; border:1px solid var(--line); border-radius:var(--radius-sm); color:var(--dim);
+  font-size:15px; flex-shrink:0; transition:color .15s, border-color .15s}
+.homebtn:hover{color:var(--green); border-color:var(--green)}
+.burger{display:none; align-items:center; justify-content:center; width:32px; height:32px;
+  background:none; border:1px solid var(--line); border-radius:var(--radius-sm); color:var(--dim); font-size:15px; flex-shrink:0}
+.scrim{position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:30;
+  opacity:0; visibility:hidden; transition:opacity .18s ease, visibility .18s}
+.scrim[data-open="1"]{opacity:1; visibility:visible}
+
+/* text-heavy tools keep a comfortable measure; the load planner uses the full
+   width, because its tables and the aircraft diagram benefit from it */
+main{flex:1; padding:22px; width:100%; max-width:1140px}
+main[data-wide="1"]{max-width:none}
+.tool-blurb{font-size:14px; color:var(--dim); margin:0 0 18px; line-height:1.65; max-width:660px}
+.tool-panel{position:relative; background:var(--panel); border:1px solid var(--line);
+  border-radius:var(--radius); padding:24px; box-shadow:var(--shadow)}
+.tool-sources{margin-top:14px; font-family:var(--mono); font-size:9.5px; color:var(--faint);
+  letter-spacing:1px; line-height:1.9}
+/* PFD-style corner brackets */
+.tool-panel>.br{position:absolute; width:9px; height:9px; border-style:solid; border-color:var(--green)}
+.tool-panel[data-accent="cyan"]>.br{border-color:var(--cyan)}
+.tool-panel[data-accent="magenta"]>.br{border-color:var(--magenta)}
+.br.tl{top:-1px; left:-1px; border-width:2px 0 0 2px}
+.br.tr{top:-1px; right:-1px; border-width:2px 2px 0 0}
+.br.bl{bottom:-1px; left:-1px; border-width:0 0 2px 2px}
+.br.brr{bottom:-1px; right:-1px; border-width:0 2px 2px 0}
+
+.panel-hidden{display:none}
+
+.result-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin:16px 0}
+.result-box{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel2);padding:14px 16px}
+.result-box h4{margin:0 0 10px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);font-family:var(--mono)}
+.mini{font-family:var(--mono);font-size:12px}
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:999px;border:1px solid currentColor}
+.tag.add{color:var(--green)} .tag.del{color:var(--red)} .tag.chg{color:var(--amber)} .tag.base{color:var(--dim)}
+
+/* ---------- home ---------- */
+button.sb-brand{width:100%; text-align:left; background:none; border:0;
+  border-bottom:1px solid var(--line); padding:18px 18px 16px; cursor:pointer}
+button.sb-brand:hover{background:var(--hover)}
+.sb-item[data-accent="text"][aria-current="page"]{border-left-color:var(--text)}
+.sb-item[data-accent="text"][aria-current="page"] .code{color:var(--text); border-color:var(--text)}
+.home-hero{padding:6px 0 26px; border-bottom:1px solid var(--line); margin-bottom:26px}
+.home-over{font-family:var(--mono); font-size:10px; letter-spacing:3px; text-transform:uppercase;
+  color:var(--green); margin-bottom:12px}
+.home-title{margin:0; font-size:clamp(22px,3.6vw,34px); font-weight:600; letter-spacing:1px;
+  line-height:1.22; text-transform:uppercase; color:var(--text)}
+.home-lead{margin:14px 0 0; max-width:600px; font-size:14.5px; line-height:1.7; color:var(--dim)}
+.home-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:16px}
+.home-card{position:relative; text-align:left; background:var(--panel2); border:1px solid var(--line);
+  padding:20px 20px 18px; cursor:pointer; transition:border-color .15s, transform .15s}
+.home-card:hover{transform:translateY(-2px)}
+.home-card .hc-code{font-family:var(--mono); font-size:10px; letter-spacing:2px; margin-bottom:9px; display:block}
+.home-card .hc-name{font-size:19px; font-weight:600; letter-spacing:1px; text-transform:uppercase;
+  line-height:1.2; color:var(--text)}
+.home-card .hc-blurb{margin:9px 0 0; font-size:13.5px; line-height:1.6; color:var(--dim)}
+.home-card .hc-foot{display:flex; justify-content:space-between; align-items:center; gap:10px;
+  margin-top:15px; padding-top:12px; border-top:1px solid var(--line)}
+.home-card .hc-src{font-family:var(--mono); font-size:9.5px; color:var(--faint); line-height:1.5}
+.home-card .hc-go{font-size:12.5px; letter-spacing:2px; white-space:nowrap}
+.home-card[data-accent="green"]:hover{border-color:var(--green)}
+.home-card[data-accent="cyan"]:hover{border-color:var(--cyan)}
+.home-card[data-accent="magenta"]:hover{border-color:var(--magenta)}
+.home-foot{margin-top:26px; padding-top:16px; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:9.5px; letter-spacing:1px; color:var(--faint); line-height:1.8}
+
+/* ---------- shared controls ---------- */
+.sec{font-family:var(--mono); font-size:10px; letter-spacing:3px; text-transform:uppercase;
+  color:var(--dim); margin:0 0 10px}
+.sec.mt{margin-top:22px}
+.btn{padding:9px 20px; border-radius:var(--radius-sm); border:1px solid var(--line); background:none;
+  color:var(--cyan); font-weight:600; font-size:14px; letter-spacing:1.5px; text-transform:uppercase}
+.btn:hover{background:var(--hover)}
+.btn.primary{border-color:var(--green); background:var(--green-soft); color:var(--green)}
+.btn.quiet{color:var(--dim)}
+.btn.small{padding:6px 13px; font-size:12.5px}
+.btn:disabled{opacity:.4; cursor:default}
+.btn.danger{border-color:var(--red); color:var(--red)}
+.btn.tpl{border-color:var(--magenta); color:var(--magenta); background:var(--magenta-soft)}
+.controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:14px 0 4px}
+.field label{display:block; font-family:var(--mono); font-size:9px; letter-spacing:1.5px;
+  color:var(--dim); text-transform:uppercase; margin-bottom:4px}
+.field input,.field select{width:100%; padding:7px 9px; background:var(--input-bg); border:1px solid var(--line);
+  border-radius:var(--radius-sm); color:var(--text); font-family:var(--mono); font-size:12.5px}
+.field input:focus,.field select:focus{border-color:var(--cyan); outline:none}
+/* placeholders must not read as real values */
+input::placeholder, textarea::placeholder{color:var(--faint); opacity:1}
+input::-ms-input-placeholder, textarea::-ms-input-placeholder{color:var(--faint)}
+.grid-form{display:grid; gap:10px; margin-bottom:12px}
+.note{font-size:12px; color:var(--dim)}
+table{width:100%; border-collapse:collapse; font-size:13px}
+thead th{background:var(--panel2); color:var(--dim); font-family:var(--mono); font-size:9.5px;
+  letter-spacing:1.5px; text-transform:uppercase; padding:9px 14px; text-align:left;
+  border-bottom:1px solid var(--line)}
+tbody td{padding:8px 14px; border-bottom:1px solid var(--line)}
+tbody tr:nth-child(even){background:var(--panel2)}
+.badge{display:inline-block; font-family:var(--mono); font-size:11px; padding:2px 7px;
+  border-radius:999px; border:1px solid currentColor}
+/* solid pill in the ULD type colour */
+.badge.solid{color:#fff; background:var(--gc); border-color:var(--gc); font-weight:600; padding:3px 10px}
+.type-chip{display:inline-flex; align-items:center; gap:7px; font-weight:700; color:var(--text)}
+.type-chip::before{content:""; width:10px; height:10px; border-radius:3px; background:var(--gc)}
+/* filled action buttons */
+.btn.fill-cyan{background:var(--cyan-soft); border-color:var(--cyan); color:var(--cyan)}
+.btn.fill-cyan:hover{background:var(--cyan); color:#fff}
+.btn.fill-red{background:var(--red-soft); border-color:var(--red); color:var(--red)}
+.btn.fill-red:hover{background:var(--red); color:#fff}
+thead th:last-child{text-align:right}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:18px; margin-bottom:16px; box-shadow:var(--shadow)}
+.card h3{margin:0 0 14px; font-size:14px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:var(--text)}
+
+.ahm-wrap{display:flex; justify-content:center; padding:10px 0 24px}
+.ahm-card{width:100%; max-width:420px; background:var(--panel); border:1px solid var(--line);
+  border-radius:var(--radius); padding:26px; box-shadow:var(--shadow)}
+.ahm-brand{display:flex; align-items:center; gap:14px; margin-bottom:22px;
+  padding-bottom:18px; border-bottom:1px solid var(--line)}
+.ahm-mark{width:44px; height:44px; border-radius:10px; background:var(--amber-soft); color:var(--amber);
+  display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0}
+.ahm-brand b{display:block; font-size:19px; letter-spacing:.5px}
+.ahm-brand i{display:block; font-style:normal; font-size:12.5px; color:var(--dim); margin-top:3px}
+.ahm-note{margin-top:20px; padding-top:14px; border-top:1px solid var(--line);
+  font-size:11.5px; line-height:1.7; color:var(--dim)}
+.ahm-note b{color:var(--text)}
+/* ---------- validator ---------- */
+.msg-split{display:grid; gap:18px; grid-template-columns:1fr; align-items:start}
+@media (min-width:1080px){ .msg-split{grid-template-columns:1fr 1fr} }
+.msg-col{min-width:0; background:var(--panel); border:1px solid var(--line);
+  border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow)}
+.msg-col #findings{max-height:520px; overflow-y:auto}
+#msgInput{
+  width:100%; min-height:190px; resize:vertical; padding:14px; border-radius:var(--radius-sm);
+  border:1px solid var(--line); background:var(--term-bg); color:var(--term-fg);
+  font-family:var(--mono); font-size:13px; line-height:1.6; caret-color:var(--green); outline:none;
+}
+#msgInput:focus{border-color:var(--cyan)}
+#reconInput{
+  width:100%; min-height:190px; resize:vertical; padding:14px; border-radius:var(--radius-sm);
+  border:1px solid var(--line); background:var(--term-bg); color:var(--term-fg);
+  font-family:var(--mono); font-size:13px; line-height:1.6; caret-color:var(--green); outline:none;
+}
+#reconInput:focus{border-color:var(--cyan)}
+#reconOut{max-height:calc(100vh - 220px); overflow-y:auto}
+.tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px}
+.tab{font-family:var(--mono); font-weight:600; font-size:11px; letter-spacing:1.2px; padding:6px 13px;
+  border-radius:var(--radius-sm); border:1px solid var(--line); background:none; color:var(--dim); text-transform:uppercase}
+.tab[disabled]{color:var(--faint); cursor:default}
+.tab[aria-selected="true"]{background:var(--panel2)}
+.tab.err[aria-selected="true"]{border-color:var(--red); color:var(--red); background:var(--red-soft)}
+.tab.warn[aria-selected="true"]{border-color:var(--amber); color:var(--amber); background:var(--amber-soft)}
+.tab.info[aria-selected="true"]{border-color:var(--cyan); color:var(--cyan); background:var(--cyan-soft)}
+.tab.all[aria-selected="true"]{border-color:var(--text); color:var(--text)}
+.ok-banner{background:var(--green-soft); border:1px solid var(--green); color:var(--green);
+  font-family:var(--mono); font-size:12px; letter-spacing:1.5px; padding:11px 18px;
+  display:inline-block; border-radius:var(--radius-sm)}
+.findings{border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden}
+.finding{display:flex; gap:14px; padding:12px 16px; border-top:1px solid var(--line)}
+.finding:first-child{border-top:0}
+.finding:nth-child(even){background:var(--panel2)}
+.finding .loc{flex-shrink:0; min-width:58px; font-family:var(--mono); font-size:12px; font-weight:600}
+.finding .msg{flex:1; font-size:13.5px; line-height:1.55}
+.finding .ref{font-family:var(--mono); font-size:10px; color:var(--faint); margin-top:4px; letter-spacing:1px}
+.finding.err .loc,.finding.err .lvl{color:var(--red)}
+.finding.warn .loc,.finding.warn .lvl{color:var(--amber)}
+.finding.info .loc,.finding.info .lvl{color:var(--cyan)}
+.finding .lvl{font-weight:700}
+.empty{color:var(--dim); font-size:13.5px; padding:16px 4px}
+/* findings are clickable: they jump to the spot in the telex printout */
+.finding{cursor:pointer; transition:background .15s}
+.finding:hover{background:rgba(37,198,232,.06)}
+.finding .jump{opacity:0; font-size:11px; transition:opacity .15s}
+.finding:hover .jump{opacity:.7}
+.finding.flash{background:rgba(37,198,232,.16)}
+.telex .row{transition:background .15s; border-radius:var(--radius-sm)}
+.telex .row.flash{background:rgba(37,198,232,.16)}
+.telex mark{cursor:pointer}
+.liveflag{font-family:var(--mono); font-size:9px; letter-spacing:1.5px; color:var(--green);
+  border:1px solid var(--green); border-radius:var(--radius-sm); padding:1px 6px; text-transform:uppercase}
+.liveflag:empty{display:none}
+.tipbox{
+  position:absolute; z-index:80; max-width:min(420px,88vw); display:none;
+  background:var(--panel); border:1px solid var(--cyan); border-radius:var(--radius-sm);
+  padding:9px 12px; font-family:var(--sans); font-size:13px; line-height:1.5;
+  color:var(--text); box-shadow:0 8px 24px rgba(0,0,0,.6); pointer-events:none;
+}
+.telex{background:var(--term-bg); border:1px solid var(--line); border-radius:var(--radius-sm); padding:14px 16px;
+  overflow-x:auto; font-family:var(--mono); font-size:13px; color:var(--term-fg); line-height:1.7}
+.telex .ruler{color:var(--faint); white-space:pre; line-height:1.2; margin-bottom:3px}
+.telex .ruler b{color:var(--cyan); font-weight:600}
+.telex .row{display:flex; gap:14px}
+.telex .n{color:var(--faint); user-select:none; min-width:2.5ch; text-align:right; flex-shrink:0}
+.telex .t{white-space:pre}
+.telex mark{background:none; border-bottom:2px solid; padding-bottom:1px}
+.telex mark.err{color:var(--red); border-color:var(--red); background:var(--red-soft)}
+.telex mark.warn{color:var(--amber); border-color:var(--amber); background:var(--amber-soft)}
+.telex mark.info{color:var(--cyan); border-color:var(--cyan); background:var(--cyan-soft)}
+
+/* ---------- ULD module ---------- */
+.uld-head{background:var(--head-bg); border-radius:var(--radius); padding:16px 20px; margin-bottom:18px;
+  display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap}
+.uld-head-title{display:flex; align-items:center; gap:14px; color:#fff}
+.uld-head-title .plane{font-size:28px; opacity:.9}
+.uld-head-title b{display:block; font-size:18px; letter-spacing:.5px}
+.uld-head-title i{display:block; font-style:normal; font-size:12px; color:var(--head-sub); margin-top:3px}
+.uld-head .uld-toolbar{margin:0}
+.uld-head .ref{background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.22)}
+.uld-head .ref label{color:var(--head-sub)}
+.uld-head .ref input{background:rgba(255,255,255,.94); border-color:transparent; color:#15212e}
+.uld-head .btn{border-color:rgba(255,255,255,.35); color:#fff}
+.uld-head .btn:hover{background:rgba(255,255,255,.12)}
+.uld-head .btn.tpl{background:var(--amber); border-color:var(--amber); color:#fff}
+.uld-head .btn.danger{border-color:rgba(255,120,120,.6); color:#ffb3b3}
+.savestate{font-family:var(--mono); font-size:10px; letter-spacing:1px; color:var(--head-sub);
+  white-space:nowrap; padding:0 4px}
+.savestate:empty{display:none}
+.savestate.ok{color:#7fe0ab}
+.savestate.warn{color:#ffce7a}
+.restorebar{display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  background:var(--cyan-soft); border:1px solid var(--cyan); border-radius:var(--radius);
+  padding:12px 16px; margin-bottom:16px; font-size:13px; color:var(--text)}
+
+/* step bar: numbered circles joined by a rail, as in the original tool */
+.stepbar{display:flex; align-items:flex-start; margin-bottom:20px; gap:0}
+.stepbar .st{flex:1; background:none; border:0; padding:0; display:flex; flex-direction:column;
+  align-items:center; gap:6px; font:inherit; color:inherit; position:relative}
+.stepbar .st .num{width:34px; height:34px; border-radius:50%; display:flex; align-items:center;
+  justify-content:center; font-weight:700; font-size:14px; font-family:var(--sans);
+  background:var(--line); color:var(--dim); border:0; transition:background .15s, color .15s}
+.stepbar .st .lb{font-size:12.5px; letter-spacing:.5px; text-transform:none; color:var(--dim)}
+.stepbar .st[data-on="1"] .num{background:var(--cyan); color:#fff}
+.stepbar .st[data-on="1"] .lb{color:var(--cyan); font-weight:700}
+.stepbar .st[data-done="1"] .num{background:var(--green); color:#fff}
+.stepbar .st[data-done="1"] .lb{color:var(--text)}
+.stepbar .st::before{content:""; position:absolute; top:17px; left:-50%; width:100%; height:2px;
+  background:var(--line); z-index:0}
+.stepbar .st:first-child::before{display:none}
+.stepbar .st[data-done="1"]::before,.stepbar .st[data-on="1"]::before{background:var(--green)}
+.stepbar .st .num,.stepbar .st .lb{position:relative; z-index:1}
+button.stepbar-btn{cursor:pointer}
+button.stepbar-btn:hover:not(:disabled) .num{filter:brightness(1.1)}
+button.stepbar-btn:disabled{cursor:default; opacity:.45}
+.uld-toolbar{display:flex; gap:8px; align-items:center; justify-content:flex-end; flex-wrap:wrap; margin-bottom:16px}
+.uld-toolbar .ref{display:flex; align-items:center; gap:7px; background:var(--panel2);
+  border:1px solid var(--line); border-radius:var(--radius-sm); padding:4px 10px}
+.uld-toolbar .ref label{font-family:var(--mono); font-size:9px; letter-spacing:1.5px; color:var(--dim)}
+.uld-toolbar .ref input{width:84px; background:var(--input-bg); border:1px solid var(--line); border-radius:var(--radius-sm);
+  padding:3px 6px; font-family:var(--mono); font-size:12px; color:var(--text)}
+.comp-tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px}
+.comp-tab{padding:7px 16px; border-radius:var(--radius-sm); border:1px solid var(--line); background:none;
+  color:var(--dim); font-size:13.5px; letter-spacing:1px; text-transform:uppercase}
+.comp-tab[aria-selected="true"]{border-color:var(--cyan); color:var(--cyan); background:var(--cyan-soft)}
+.posrow{display:grid; gap:8px; align-items:start; margin-bottom:8px}
+.posrow .field{display:flex; flex-direction:column; gap:3px}
+.posrow .field input.bad{border-color:var(--red); background:var(--red-soft)}
+.fielderr{font-family:var(--sans); font-size:10.5px; line-height:1.35; color:var(--red); font-weight:600}
+/* each ULD type carries its own colour, as in the original tool */
+.group-box{border:2px solid var(--gc,var(--line)); border-radius:4px; margin-bottom:12px;
+  background:var(--panel); overflow:hidden}
+.group-box .gh{cursor:pointer; background:color-mix(in srgb, var(--gc,var(--line)) 12%, transparent);
+  padding:10px 14px; margin:0; border-bottom:1px solid color-mix(in srgb, var(--gc,var(--line)) 30%, transparent)}
+.group-box .gbody{padding:14px}
+.gen-opts{display:flex; flex-wrap:wrap; gap:18px; margin-bottom:14px; padding-bottom:12px;
+  border-bottom:1px dashed var(--line)}
+.gen-opts label{display:inline-flex; align-items:center; gap:7px; font-size:12.5px;
+  color:var(--dim); cursor:pointer}
+.gen-opts label:hover{color:var(--text)}
+.gen-opts i{font-style:normal; color:var(--faint); cursor:help}
+.gen-opts label.off{opacity:.45; cursor:not-allowed}
+.gen-opts label.off input{cursor:not-allowed}
+.gen-state{margin-left:auto; font-size:11.5px; font-family:var(--mono)}
+.group-box .gt{color:var(--gc,var(--cyan))}
+.group-box .badge{color:var(--gc,var(--cyan))}
+.group-box[data-collapsed="1"] .gh{border-bottom:0}
+.chev{display:inline-block; width:14px; text-align:center; color:var(--dim); transition:transform .15s; flex-shrink:0}
+.chev[data-open="1"]{transform:rotate(90deg)}
+.collapsed-hint{font-family:var(--mono); font-size:10px; color:var(--faint); letter-spacing:1px}
+.layout-item .layout-name{cursor:pointer; display:flex; align-items:center; gap:8px}
+.layout-item .layout-name:hover{color:var(--cyan)}
+.showmore{display:block; width:100%; text-align:center; padding:11px; background:var(--panel2);
+  border:0; border-top:1px solid var(--line); color:var(--cyan); font-family:var(--mono);
+  font-size:11px; letter-spacing:1.5px; text-transform:uppercase}
+.showmore:hover{background:var(--hover)}
+.group-box .gh{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px; flex-wrap:wrap}
+.group-box .gt{font-size:14px; font-weight:600; letter-spacing:1px; text-transform:uppercase}
+.zone-legend{display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; padding-top:10px;
+  border-top:1px solid var(--line); font-size:11.5px}
+.zone-legend span{display:inline-flex; align-items:center; gap:5px}
+.zone-legend i{width:12px; height:12px; border-radius:var(--radius-sm); display:inline-block}
+.warnbox{border:1px solid var(--amber); background:var(--amber-soft); border-radius:var(--radius-sm);
+  padding:12px 14px; margin:12px 0; font-size:12.5px; color:var(--amber)}
+.stat-grid{display:grid; gap:10px; margin-bottom:16px}
+.stat{border:1px solid var(--line); background:var(--panel2); border-radius:var(--radius-sm); padding:12px 16px; text-align:center}
+.stat .v{font-size:26px; font-weight:700; color:var(--cyan); font-family:var(--mono)}
+.stat .l{font-size:11.5px; color:var(--dim); letter-spacing:1px; text-transform:uppercase; margin-top:2px}
+.layout-item{border-bottom:1px solid var(--line); padding:12px 16px}
+.layout-item:last-child{border-bottom:0}
+.layout-name{font-family:var(--mono); font-size:13px; color:var(--green); margin-bottom:8px}
+.idx-warn{color:var(--amber); font-family:var(--mono); font-size:10px}
+.modal-back{position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:60;
+  display:flex; align-items:center; justify-content:center; padding:20px}
+.modal{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-sm);
+  width:100%; max-width:760px; max-height:86vh; display:flex; flex-direction:column}
+.modal .mh{padding:14px 18px; border-bottom:1px solid var(--line); display:flex;
+  justify-content:space-between; align-items:center; gap:12px}
+.modal .mb{padding:16px 18px; overflow:auto}
+.modal textarea{width:100%; min-height:280px; background:var(--input-bg); border:1px solid var(--line);
+  border-radius:var(--radius-sm); color:var(--text); font-family:var(--mono); font-size:12px; padding:12px; resize:vertical}
+.preset-card{border:1px solid var(--line); border-radius:var(--radius-sm); padding:14px 16px; margin-bottom:10px;
+  display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap}
+
+/* ---------- responsive ---------- */
+@media (max-width:640px){
+  .topbar .sys .sys-text{display:none}
+}
+@media (max-width:860px){
+  .sidebar{position:fixed; top:0; bottom:0; left:0; transform:translateX(-100%); transition:transform .18s}
+  .sidebar[data-open="1"]{transform:none; box-shadow:0 0 40px rgba(0,0,0,.7)}
+  .burger{display:inline-flex}
+  main{padding:16px}
+  .tool-panel{padding:16px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="scrim" id="scrim" data-open="0"></div>
+
+  <aside class="sidebar" id="sidebar" data-open="0">
+    <button class="sb-brand" id="sbHome" title="Back to home">
+      <div class="row"><span class="dia">&#9670;</span><span class="name">Ops Toolkit</span></div>
+      <div class="sub">GROUND &amp; PAX OPERATIONS</div>
+    </button>
+    <nav class="sb-nav" id="sbNav">
+      <button class="sb-item" data-id="home" data-accent="text">
+        <span class="code" style="display:inline-flex;align-items:center;padding:3px 5px"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/></svg></span><span class="label">Home</span>
+      </button>
+      <div class="sb-label" style="padding-top:12px">TOOL SELECT</div>
+      <!-- tool items injected -->
+    </nav>
+    <div class="sb-foot">
+      Single self-contained file.<br>Works offline, no installation.
+    </div>
+  </aside>
+
+  <div class="body">
+    <header class="topbar">
+      <div class="left">
+        <button class="burger" id="burger" aria-label="Open tool menu">&#8801;</button>
+        <button class="homebtn" id="hdrHome" title="Back to home" aria-label="Home"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/></svg></button>
+        <button class="homebtn" id="themeBtn" title="Switch between dark and daylight" aria-label="Switch theme">&#9681;</button>
+        <span class="title" id="toolTitle">Message Validator</span>
+        <span class="badge" id="toolBadge">MSGCHECK</span>
+      </div>
+      <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
+        <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
+      </span>
+    </header>
+
+    <main>
+      <p class="tool-blurb" id="toolBlurb"></p>
+
+      <div class="tool-panel" id="toolPanel" data-accent="green">
+        <span class="br tl"></span><span class="br tr"></span><span class="br bl"></span><span class="br brr"></span>
+
+                <!-- ============ PNL BUILDER ============ -->
+        <section id="panel-builder" class="panel-hidden">
+          <div class="sec">Passenger list (CSV)</div>
+          <textarea id="csvInput" spellcheck="false"
+            placeholder="Paste a CSV, or use Load file. First row must be the header.&#10;&#10;Surname,Given name,Title,Destination,Class,PNR,SSR,Seat&#10;Silva,Joao,MR,OPO,Y,ABC123,VGML,12A"
+            style="width:100%;min-height:170px;resize:vertical;padding:14px;border-radius:var(--radius-sm);
+                   border:1px solid var(--line);background:var(--term-bg);color:var(--term-fg);
+                   font-family:var(--mono);font-size:12.5px;line-height:1.6;outline:none"></textarea>
+          <div class="controls">
+            <label class="btn" style="display:inline-flex;align-items:center">
+              &#128206; Load file<input type="file" id="csvFile" accept=".csv,.txt,.tsv" style="display:none">
+            </label>
+            <button class="btn quiet" id="btnCsvExample">Load example</button>
+          </div>
+
+          <div class="sec mt">Flight</div>
+          <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:14px">
+            <div class="field"><label for="bFlight">Flight</label><input id="bFlight" placeholder="TP1234" value="TP1234"></div>
+            <div class="field"><label for="bDate">Date</label><input id="bDate" placeholder="16JUL" value="16JUL"></div>
+            <div class="field"><label for="bOrigin">Origin</label><input id="bOrigin" placeholder="LIS" value="LIS"></div>
+            <div class="field"><label for="bPart">Part</label><input id="bPart" type="number" min="1" value="1"></div>
+            <div class="field"><label for="bCls">Default class</label><input id="bCls" placeholder="Y" value="Y"></div>
+          </div>
+          <div class="controls" style="margin-top:0">
+            <button class="btn primary" id="btnBuild">Build PNL</button>
+            <button class="btn quiet" id="btnBuildClear">Clear</button>
+          </div>
+          <div id="buildOut"></div>
+        </section>
+
+
+        <!-- ============ HOME ============ -->
+        <section id="panel-home">
+          <div class="home-hero">
+            <div class="home-over">Ground &amp; passenger operations</div>
+            <h1 class="home-title">One toolkit for the messages,<br>loads and files that move a flight.</h1>
+            <p class="home-lead">Pick a tool to begin. Everything runs locally in your browser —
+              no message, file or password ever leaves this machine.</p>
+          </div>
+          <div class="home-grid" id="homeGrid"></div>
+          <div class="home-foot">
+            Single self-contained HTML file · works offline · no installation, no accounts, no telemetry.
+          </div>
+        </section>
+
+        <!--{{MODULE_PANELS}}-->
+
+
+
+
+
+
+
+
+
+      </div>
+
+      <div class="tool-sources" id="toolSources"></div>
+    </main>
+  </div>
+</div>
+
+<div id="modalHost"></div>
+
+<script>
+/*! Aviation Ops Toolkit — PNL Builder v1.2.0 — Luís Cavaco
+    Built 2026-08-05 from the source tree; see build.manifest.json.
+    Copyright (c) 2026 Luís Cavaco. All rights reserved. */
+
+
+/*==== FILE: src/shell/shell-core.js ====*/
+
+
+/* ============================================================================
+   SHELL — sidebar navigation + tool registry
+   Add a tool: append to TOOLS and add a <section id="panel-{id}"> in the markup.
+   ============================================================================ */
+var TOOLS = [
+  { id:"builder", name:"PNL Builder", badge:"CSV → PNL", code:"GEN", accent:"cyan", blurb:"Turn a passenger list in CSV into a PNL: alphabetised, grouped by destination and class, within the 64-character limit — then checked by the validator.", sources:"PSCRM RP 1708 · RP 1707b §2.5/§2.9" }
+];
+
+var $ = function(id){ return document.getElementById(id); };
+var esc = function(s){ return String(s==null?"":s).replace(/[&<>"]/g, function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); };
+
+function openTool(id){
+  var isHome = (id === "home");
+  // panels
+  var homePanel = $("panel-home");
+  if(homePanel) homePanel.className = isHome ? "" : "panel-hidden";
+  TOOLS.forEach(function(t){
+    var p = $("panel-"+t.id);
+    if(p) p.className = (t.id===id ? "" : "panel-hidden");
+  });
+  // sidebar state (home included)
+  Array.prototype.forEach.call(document.querySelectorAll(".sb-item"), function(b){
+    if(b.getAttribute("data-id")===id) b.setAttribute("aria-current","page");
+    else b.removeAttribute("aria-current");
+  });
+
+  var tool = TOOLS.filter(function(t){return t.id===id;})[0];
+  if(isHome){
+    $("toolTitle").textContent = "Aviation Ops Toolkit";
+    $("toolBadge").textContent = "HOME";
+    $("toolBadge").style.color = "var(--text)";
+    $("toolBlurb").style.display = "none";
+    $("toolSources").style.display = "none";
+    $("toolPanel").setAttribute("data-accent", "green");
+  } else {
+    tool = tool || TOOLS[0];
+    $("toolTitle").textContent = tool.name;
+    $("toolBadge").textContent = tool.badge;
+    $("toolBadge").style.color = "var(--"+tool.accent+")";
+    $("toolBlurb").style.display = "";
+    $("toolBlurb").textContent = tool.blurb;
+    $("toolSources").style.display = "";
+    $("toolSources").innerHTML = esc(tool.sources) +
+      "<br>Rules reformulated as validation logic; no part of the manuals is reproduced.";
+    $("toolPanel").setAttribute("data-accent", tool.accent);
+  }
+  var mainEl = document.querySelector("main");
+  if(mainEl) mainEl.setAttribute("data-wide", (!isHome && tool && tool.wide) ? "1" : "0");
+  closeNav();
+  try { window.scrollTo({top:0, behavior:"smooth"}); }
+  catch(e){ try { window.scrollTo(0,0); } catch(e2){} }
+}
+function closeNav(){ $("sidebar").setAttribute("data-open","0"); $("scrim").setAttribute("data-open","0"); }
+function buildNav(){
+  var nav = $("sbNav");
+  TOOLS.forEach(function(t){
+    var b = document.createElement("button");
+    b.className = "sb-item"; b.setAttribute("data-id", t.id); b.setAttribute("data-accent", t.accent);
+    b.innerHTML = '<span class="code">'+esc(t.code)+'</span><span class="label">'+esc(t.name)+'</span>';
+    b.addEventListener("click", function(){ openTool(t.id); });
+    nav.appendChild(b);
+  });
+  var homeBtn = nav.querySelector('.sb-item[data-id="home"]');
+  if(homeBtn) homeBtn.addEventListener("click", function(){ openTool("home"); });
+}
+function buildHome(){
+  var grid = $("homeGrid");
+  if(!grid) return;
+  grid.innerHTML = TOOLS.map(function(t){
+    return '<button class="home-card" data-open="'+esc(t.id)+'" data-accent="'+esc(t.accent)+'">'+
+      '<span class="hc-code" style="color:var(--'+t.accent+')">'+esc(t.code)+' &middot; '+esc(t.badge)+'</span>'+
+      '<span class="hc-name">'+esc(t.name)+'</span>'+
+      '<p class="hc-blurb">'+esc(t.blurb)+'</p>'+
+      '<span class="hc-foot"><span class="hc-src">'+esc(t.sources.replace(/^SOURCES: /,""))+'</span>'+
+      '<span class="hc-go" style="color:var(--'+t.accent+')">OPEN &#9656;</span></span>'+
+    '</button>';
+  }).join("");
+  Array.prototype.forEach.call(grid.querySelectorAll(".home-card"), function(c){
+    c.addEventListener("click", function(){ openTool(c.getAttribute("data-open")); });
+  });
+}
+buildNav();
+buildHome();
+$("sbHome").addEventListener("click", function(){ openTool("home"); });
+$("hdrHome").addEventListener("click", function(){ openTool("home"); });
+
+/* ---------- theme ---------- */
+/* Not persisted: artifact sandboxes block browser storage, so the choice lasts
+   for the session. Honours the operating system preference on first load. */
+function applyTheme(mode){
+  document.documentElement.setAttribute("data-theme", mode);
+  var b = $("themeBtn");
+  if(b){
+    b.innerHTML = mode === "light" ? "&#9789;" : "&#9681;";
+    b.title = mode === "light" ? "Switch to dark" : "Switch to daylight";
+  }
+}
+var prefersLight = false;
+try { prefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches; } catch(e){}
+applyTheme(prefersLight ? "light" : "dark");
+$("themeBtn").addEventListener("click", function(){
+  var now = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+  applyTheme(now);
+});
+$("burger").addEventListener("click", function(){
+  $("sidebar").setAttribute("data-open","1"); $("scrim").setAttribute("data-open","1");
+});
+$("scrim").addEventListener("click", closeNav);
+
+
+
+/*==== FILE: src/core/engine.js ====*/
+
+/* =====================================================================
+   EDITABLE TABLE — usual passport number patterns by country
+   ---------------------------------------------------------------------
+   NOT in the IATA manuals: RP1707b/AIRIMP define the field only
+   as alphanumeric. These patterns are heuristic (formats change and
+   old passports remain valid for up to 10 years), so they always
+   produce a WARNING, never an error. To add a country just append the
+   line; to disable one, delete or comment out the line.
+   Applies only to type P documents (passport).
+   ===================================================================== */
+const PASSPORT_PATTERNS={
+  PRT:{re:/^[A-Z]{1,2}\d{6}$/,      ex:"K123456"},
+  ESP:{re:/^[A-Z]{2,3}\d{6}$/,      ex:"ABC123456"},
+  GBR:{re:/^\d{9}$/,                ex:"123456789"},
+  IRL:{re:/^[A-Z0-9]{2}\d{7}$/,     ex:"XN1234567"},
+  FRA:{re:/^\d{2}[A-Z]{2}\d{5}$/,   ex:"12AB34567"},
+  DEU:{re:/^[CFGHJKLMNPRTVWXYZ0-9]{9}$/, ex:"C01X00T47"},
+  ITA:{re:/^[A-Z]{2}\d{7}$/,        ex:"YA1234567"},
+  NLD:{re:/^[A-Z]{2}[A-Z0-9]{6}\d$/,ex:"NX12A3456"},
+  BEL:{re:/^[A-Z]{2}\d{6}$/,        ex:"EM123456"},
+  CHE:{re:/^[A-Z]\d{7}$/,           ex:"X1234567"},
+  POL:{re:/^[A-Z]{2}\d{7}$/,        ex:"AB1234567"},
+  SWE:{re:/^\d{8}$/,                ex:"12345678"},
+  NOR:{re:/^\d{8}$/,                ex:"12345678"},
+  DNK:{re:/^\d{9}$/,                ex:"123456789"},
+  USA:{re:/^(\d{9}|[A-Z]\d{8})$/,   ex:"123456789 ou A12345678"},
+  CAN:{re:/^[A-Z]{2}\d{6}$/,        ex:"AB123456"},
+  BRA:{re:/^[A-Z]{2}\d{6}$/,        ex:"AB123456"},
+  AUS:{re:/^[A-Z]{1,2}\d{7}$/,      ex:"PA1234567"},
+  IND:{re:/^[A-Z]\d{7}$/,           ex:"A1234567"},
+  CHN:{re:/^[A-Z]\d{8}$/,           ex:"E12345678"},
+  ZAF:{re:/^[A-Z]\d{8}$/,           ex:"A12345678"},
+  AGO:{re:/^[A-Z]{1,2}\d{6}$/,      ex:"N123456"},
+  MOZ:{re:/^[A-Z]{2}\d{7}$/,        ex:"AB1234567"},
+  CPV:{re:/^[A-Z]{1,2}\d{6}$/,      ex:"N123456"}
+};
+// equivalências alpha-2 -> alpha-3 (o DOCS admite ambos)
+const ISO2TO3={PT:"PRT",ES:"ESP",GB:"GBR",UK:"GBR",IE:"IRL",FR:"FRA",DE:"DEU",IT:"ITA",
+  NL:"NLD",BE:"BEL",CH:"CHE",PL:"POL",SE:"SWE",NO:"NOR",DK:"DNK",US:"USA",CA:"CAN",
+  BR:"BRA",AU:"AUS",IN:"IND",CN:"CHN",ZA:"ZAF",AO:"AGO",MZ:"MOZ",CV:"CPV"};
+
+/* ---- utilitários de data (DDMMMYY) ---- */
+const MON3={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
+function parseDDMMMYY(s,dir){ // dir: "past" | "future"
+  const m=(s||"").match(/^(\d{2})([A-Z]{3})(\d{2})$/); if(!m) return null;
+  const mi=MON3[m[2]]; if(mi===undefined) return null;
+  const dd=parseInt(m[1],10), yy=parseInt(m[3],10); if(dd<1||dd>31) return null;
+  const now=new Date();
+  let year=2000+yy;
+  if(dir==="past"  && year>now.getFullYear()) year-=100;   // nascimento nunca é futuro
+  if(dir==="future"&& year<now.getFullYear()-10) year+=100; // validade
+  const d=new Date(Date.UTC(year,mi,dd));
+  return (d.getUTCDate()===dd && d.getUTCMonth()===mi) ? d : null;
+}
+function resolveFlightDate(dd,mmm){ // o Flight Element não traz ano
+  const mi=MON3[mmm]; if(mi===undefined) return null;
+  const now=new Date(), y=now.getUTCFullYear();
+  let best=null, bestDiff=Infinity;
+  [y-1,y,y+1].forEach(yy=>{
+    const d=new Date(Date.UTC(yy,mi,parseInt(dd,10)));
+    const diff=d-now;
+    const score=diff>=-90*864e5 ? Math.abs(diff) : Infinity; // preferir data futura/recente
+    if(score<bestDiff){ bestDiff=score; best=d; }
+  });
+  return best;
+}
+const fmtD=d=>d?d.toISOString().slice(0,10).split("-").reverse().join("/"):"";
+
+/* =====================================================================
+   SSR MATRIX — AIRIMP 34th ed. §2.11.6.7 (extracted from the manual)
+   Each entry has 2 letters: [Action Code][Free Text In Request]
+     M = Mandatory · O = Optional · N = Not permitted
+   ===================================================================== */
+const SSR_MATRIX={
+  ADTK:"NM", AOXY:"MO", ASVC:"MM", ASVX:"NN", AUTK:"MN", AVIH:"MM",
+  AVML:"MN", BBML:"MN", BIKE:"MO", BLML:"MN", BLND:"MO", BSCT:"MN",
+  BULK:"MM", CBBG:"MM", CHLD:"MN", CHML:"MO", CKIN:"OM", CLID:"MN",
+  COUR:"MO", CRUZ:"MO", DBML:"MN", DCRW:"MO", DEAF:"MO", DEPA:"MO",
+  DEPU:"MO", DOCA:"MN", DOCO:"MN", DOCS:"MN", DPNA:"MM", EPAY:"MO",
+  ETLP:"NN", EXST:"MM", FOID:"MM", FPML:"MN", FQTR:"MO", FQTS:"MO",
+  FQTU:"MO", FQTV:"MO", FRAG:"MM", FRAV:"MN", GFML:"MN", GPST:"MO",
+  GRPF:"OO", GRPK:"MM", GRPS:"OO", HNML:"MN", INFT:"MM", IROP:"MO",
+  KSML:"MN", LANG:"MM", LCML:"MN", LFML:"MN", LSML:"MN", MAAS:"MM",
+  MCOA:"MM", MEDA:"OM", MEQT:"MM", MOML:"MN", NAME:"NM", NLML:"MN",
+  NOML:"MN", NRSB:"MN", NSSA:"MN", NSSB:"MN", NSSR:"MO", NSST:"MO",
+  NSSW:"MN", OTHS:"OM", PCTC:"MO", PETC:"MM", POXY:"MO", PPOC:"MO",
+  RLOC:"NM", RQST:"MM", RVML:"MN", SEAT:"MM", SEMN:"MM", SFML:"MN",
+  SLPR:"MN", SMSA:"MN", SMSB:"MN", SMSR:"MO", SMST:"MO", SMSW:"MN",
+  SPEQ:"MM", SPML:"MM", STCR:"MN", TKNA:"MM", TKNC:"MM", TKNE:"MM",
+  TKNM:"MM", TKNR:"MM", TKNX:"NN", TKTL:"MN", TLAC:"NO", TWOV:"MO",
+  UMNR:"MM", VGML:"MN", VJML:"MN", VLML:"MN", VOML:"MN", WCBD:"MO",
+  WCBW:"MO", WCHC:"MO", WCHR:"MO", WCHS:"MO", WCMP:"MO", WCOB:"MO",
+  WEAP:"MM", XBAG:"MM"
+};
+
+/* =====================================================================
+   RULES (derived from: PSCRM RP1708 + RP1707b · AIRIMP §2.11.6.7)
+   ===================================================================== */
+const RULES = {
+  maxLine: 64, // RP1707b Sec.2 Nota 3
+  months: ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"],
+  // Matriz SSR — AIRIMP 34ª ed. §2.11.6.7
+  // União: RP1708 §2.12.7 (Table of SSR Codes) + AIRIMP 34ª ed. §2.11.6.7 (Matriz SSR) + extensões locais (CHKD)
+  pnlCodes: new Set(["ADTK","AOXY","ASVC","ASVX","AUTK","AVIH","AVML","BBML","BIKE","BLML","BLND","BSCT","BULK","CBBG","CHLD","CHML","CKIN","CLID","COUR","CRUZ","DBML","DCRW","DEAF","DEPA","DEPU","DOCA","DOCO","DOCS","DPNA","EPAY","ETLP","EXST","FOID","FPML","FQTR","FQTS","FQTU","FQTV","FRAG","FRAV","GFML","GPST","GRPF","GRPK","GRPS","HNML","INFT","IROP","KSML","LANG","LCML","LFML","LSML","MAAS","MCOA","MEDA","MEQT","MOML","NAME","NLML","NOML","NRSB","NSSA","NSSB","NSSR","NSST","NSSW","OTHS","PCTC","PETC","POXY","PPOC","RLOC","RQST","RVML","SEAT","SEMN","SFML","SLPR","SMSA","SMSB","SMSR","SMST","SMSW","SPEQ","SPML","STCR","TKNA","TKNC","TKNE","TKNM","TKNR","TKNX","TKTL","TLAC","TWOV","UMNR","VGML","VJML","VLML","VOML","WCBD","WCBW","WCHC","WCHR","WCHS","WCMP","WCOB","WEAP","XBAG","SVC","CHKD"]),
+  // RP1708 §2.12.8 — OSI/AUX admitidos em .R/ (contagem opcional antes do código, ex.: 2VIP)
+  psmCodes: new Set(["ASVC","BLND","DEAF","DEPA","DEPU","DPNA","EMIG","INAD","LANG","MAAS","MEDA","PPOC","STCR","SVC","TWOV","UMNR","VIP","WCHC","WCHR","WCHS","WEAP"]),
+  statusRequired: new Set(["CHKD"]), // extensões locais: status+contagem obrigatórios
+  osiCodes: new Set(["DIPL","EMIG","ETLP","INAD","LEGL","LEGR","LEGB","OXYG","SVC","TKNO","VIP","CHD"]),
+  statusCodes: new Set(["HK","KK","NN","UN","NO","XX","HN","TK","PN","UC","US","HX","SA","GK","KL","TL"]),
+  // Elementos .X/ definidos (RP1707b Sec.3); NOT IN USE: A,B,E,G,H,J,K,P,Q
+  dotElements: new Set([".BG",".C",".D",".DBC",".DG1",".DG2",".F",".I",".ID1",".ID2",".L",".M",".N",".O",".R",".RN",".RG1",".RG2",".S",".SN",".W",".WL"]),
+  dotNotInUse: new Set([".A",".B",".E",".G",".H",".J",".K",".P",".Q",".U",".V",".X",".Y",".Z"]), // RP1707b Sec.3 (NOT IN USE)
+  categories: new Set(["CFMWL","FQTVN","NOSHO","OFFLK","OFFLN","NOREC","GOSHN","GOSHO","CHGCL","INVOL","CHGSG","CHGFL","IDPAD","APIPX","OFLD","REGRET"]),
+  titles: ["MRS","MSTR","MISS","MR","MS","DR","PROF","CHD","INF","REV","SIR","LADY","CAPT"],
+  charset: /[^A-Z0-9 .\/\-=()?:,+']/g // conjunto telex admitido
+};
+
+const REF = {
+  len:"RP 1707b Sec.2 Note 3 (64 char./line limit)",
+  addr:"RP 1708 §2.1 / RP 1707b §2.1 (Address Element)",
+  comms:"RP 1708 §2.2 / RP 1707b §2.2 (Communications Reference)",
+  msgid:"RP 1707b §2.3 (Message Identifier)",
+  flight:"RP 1708 §2.4 / RP 1707b §2.4 (Flight Element)",
+  totals:"RP 1708 §2.5 / RP 1707b §2.5 (Totals by Destination)",
+  name:"RP 1707b §2.9 (Name Element) · AIRIMP §2.11.6.1",
+  group:"RP 1707b §2.9.2 (Party/Group Identification)",
+  remarks:"RP 1707b §3.24 (.R/ Remarks Element)",
+  rn:"RP 1707b §3.24.8–3.27 (.RN/ continuation)",
+  ssr:"AIRIMP §2.11.6.7 (SSR code matrix)",
+  status:"AIRIMP §2.11.6 (Action/Status/Advice Codes)",
+  elem:"RP 1707b Sec.3 (Data Elements .X/)",
+  end:"RP 1707b §3.1 (End Element) / RP 1708",
+  adl:"RP 1707b §2.7 (DEL/ADD/CHG — ADL only)",
+  rbd:"RP 1707b §2.10 (Class Codes Element RBD)",
+  cfg:"RP 1707b §2.12 (Seat Configuration CFG)",
+  mvt:"AHM 780 (Aircraft Movement Message) / AHM 730 (DIV)",
+  ssim:"SSIM ch. 2 (SSM/ASM) — via Avinor xwiki",
+  charset:"SCR Manual / telex — permitted character set",
+  space:"Telex format — significant spacing",
+  alpha:"RP 1707b §2.9 (names alphabetised by surname)"
+};
+
+/* ============================ VALIDADOR ============================ */
+function validate(raw){
+  const findings = [];
+  const add=(line,col,len,sev,msg,ref,meta)=>findings.push(Object.assign({line,col,len,sev,msg,ref},meta||{}));
+  const lines = raw.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+
+  // localizar blocos de mensagem: cada bloco começa numa linha PNL/ADL isolada.
+  // Tudo o que estiver fora de um bloco (endereços, referência do emissor,
+  // trailers = / NNNN / ZCZC) é ignorado sem validação.
+  const idRe=/^(PNL|ADL|PSM|PTM|PFS|PIL|SOM|SPM|FTL|PRL|ETL|MVT|DIV|SSM|ASM|PASSENGER INFORMATION LIST)\s*$/i;
+  const blocks=[];
+  lines.forEach((l,i)=>{ if(idRe.test(l.trim())) blocks.push({start:i}); });
+  if(blocks.length===0){
+    add(1,1,Math.max((lines[0]||"").length,1),"err","Message identifier <b>PNL</b> or <b>ADL</b> not found (on its own line).",REF.msgid);
+    return findings;
+  }
+  blocks.forEach((b,k)=>{ b.limit = (k+1<blocks.length ? blocks[k+1].start : lines.length); });
+  const fltKey=l=>{ const m=(l||"").toUpperCase().trim().match(/^([A-Z0-9]{2}[A-Z]?\d{1,4}[A-Z]?)\/(\d{2})([A-Z]{3})/); return m?m[1]+"/"+m[2]+m[3]:null; };
+  blocks.forEach(b=>{ b.key=fltKey(lines[b.start+1]); });
+  blocks.forEach(b=>{ const t=(lines[b.start]||'').trim().toUpperCase(); b.type=(t==='PASSENGER INFORMATION LIST')?'PIL':t; });
+  // um único voo por validação (PNL/ADL): partes do MESMO voo podem vir juntas; voos diferentes não
+  // um único voo por validação; ADLs múltiplos do mesmo voo são legítimos, PNLs múltiplos não
+  const pnls=blocks.filter(b=>b.type==='PNL' && b.key);
+  const pnladl=blocks.filter(b=>(b.type==='PNL'||b.type==='ADL') && b.key);
+  if(pnls.length>1)
+    add(pnls[1].start+1,1,(lines[pnls[1].start]||'').length||1,"warn","Multiple PNLs pasted together — for the same flight, only the parts of a single PNL should be validated together.",REF.flight);
+  if(pnladl.length>1){
+    const first=pnladl[0].key;
+    pnladl.slice(1).forEach(b=>{
+      if(b.key!==first)
+        add(b.start+2,1,(lines[b.start+1]||'').length||1,"err",`Message for another flight (<b>${b.key}</b>) in the same validation — PNL/ADL is validated one flight at a time (first flight: <b>${first}</b>). Validate separately.`,REF.flight);
+    });
+  }
+
+  // estado partilhado entre partes da mesma mensagem
+  const shared={ dest:{}, groups:{}, parts:[] };
+  // pré-filtrar: se houver blocos de voos diferentes, valida-se apenas o primeiro voo
+  const primaryKey=blocks.find(b=>b.key)?.key||null;
+  const toValidate=blocks.filter(b=>!b.key||b.key===primaryKey||(b.type!=='PNL'&&b.type!=='ADL'));
+  toValidate.forEach((b,k)=>validateBlock(lines,b,k===toValidate.length-1,add,shared));
+
+  /* ---- verificações agregadas (todas as partes) ---- */
+  Object.values(shared.dest).forEach(d=>{
+    // Totals by Destination carry the running figure for the flight. On a PNL the
+    // listing is complete, so the two must agree; on an ADL only what changed is
+    // listed (RP 1708 §3.2), so fewer names is normal — only an excess is wrong.
+    if(blocks.some(b=>b.type==="ADL")){
+      if(d.sum>d.declared)
+        add(d.line,1,0,"warn",`Destination <b>${d.key}</b>: ${d.sum} Name Elements listed but the declared total is ${d.declared}.`,REF.totals);
+    } else if(d.declared!==d.sum){
+      add(d.line,1,0,"warn",`Destination <b>${d.key}</b>: declared total ${d.declared}, sum of Name Elements ${d.sum}. Please check (ZZ/NONAMES seats count towards the total).`,REF.totals);
+    }
+  });
+  // ---- lugares duplicados (PNL) ----
+  if(shared.seats) Object.entries(shared.seats).forEach(([seat,list])=>{
+    if(list.length<2) return;
+    list.forEach((s,i)=>add(s.line,s.col,s.len,"err",
+      i===0 ? `Seat <b>${seat}</b> assigned to ${list.length} passengers (${list.map(x=>x.pax).join(", ")}) — assignment conflict.`
+            : `Seat <b>${seat}</b> duplicated (see first occurrence).`,
+      REF.remarks, i===0?undefined:{dup:true}));
+  });
+
+  // ---- SSR que bloqueia lugares sem placeholder 1ZZ/ (PSCRM §2.9) ----
+  if(shared.zzNeed) shared.zzNeed.forEach(r=>{
+    if(!r.grp){
+      add(r.line,r.col,r.len,"warn",`SSR <b>${r.code}</b> blocks seat(s) but the passenger has no group identifier — without a group the <b>1ZZ/${r.code}</b> Name Element for the blocked seats cannot be linked.`,REF.group);
+      return;
+    }
+    const set=shared.zz&&shared.zz[r.grp];
+    if(!set||!set.has(r.code))
+      add(r.line,r.col,r.len,"warn",`SSR <b>${r.code}</b> in group <b>-${r.grp}</b> without the blocked-seats Name Element — missing <b>nZZ/${r.code}-${r.grp}</b> under the Totals by Destination.`,REF.group);
+  });
+
+  // ---- passageiro listado duas vezes no mesmo destino ----
+  if(shared.paxNames) Object.entries(shared.paxNames).forEach(([k,list])=>{
+    if(list.length<2) return;
+    const dest=(k.split("|")[1]||"")+"/"+(k.split("|")[2]||"");
+    list.forEach((p,i)=>add(p.line,p.col,p.len,"warn",
+      i===0 ? `Passenger <b>${p.label}</b> listed ${list.length} times in the same destination/class (${dest}) — check whether it is a duplicate or a namesake.`
+            : `Passenger <b>${p.label}</b> repeated in the same destination (see first occurrence).`,
+      REF.name, i===0?undefined:{dup:true}));
+  });
+
+  // ---- coerência CFG × RBD × Totals ----
+  if(shared.cfg){
+    const RANK={P:1,F:1,A:1,J:2,C:2,D:2,I:2,Z:2,W:3,S:3,Y:4,M:4,B:4,K:4};
+    // (a) compartimento do CFG que não consta do RBD
+    if(shared.rbd){
+      const unknown=shared.cfg.order.filter((c,i,a)=>a.indexOf(c)===i && !shared.rbd.comp.has(c));
+      if(unknown.length)
+        add(shared.cfg.line,1,shared.cfg.raw.length,"warn",`Compartment(s) <b>${unknown.join(", ")}</b> in configuration <b>${shared.cfg.raw}</b> are not in the <b>${shared.rbd.raw}</b> element (line ${shared.rbd.line}) — check consistency between CFG and RBD.`,REF.cfg);
+    }
+    // (b) ordem descendente dos compartimentos (RP 1707b §2.12.3)
+    for(let i=1;i<shared.cfg.order.length;i++){
+      const a=RANK[shared.cfg.order[i-1]], b=RANK[shared.cfg.order[i]];
+      if(a!==undefined && b!==undefined && b<a){
+        add(shared.cfg.line,1,shared.cfg.raw.length,"warn",`Compartments out of order in <b>${shared.cfg.raw}</b> — the configuration is listed in descending cabin order (F→C→Y), RP 1707b §2.12.3.`,REF.cfg);
+        break;
+      }
+    }
+    // (c) passageiros por compartimento vs lugares instalados
+    if(shared.paxByClass){
+      Object.entries(shared.paxByClass).forEach(([cls,pax])=>{
+        const fitted=shared.cfg.seats[cls];
+        if(fitted!==undefined && pax>fitted)
+          add(shared.cfg.line,1,shared.cfg.raw.length,"err",`Compartment <b>${cls}</b>: the Totals by Destination sum to <b>${pax}</b> passengers, but configuration <b>${shared.cfg.raw}</b> has only <b>${fitted}</b> seats.`,REF.cfg);
+      });
+    }
+  }
+
+  Object.values(shared.groups).forEach(g=>{
+    if(g.declared==null) return;
+    // (A) identificador de grupo reutilizado em reservas diferentes -> ERRO com highlight em todos os membros
+    if(g.pnrs && g.pnrs.size>1){
+      const pnrList=[...g.pnrs].join(", ");
+      const hasZZ=g.members.some(mb=>mb.isZZ);
+      g.members.forEach((mb,i)=>{
+        const first=i===0;
+        const zzMsg=`Placeholder <b>1ZZ/</b> and the real passenger in group <b>-${g.id}${g.declared}</b> have different PNRs (<b>${pnrList}</b>) — the blocked-seat placeholder shares the real passenger PNR (PSCRM §2.9 Block Seats Indicator).`;
+        const dupMsg=`Group identifier <b>-${g.id}${g.declared}</b> reused across different bookings (<b>${pnrList}</b>) — the identifier is unique per booking. Assign a different identifier to each PNR.`;
+        add(mb.line,mb.col,mb.len,"err",
+          first ? (hasZZ?zzMsg:dupMsg)
+                : (hasZZ?`Placeholder/passenger of group <b>-${g.id}${g.declared}</b> with a different PNR (see first occurrence).`
+                        :`Group identifier <b>-${g.id}${g.declared}</b> reused in another booking (see first occurrence).`),
+          REF.group,
+          first?undefined:{dup:true});
+      });
+      return; // não gerar também o erro de soma (é consequência disto)
+    }
+    // (B) sum vs declared total.
+    // In an ADL only what changed is listed, so a section legitimately carries
+    // fewer names than the booking holds — RP 1708 §3.2.1 shows group -B28 with
+    // 13 names in one ADD section and 4 in another. Only an excess is impossible.
+    if(g.msgType==="ADL"){
+      if(g.sum>g.declared)
+        add(g.lines[0],1,0,"err",`Group <b>-${g.id}${g.declared}</b>${g.section?" in ADL "+g.section:""}: ${g.sum} passengers listed but the booking holds only ${g.declared}.`,REF.group);
+    } else if(g.sum!==g.declared){
+      add(g.lines[0],1,0,"err",`Group <b>-${g.id}${g.declared}</b>: the identifier indicates ${g.declared} passenger(s) in the booking, but ${g.sum} were listed.`,REF.group);
+    }
+  });
+  // partes por voo: a ORDEM é irrelevante (o processamento só arranca com todas);
+  // alertar apenas para partes EM FALTA, duplicadas, e ausência da parte final.
+  // ADL: cada mensagem é independente (a mesma PART pode aparecer em ADLs diferentes).
+  const byFlight={};
+  shared.parts.filter(p=>p.num!==null).forEach(p=>{
+    const bk=blocks.find(b=>b.start<p.line && p.line<=b.limit);
+    const scope=(bk && bk.type==='ADL')?("#"+bk.start):"";
+    const key=(p.key||"?")+scope;
+    (byFlight[key]=byFlight[key]||[]).push(p);
+  });
+  Object.values(byFlight).forEach(pn=>{
+    const nums=pn.map(p=>p.num);
+    const set=[...new Set(nums)].sort((a,b)=>a-b);
+    const max=set[set.length-1];
+    const missing=[]; for(let i=1;i<=max;i++) if(!set.includes(i)) missing.push("PART"+i);
+    if(missing.length)
+      add(pn[0].line,1,0,"warn",`Missing <b>${missing.join(", ")}</b> for this flight — without all parts, processing cannot start (and totals/group sums stay incomplete).`,REF.flight);
+    const dups=set.filter(v=>nums.filter(x=>x===v).length>1);
+    if(dups.length)
+      add(pn[0].line,1,0,"warn",`Duplicate part(s): <b>PART${dups.join(", PART")}</b>.`,REF.flight);
+    const fin=pn.find(p=>p.final);
+    if(fin && fin.num!==max)
+      add(fin.line,1,0,"err",`The final part (type END) is <b>PART${fin.num}</b>, but <b>PART${max}</b> exists — the part with the type END must be the last one.`,REF.end);
+    if(!fin && pn.length)
+      add(pn[0].line,1,0,"warn",`No part ends with the type END (all use ENDPARTn) — part(s) after PART${max} are missing.`,REF.end);
+  });
+
+  // dedupe: se há um erro específico de espaçamento no mesmo sítio, o aviso genérico é redundante
+  const dedup=findings.filter(f=>!(f.sev==="warn" && /espaços consecutivos/.test(f.msg) &&
+    findings.some(e=>e.sev==="err" && e.line===f.line && e.col===f.col && /espaços consecutivos/.test(e.msg))));
+  dedup.sort((a,b)=>a.line-b.line || a.col-b.col);
+  // avisos de SSR/elemento desconhecido: uma entrada na lista por código (todas as ocorrências continuam marcadas no telex)
+  const firstByCode={};
+  dedup.forEach(f=>{
+    if(!["ssrunk","elemunk","titlespace","trailws","ppfmt","natissuer","inftdocs","adlpnr"].includes(f.tag)) return;
+    const k=f.tag+"|"+f.code;
+    if(firstByCode[k]){ f.dup=true; firstByCode[k].more=(firstByCode[k].more||0)+1; }
+    else firstByCode[k]=f;
+  });
+  Object.values(firstByCode).forEach(f=>{ if(f.more) f.msg+=` <b>(${f.more+1} occurrences — listed once; all marked in the telex printout)</b>`; });
+  return dedup;
+}
+
+function validateBlock(lines, block, isLastBlock, add, shared){
+  // delimitar o bloco: do identificador até ao END (inclusive); o que vier
+  // depois (trailer, cabeçalho da parte seguinte) fica fora do escopo
+  let endIdx = -1;
+  for(let i=block.start;i<block.limit;i++){
+    if(/^END(PNL|ADL|PSM|PTM|PFS|PIL|SOM|SPM|FTL|PRL|ETL|PART\s*\d{1,2})\s*$/i.test(lines[i].trim())){ endIdx=i; break; }
+  }
+  const scopeEnd = endIdx>=0 ? endIdx+1 : block.limit;
+
+  const blkId=(lines[block.start]||'').trim().toUpperCase();
+  const blkType=(blkId==='PASSENGER INFORMATION LIST')?'PIL':blkId;
+  /* ---- passagem 1: caracteres e espaçamento (só dentro do bloco) ---- */
+  for(let i=block.start;i<scopeEnd;i++){
+    const ln=lines[i], n=i+1;
+    if(ln.length>RULES.maxLine)
+      add(n,RULES.maxLine+1,ln.length-RULES.maxLine,"err",`Line has ${ln.length} characters — exceeds the 64-character limit.`,REF.len);
+    let m;
+    // Minúsculas são normalizadas silenciosamente (não geram erro)
+    const upper = ln.toUpperCase();
+    const inv = /[^A-Z0-9 .\/\-=()?:,+']/g;
+    while((m=inv.exec(upper))!==null){
+      const ch = m[0]==='\t' ? 'TAB' : m[0];
+      add(n,m.index+1,1,"err",`Invalid character <b>${ch}</b> — outside the permitted telex character set.`,REF.charset);
+    }
+    const tr = ln.match(/[ \t]+$/);
+    if(tr && ln.trim()!=="")
+      add(n,tr.index+1,tr[0].length,"warn","Trailing space(s) at end of line.",REF.space,{tag:"trailws",code:"trailws"});
+    const ld = ln.match(/^ +/);
+    if(ld && ln.trim()!==""){
+      if(blkType==='PSM' && ld[0].length===1){/* onward connection começa com 1 espaço (RP1715 §2.9.5) */}
+      else add(n,1,ld[0].length,"err","Leading space(s) — elements start at column 1"+(blkType==='PSM'?" (exception: PSM onward connection takes exactly 1 space)":"")+".",REF.space);
+    }
+    const dbl=/ {2,}/g;
+    while((m=dbl.exec(ln))!==null){
+      if(ld && m.index < ld[0].length) continue;
+      if(tr && m.index >= tr.index) continue;
+      if(blkType==='PSM' && m[0].length===2){/* dois espaços antes do nº de lugar (RP1715 §2.8.3) */}
+      else add(n,m.index+1,m[0].length,"warn",`${m[0].length} consecutive spaces — the standard separator is a single space (exceptions: AVAIL/TRANSIT tables; 2 spaces before the seat in PSM).`,REF.space);
+    }
+    if(ln.trim()==="")
+      add(n,1,1,"err","Blank line within the message body.",REF.space);
+  }
+
+  /* ---- passagem 2: estrutura do bloco ---- */
+  let idx=block.start;
+  const U=lines;
+  // identificador
+  const raw0=U[idx].trim().toUpperCase();
+  const msgType=(raw0==='PASSENGER INFORMATION LIST')?'PIL':raw0;
+  idx++;
+  // ramificação: PIL e PTM têm estruturas próprias
+  if(msgType==='PIL'){ return validatePIL(U,block,scopeEnd,idx,add,shared,isLastBlock); }
+  if(msgType==='PTM'){ return validatePTM(U,block,scopeEnd,idx,add,shared,isLastBlock); }
+  if(msgType==='MVT'){ return validateMVT(U,block,scopeEnd,idx,add); }
+  if(msgType==='DIV'){ return validateDIV(U,block,scopeEnd,idx,add); }
+  if(msgType==='SSM'||msgType==='ASM'){ return validateSCHED(msgType,U,block,scopeEnd,idx,add); }
+  // PNL / ADL / PSM / PFS: flight element standard
+  let declaredPart=null, partRec=null;
+  if(idx<scopeEnd){
+    const f=U[idx].toUpperCase().trimEnd(); const n=idx+1;
+    const RXF=/^([A-Z0-9]{2}[A-Z]?)(\d{1,4})([A-Z])?\/(\d{2})([A-Z]{3}) ([A-Z]{3}) PART(\d{1,2})$/;
+    const fm=f.match(RXF);
+    if(!fm){
+      if(!spacingDiag(f,RXF,n,add,REF.flight,"Flight Element"))
+        add(n,1,U[idx].length||1,"err","Invalid Flight Element — format: <b>XX999/DDMMM AAA PARTn</b> (e.g. KL774/06JUN ZRH PART1).",REF.flight);
+    }else{
+      const day=parseInt(fm[4],10);
+      if(day<1||day>31) add(n,f.indexOf("/")+2,2,"err",`Invalid day <b>${fm[4]}</b> (01–31).`,REF.flight);
+      if(!RULES.months.includes(fm[5])) add(n,f.indexOf("/")+4,3,"err",`Invalid month <b>${fm[5]}</b> — use JAN…DEC.`,REF.flight);
+      declaredPart=parseInt(fm[7],10);
+      shared.flightDate=resolveFlightDate(fm[4],fm[5]);
+      partRec={num:declaredPart,line:n,key:fm[1]+fm[2]+(fm[3]||"")+"/"+fm[4]+fm[5]};
+      shared.parts.push(partRec);
+    }
+    idx++;
+  }
+
+  let sawTotals=false, sawEnd=false, endToken="";
+  let currentKey=null; const adlHeaders=[];
+  let lastWasR=false, inSI=false, psmSvc=false, lastNameCount=null;
+  let paxCtx=null; // acumula DOCS/SSR do passageiro corrente
+  let lastSurname=null;   // RP 1707b §2.9: names are alphabetised by surname
+  const flushPax=()=>{
+    if(!paxCtx) return;
+    // RP 1708 §2.6.1.4: in DEL the PNR address is the only required associated
+    // element; §2.6.3.2: CHG carries all currently applicable elements. It is
+    // what tells two identically named passengers apart.
+    if(msgType==="ADL" && (adlSection==="DEL"||adlSection==="CHG") && paxCtx.name!=="NONAMES"){
+      if(paxCtx.hasPnr) sectionHasPnr=true;
+      else if(!sectionHasPnr)
+        add(paxCtx.line,1,paxCtx.name.length+1,"warn",
+          `<b>${adlSection}</b> without a <b>.L/</b> PNR address — RP 1708 ${adlSection==="DEL"?"§2.6.1.4 makes it the only required associated element":"§2.6.3.2 requires all currently applicable elements"}. Without it two passengers with the same name cannot be told apart (members of one PNR carry it once per section, §2.14.3).`,
+          REF.elem, {tag:"adlpnr", code:adlSection});
+    }
+    checkPaxCoherence(paxCtx,add,shared.flightDate); paxCtx=null;
+  };
+  let adlSection=null; // "ADD" | "CHG" | "DEL"
+  let sectionHasPnr=false;   // a PNR address is shown once per PNR per section
+  const scopeId=(msgType==="ADL")?("ADL#"+block.start):("BLK#"+block.start);
+  let lastGroupMember=null, lastGroupObj=null; // para atribuir .L/ standalone ao passageiro anterior
+
+  for(; idx<scopeEnd; idx++){
+    const rawLine=U[idx]; const line=rawLine.toUpperCase().trimEnd(); const n=idx+1;
+    if(line==="") continue;
+
+    let m;
+    // Supplementary Information: depois de SI, texto livre até ao END
+    if(inSI && !/^END/.test(line)) continue;
+
+    /* ---------- linhas específicas do PSM (RP 1715) ---------- */
+    if(msgType==="PSM"){
+      // recap por destino: -DTW 5PAX/8SSR  |  -FAR NIL
+      if((m=line.match(/^-([A-Z]{3}) (NIL|(\d{1,3})PAX ?\/ ?(\d{1,3})SSR)$/))){ lastWasR=false; continue; }
+      if(line.startsWith("-")){
+        add(n,1,line.length,"err","Invalid PSM destination recap — <b>-AAA nPAX/nSSR</b> or <b>-AAA NIL</b> (RP 1715 §2.5).",REF.elem);
+        continue;
+      }
+      // compartimento: F CLASS 5PAX/7SSR | F CLASS NIL | F CLASS 2PAX / 3SSR
+      if((m=line.match(/^([A-Z]) CLASS (NIL|(\d{1,3})PAX ?\/ ?(\d{1,3})SSR)$/))){ lastWasR=false; continue; }
+      if(/^[A-Z] CLASS/.test(line)){
+        add(n,1,line.length,"err","Invalid PSM compartment line — <b>X CLASS nPAX/nSSR</b> or <b>X CLASS NIL</b> (RP 1715 §2.7).",REF.elem);
+        continue;
+      }
+      // onward connection: 1 espaço + voo (sem .O/)
+      if(/^ \S/.test(rawLine)){
+        const oc=line.trim();
+        if(!RX.fltinfo.test(oc))
+          add(n,2,oc.length,"err","Malformed PSM onward connection — flight data without the .O/ ID (RP 1715 §2.9, e.g. SR1234F27ZRH).",REF.elem);
+        lastWasR=false; continue;
+      }
+      // linha de serviço/contagens: CODE [nnnC nnnC…] | CODE texto livre
+      if((m=line.match(/^([A-Z]{3,4})( .*)?$/)) && !/^\d/.test(line) && line!=="SI" && line!=="NIL" && !/^END/.test(line)){
+        const code=m[1];
+        const rest=(m[2]||"").trim();
+        if(!RULES.psmCodes.has(code)){
+          add(n,1,code.length,"warn",`<b>${code}</b> is not in the PSM list (RP 1715 §2.6.5) — may be a bilateral code; confirm with the recipient.`,REF.ssr,{tag:"ssrunk",code});
+        }
+        // se seguem contagens por compartimento, validar o formato nnnC
+        if(rest && /^\d/.test(rest)){
+          rest.split(/ +/).forEach(tok=>{
+            if(!/^\d{3}[A-Z]$/.test(tok))
+              add(n,line.indexOf(tok)+1,tok.length,"err",`Invalid count <b>${tok}</b> — three digits + compartment (e.g. 003F), RP 1715 §2.6.4.`,REF.elem);
+          });
+        }
+        checkHyphens(line, n, 0, add, code);
+        psmSvc=true; lastWasR=false; continue;
+      }
+      // continuação (overflow) do free text de um serviço na linha seguinte
+      if(psmSvc && !/^\d/.test(line) && !line.startsWith("-") && !/^END/.test(line) && line!=="SI"){
+        continue;
+      }
+      // nome + lugar: 1APELIDO/NOME[TITULO]  22A  (RP1715 §2.8)
+      if(/^\d/.test(line)){
+        if(!/-([A-Z]{1,2})(\d{1,3})/.test(line)){ lastGroupMember=null; lastGroupObj=null; }
+
+        psmSvc=false;
+        const nmP=line.match(/^(\d{1,3})([A-Z]+(?:\/[A-Z]+(?: [A-Z]+)*)+)( {1,2}(\d{1,3}[A-Z]{1,2}))?$/);
+        if(!nmP){
+          add(n,1,line.length,"err","Invalid PSM Name Element — <b>1SURNAME/NAME[TITLE]</b> + optionally two spaces and the seat (RP 1715 §2.8, e.g. 1MILLER/JACKMR  23D).",REF.name);
+        }else{
+          if(parseInt(nmP[1],10)!==1)
+            add(n,1,nmP[1].length,"err","In PSM each passenger takes its own line — the count is always <b>1</b> (RP 1715 §2.8.5).",REF.name);
+        }
+        lastWasR=false; continue;
+      }
+      psmSvc=false;
+    }
+
+    /* ---------- linhas específicas de SPM/SOM (RP 1711/1712) ---------- */
+    if(msgType==="SPM"||msgType==="SOM"){
+      // -AAA.06EF 14ABC — lugares por destino
+      if((m=line.match(/^-([A-Z]{3})\.(.+)$/))){
+        m[2].split(/ +/).forEach(tok=>{
+          if(!/^\d{1,3}[A-Z]{1,7}$/.test(tok))
+            add(n,line.indexOf(tok)+1,tok.length,"err",`Invalid seat <b>${tok}</b> — row (1–3 digits) + column letter(s), e.g. 06EF 14ABC (RP 171${msgType==="SPM"?"1":"2"} §2.5).`,REF.elem);
+        });
+        lastWasR=false; continue;
+      }
+      if(line.startsWith("-")){
+        add(n,1,line.length,"err",`Invalid ${msgType} Seats by Destination — <b>-AAA.seats</b> (e.g. -DEN.06EF 14ABC).`,REF.elem);
+        continue;
+      }
+      // categorias AHM 510 (SOM): SOC, PAD, CAT, XCR — linha isolada ou com lugares
+      if((m=line.match(/^(SOC|PAD|CAT|XCR)( .+)?$/))){
+        if(m[2]) m[2].trim().split(/ +/).forEach(tok=>{
+          if(!/^\d{1,3}[A-Z]{1,7}$/.test(tok))
+            add(n,line.indexOf(tok)+1,tok.length,"err",`Invalid seat <b>${tok}</b> in category ${m[1]}.`,REF.elem);
+        });
+        lastWasR=false; continue;
+      }
+    }
+
+    /* ---------- ETL: cabeçalho de não embarcados (RP 1719c) ---------- */
+    if(msgType==="ETL" && line==="NOT BOARDED"){ lastWasR=false; continue; }
+
+    /* ---------- linhas específicas do PFS (RP 1719) ---------- */
+    if(msgType==="PFS"){
+      // Numerics by Destination: FCO 13/047/032 PAD0/2/1
+      if((m=line.match(/^([A-Z]{3}) (\d{1,3}(\/\d{1,3})*)( PAD\d{1,3}(\/\d{1,3})*)?$/))){ lastWasR=false; continue; }
+    }
+
+    if((m=line.match(/^END(PNL|ADL|PSM|PFS|SOM|SPM|FTL|PRL|ETL|PART\s*(\d{1,2}))$/))){
+      flushPax(); lastGroupMember=null; lastGroupObj=null;
+      sawEnd=true; endToken=line;
+      if(m[1].startsWith("PART")){
+        const p=parseInt(m[2],10);
+        if(declaredPart!==null && p!==declaredPart)
+          add(n,4,line.length-3,"err",`<b>${line}</b> does not match this part's header (PART${declaredPart}).`,REF.end);
+      }else{
+        if(m[1]!==msgType)
+          add(n,1,line.length,"err",`<b>${line}</b> does not match message type <b>${msgType}</b>.`,REF.end);
+        if(partRec) partRec.final=true;
+      }
+      lastWasR=false;
+      continue;
+    }
+
+    if(/^ANA\/\d{3,6}$/.test(line)){
+      if(msgType==="PNL") add(n,1,line.length,"warn","The ANA element is used in ADL/CAL parts, not in PNL.",REF.elem);
+      lastWasR=false; continue;
+    }
+    if(line.startsWith("RBD")){
+      if(!/^RBD( [A-Z]\/[A-Z]+)+$/.test(line))
+        add(n,1,line.length,"err","Invalid Class Codes Element — format: <b>RBD F/FA J/JCD Y/YBK…</b> (compartment/classes, space-separated).",REF.rbd);
+      else{
+        // RP1707b §2.10: compartimento / fare classes (RBD) associadas
+        const comp=new Set(), fare=new Set();
+        line.slice(3).trim().split(/ +/).forEach(pair=>{
+          const [c,f]=pair.split("/");
+          if(c) comp.add(c);
+          if(f) f.split("").forEach(x=>fare.add(x));
+        });
+        shared.rbd={comp,fare,line:n,raw:line};
+      }
+      lastWasR=false; continue;
+    }
+    if(line.startsWith("CFG")){
+      if(!/^CFG\/[A-Z0-9]{2,}(\/[A-Z0-9]{2,3})?( [A-Z]{3} [A-Z0-9]{2,}(\/[A-Z0-9]{2,3})?)*$/.test(line))
+        add(n,1,line.length,"err","Invalid Seat Configuration — e.g. <b>CFG/020F179Y</b> or <b>CFG/044F133Y/733 GVA 044F122Y/MD8</b>.",REF.cfg);
+      else{
+        // RP1707b §2.12: contagem + código do compartimento, por ordem descendente.
+        // Só o primeiro troço (embarque); aceita 020F e F20.
+        const seg=line.slice(4).split(" ")[0].split("/")[0];
+        const seats={}; const order=[];
+        const rx=/(\d{1,3})([A-Z])|([A-Z])(\d{1,3})/g; let cm;
+        while((cm=rx.exec(seg))!==null){
+          const code=cm[2]||cm[3], cnt=parseInt(cm[1]||cm[4],10);
+          seats[code]=(seats[code]||0)+cnt; order.push(code);
+        }
+        if(order.length) shared.cfg={seats,order,line:n,raw:line};
+      }
+      lastWasR=false; continue;
+    }
+    if(/^STD\//.test(line)){ if(!/^STD\/([01]\d|2[0-3])[0-5]\d$/.test(line)) add(n,5,4,"err","Invalid STD time — 24-hour clock (HHMM).",REF.elem); lastWasR=false; continue; }
+    if(/^ATD\//.test(line)){ if(!/^ATD\/(\d{2})?([01]\d|2[0-3])[0-5]\d$/.test(line)) add(n,5,6,"err","Invalid ATD — HHMM or DDHHMM format.",REF.elem); lastWasR=false; continue; }
+    if(line==="SI"){ inSI=true; lastWasR=false; continue; }
+    if(/^(FQT |AVAIL$|TRANSIT$|NIL$)/.test(line)){ lastWasR=false; continue; }
+
+    if(line==="DEL"||line==="ADD"||line==="CHG"){
+      if(msgType!=="ADL")
+        add(n,1,3,"err",`Header <b>${line}</b> is only allowed in ADL messages.`,REF.adl);
+      adlHeaders.push(line); adlSection=line; lastSurname=null; sectionHasPnr=false; flushPax(); lastWasR=false; continue;
+    }
+
+    if(line.startsWith("-")){
+      flushPax(); lastGroupMember=null; lastGroupObj=null; lastSurname=null;
+      const tm=line.match(/^-([A-Z]{3})(\d{2,3})([A-Z])(-PAD(\d{1,3}))?$/);
+      const cm=line.match(/^-([A-Z]{3})$/);
+      if(tm){
+        sawTotals=true;
+        // RP1708 §2.5: a construção é por compartimento OU por fare class — em qualquer
+        // caso o código tem de constar do Class Codes Element (RBD) da mensagem
+        if(shared.rbd){
+          const cls=tm[3];
+          if(!shared.rbd.comp.has(cls) && !shared.rbd.fare.has(cls)){
+            const col=5+tm[2].length;
+            add(n,col,1,"err",`Class <b>${cls}</b> is not in the <b>${shared.rbd.raw}</b> element (line ${shared.rbd.line}) — the Totals by Destination code must be a declared compartment or fare class (RP 1708 §2.5 · RP 1707b §2.10).`,REF.totals);
+          }
+        }
+        if(msgType==="PNL"||msgType==="ADL"){
+          const key=tm[1]+String(parseInt(tm[2],10)).padStart(2,"0")+tm[3];
+          const declared=parseInt(tm[2],10);
+          // ADL: agregar por bloco (cada mensagem ADL é independente); PNL: agregado por voo
+          const dk=(msgType==="ADL"?scopeId:"PNL")+"|"+tm[1]+"|"+tm[3];
+          const d=shared.dest[dk] || (shared.dest[dk]={key,declared,sum:0,line:n,msgType});
+          if(d.declared!==declared)
+            add(n,2,line.length-1,"warn",`Totals for <b>${tm[1]}/${tm[3]}</b> redeclared with a different value (${d.declared} vs ${declared}) in another part.`,REF.totals);
+          currentKey=dk;
+          if(msgType==="PNL"){
+            shared.paxByClass=shared.paxByClass||{};
+            shared.paxByClass[tm[3]]=(shared.paxByClass[tm[3]]||0)+parseInt(tm[2],10);
+          }
+        }
+      }else if(cm){
+        currentKey=null;
+      }else{
+        add(n,1,line.length,"err","Invalid Totals by Destination — format: <b>-AAA99C</b> (optional <b>-PADnn</b>), e.g. -FRA03F-PAD15.",REF.totals);
+      }
+      lastWasR=false; continue;
+    }
+
+    if((m=line.match(/^([A-Z]{4,6}) (\d{1,3})([A-Z])$/))){
+      if(!RULES.categories.has(m[1]))
+        add(n,1,m[1].length,"warn",`Unrecognised category <b>${m[1]}</b> (expected NOSHO/GOSHO…).`,REF.elem);
+      lastWasR=false; continue;
+    }
+
+    if(line.startsWith(".")){
+      // colheita retroativa de .L/ standalone (posição do .L/ não é semântica)
+      if(lastGroupMember && lastGroupObj){
+        (line.match(/\.L\/[A-Z0-9]+(\/[A-Z0-9]{2,3})?/g)||[]).forEach(x=>{
+          const pnr=x.replace(/^\.L\//,"");
+          lastGroupMember.pnrs.push(pnr);
+          lastGroupObj.pnrs.add(pnr.split("/")[0]);
+        });
+      }
+      validateDotElements(rawLine, n, 0, add, {standalone:true, lastWasR, elemCount:lastNameCount, msgType, paxCtx});
+      if(/^\.RN\//.test(line)){
+        if(!lastWasR) add(n,1,4,"err",".RN/ (remarks continuation) without a .R/ element immediately before.",REF.rn);
+      } else {
+        lastWasR = /(^| )\.R\//.test(line);
+      }
+      continue;
+    }
+
+    if(/^\d/.test(line)){
+      // fronteira de colheita retroativa: se este Name Element não pertence ao mesmo
+      // identificador de grupo do anterior, terminar aqui (os .L/ seguintes já não são do grupo)
+      const nextGrp=line.match(/-([A-Z]{1,2})(\d{1,3})/);
+      if(lastGroupObj && (!nextGrp || nextGrp[1]!==lastGroupObj.id)){ lastGroupMember=null; lastGroupObj=null; }
+      flushPax();   // close the previous passenger before starting this one
+      const nm=rawLine.toUpperCase().trimEnd();
+      const nmMatch=nm.match(/^(\d{1,3})(NONAMES|[A-Z]+(?:[ \/][A-Z]+)*)(-([A-Z]{1,2})(\d{1,3}))?(?=( ?\.|$))/);
+      if(!nmMatch){
+        // diagnóstico dirigido ao problema real
+        const grpBad=nm.match(/^(\d{1,3}[A-Z]+(?:[ \/][A-Z]+)*)-([A-Z]{1,2})(?![0-9])/);
+        if(grpBad){
+          const col=grpBad[1].length+2;
+          add(n,col,grpBad[2].length,"err",`Incomplete group identifier <b>-${grpBad[2]}</b> — missing passenger count (e.g. <b>-${grpBad[2]}2</b> for a 2-pax booking).`,REF.group);
+        } else if(!/^\d+[A-Z]/.test(nm)){
+          add(n,1,rawLine.length,"err","Invalid Name Element — must start with digit(s) followed by the surname (e.g. <b>1CURRIE/MARIE MRS</b>).",REF.name);
+        } else if(!/\//.test(nm.split(" ")[0])){
+          add(n,1,rawLine.length,"err","Name Element without separator — surname and given name are separated by <b>/</b> (e.g. 1CURRIE/MARIE MRS).",REF.name);
+        } else {
+          add(n,1,rawLine.length,"err","Invalid Name Element — format: <b>9SURNAME/NAME[ TITLE][/NAME2…][-Xn]</b> (e.g. 1CURRIE/MARIE MRS, 2COSTA/ANAMRS/TIAGOMSTR).",REF.name);
+        }
+        lastWasR=false; continue;
+      }
+      const count=parseInt(nmMatch[1],10);
+      const namePart=nmMatch[2];
+      const grpId=nmMatch[4], grpTotal=nmMatch[5]?parseInt(nmMatch[5],10):null;
+      if((msgType==="PNL"||msgType==="ADL") && currentKey && shared.dest[currentKey]) shared.dest[currentKey].sum+=count;
+
+      if(namePart.startsWith("ZZ/")||namePart==="ZZ"){
+        const zcode=namePart.split("/")[1]||"";
+        if(grpId){ (shared.zz=shared.zz||{}); (shared.zz[grpId]=shared.zz[grpId]||new Set()).add(zcode); }
+      } else if(namePart!=="NONAMES"){
+        // registo de nomes por destino (deteção de duplicados)
+        const sg=namePart.split("/");
+        sg.slice(1).forEach(g=>{
+          const key=(currentKey||"?")+"|"+sg[0]+"/"+stripTitle(g);
+          shared.paxNames=shared.paxNames||{};
+          (shared.paxNames[key]=shared.paxNames[key]||[]).push({line:n,col:1,len:nm.length,label:sg[0]+"/"+g});
+        });
+      }
+      if(namePart!=="NONAMES" && !namePart.startsWith("ZZ/")){
+        const segs=namePart.split("/");
+        if(segs.length<2)
+          add(n,nmMatch[1].length+1,namePart.length,"err","Name Element without given name — expected SURNAME/NAME…",REF.name);
+        else{
+          const given=segs.length-1;
+          if(given!==count)
+            add(n,1,nmMatch[1].length,"err",`Count <b>${count}</b> does not match the number of names listed in the element (<b>${given}</b>).`,REF.name);
+          if(msgType!=="PFS") segs.slice(1).forEach(s=>{
+            if(!RULES.titles.some(t=>s.endsWith(t)))
+              add(n,nm.indexOf(s)+1,s.length,"info",`Name <b>${s}</b> has no recognised title (MR/MRS/MS/MSTR/MISS/DR…).`,REF.name);
+            else{
+              const sp=s.match(/ (M(R|RS|S|STR|ISS)|DR|PROF|CHD|INF|REV|SIR|LADY|CAPT)$/);
+              if(sp)
+                add(n,nm.indexOf(s)+1+sp.index,sp[0].length,"info","Title separated by a space — accepted, but the classic manual form is attached to the name (e.g. MARIEMRS).",REF.name,{tag:"titlespace",code:"titlespace"});
+            }
+          });
+        }
+      }
+      if(grpId){
+        // escopo: PNL -> agregado por voo; ADL -> por secção (ADD/CHG/DEL) dentro deste bloco
+        const scopeKey=(msgType==="ADL"?scopeId+"#"+(adlSection||"?"):"PNL")+"|"+grpId;
+        const sectionLbl=(msgType==="ADL"&&adlSection)?` in section ${adlSection}`:"";
+        const keyLbl=currentKey?currentKey.split("|").slice(-2).join("/"):null;
+        // extrair o(s) .L/ deste elemento (PNR address) para depois detetar reutilização
+        const pnrs=[];
+        (rawLine.toUpperCase().match(/\.L\/[A-Z0-9]+(\/[A-Z0-9]{2,3})?/g)||[]).forEach(x=>pnrs.push(x.replace(/^\.L\//,"")));
+        const g=shared.groups[scopeKey]||(shared.groups[scopeKey]={id:grpId,section:adlSection,msgType,declared:grpTotal,sum:0,lines:[],key:currentKey,keyLbl,pnrs:new Set(),members:[]});
+        g.sum+=count; g.lines.push(n);
+        // 1ZZ/ é placeholder de lugar bloqueado (PSCRM §2.9 Block Seats Indicator):
+        // o PNR é herdado do passageiro real do mesmo grupo. Se traz .L/ próprio, tem de bater.
+        const isZZ=namePart.startsWith("ZZ/") || namePart==="ZZ";
+        const memberRec={line:n,col:1,len:nm.length,pnrs,isZZ};
+        g.members.push(memberRec);
+        pnrs.forEach(p=>g.pnrs.add(p.split("/")[0]));
+        lastGroupMember=memberRec; lastGroupObj=g;
+        if(g.declared!==grpTotal)
+          add(n,1,nm.length,"warn",`Group <b>-${grpId}</b> with mismatching totals${sectionLbl} (${g.declared} vs ${grpTotal}).`,REF.group);
+        if(currentKey && g.key && currentKey!==g.key)
+          add(n,1,nm.length,"err",`Group <b>-${grpId}${grpTotal??""}</b> appears in <b>${keyLbl}</b> but other members are in <b>${g.keyLbl}</b> — passengers in the same booking cannot be in different classes/destinations.`,REF.group);
+        if(currentKey && !g.key){ g.key=currentKey; g.keyLbl=keyLbl; }
+      }
+      // RP 1707b §2.9: "When multiple Name Elements appear together, alphabetise
+      // by surname." Receiving systems rely on it to merge and insert names.
+      {
+        const surn = (namePart.split("/")[0]||"").replace(/[^A-Z0-9]/g,"");
+        if(surn && namePart!=="NONAMES" && (msgType==="PNL"||msgType==="ADL")){
+          if(lastSurname && surn < lastSurname)
+            add(n,1,surn.length,"warn",`Name Element <b>${surn}</b> comes after <b>${lastSurname}</b> — names must be listed alphabetically by surname.`,REF.alpha);
+          lastSurname = surn;
+        }
+      }
+      paxCtx={line:n, name:namePart, count, docs:[], ssrs:[], shared, msgType, grpId:grpId||null, hasPnr:false,
+              names:(namePart==="NONAMES"?[]:namePart.split("/")), dest:currentKey};
+      const rest=nm.slice(nmMatch[0].length);
+      if(rest.length){
+        if(msgType==="PSM"){
+          // RP1715 §2.8.3: nome + dois espaços + lugar (aceitamos 1–2 na prática de extração)
+          if(!/^ {1,2}\d{1,3}[A-Z]{1,2}$/.test(rest))
+            add(n,nmMatch[0].length+1,rest.length,"err","After the name in PSM only the seat number may follow (two spaces + seat, RP 1715 §2.8.3, e.g. 1MILLER/JACKMR  23D).",REF.name);
+        }else{
+          if(rest.startsWith(".")){
+            const el=(rest.match(/^\.[A-Z0-9]{1,3}\//)||[rest.slice(0,3)])[0];
+            add(n,nmMatch[0].length+1,1,"err",
+              grpId
+                ? `Missing space between group identifier <b>-${grpId}${grpTotal}</b> and element <b>${el}</b> — .X/ elements are separated from the name by a space.`
+                : `Missing space between the name and element <b>${el}</b> — .X/ elements are separated from the name by a space.`,
+              REF.name);
+          } else if(!rest.startsWith(" ."))
+            add(n,nmMatch[0].length+1,rest.length,"err","After the name, .X/ elements are separated by a space.",REF.name);
+          validateDotElements(rawLine, n, nmMatch[0].length, add, {standalone:false, elemCount:count, msgType, paxCtx});
+        }
+      }
+      lastNameCount=count;
+      lastWasR=/ \.R\//.test(nm);
+      continue;
+    }
+
+    add(n,1,line.length,"err","Unrecognised line — does not match any standard PNL/ADL element.",REF.elem);
+    lastWasR=false;
+  }
+
+  /* ---- verificações finais do bloco ---- */
+  if(!sawEnd)
+    add(scopeEnd,1,Math.max((U[scopeEnd-1]||"").length,1),"err",`Missing End Element (END${msgType} / ENDPARTn) in this part.`,REF.end);
+  if(msgType==="PNL" && !sawTotals && !U.slice(block.start,scopeEnd).some(l=>l.trim()==="NIL"))
+    add(block.start+1,1,1,"warn","No Totals by Destination (-AAA99C) nor NIL — a PNL always shows totals, even at zero.",REF.totals);
+  if(msgType==="ADL"){
+    const seq=adlHeaders.join(",");
+    const expected=["DEL","ADD","CHG"].filter(h=>adlHeaders.includes(h)).join(",");
+    if(seq!==expected)
+      add(block.start+1,1,1,"err",`ADL headers out of order (${seq||"none"}) — the sequence is DEL, ADD, CHG (each appears only if it has entries).`,REF.adl);
+  }
+  // The last passenger is normally closed by the END element; a message that
+  // stops short would otherwise skip every coherence check for that passenger.
+  flushPax();
+}
+
+
+
+/* ============================ VALIDADOR MVT (AHM 780) ============================ */
+const T4=/^([01]\d|2[0-3])[0-5]\d$/;           // HHMM
+const T6=/^(0[1-9]|[12]\d|3[01])([01]\d|2[0-3])[0-5]\d$/; // DDHHMM
+function tOK(s){ return s.length===4?T4.test(s):T6.test(s); }
+function validateMVT(U,block,scopeEnd,idx,add){
+  // linha do voo: XX999/DD[.REG][.STATION]
+  if(idx<scopeEnd){
+    const f=U[idx].toUpperCase().trimEnd(); const n=idx+1;
+    const fm=f.match(/^([A-Z0-9]{2}[A-Z]?\d{1,4}[A-Z]?)\/(\d{2})(\.([A-Z0-9]{2,10}))?(\.([A-Z]{3}))?$/);
+    if(!fm)
+      add(n,1,U[idx].length||1,"err","Invalid MVT flight identifier — <b>XX999/DD[.REGISTRATION][.STN]</b> (AHM 780 el. 3–4, e.g. TEF402/27.LNDIG.TRF). The registration has no hyphen.",REF.mvt);
+    else{
+      const d=parseInt(fm[2],10);
+      if(d<1||d>31) add(n,f.indexOf("/")+2,2,"err",`Invalid day <b>${fm[2]}</b> (01–31).`,REF.mvt);
+      if(fm[4]&&/-/.test(fm[4])) add(n,f.indexOf(fm[4])+1,fm[4].length,"err","Registration with a hyphen — the hyphen is not transmitted (AHM 780 el. 4).",REF.mvt);
+    }
+    idx++;
+  }
+  let inSI=false;
+  for(; idx<scopeEnd; idx++){
+    const line=U[idx].toUpperCase().trimEnd(); const n=idx+1;
+    if(line==="") continue;
+    if(inSI) continue;
+    if(line==="SI"||line.startsWith("SI ")){ inSI=true; continue; }
+    let m;
+    // AD (off-block[/airborne]) [EA hhmm AAA]
+    if((m=line.match(/^AD(\d{4}|\d{6})(\/(\d{4}|\d{6}))?( EA(\d{4}|\d{6}) ([A-Z]{3}))?$/))){
+      [m[1],m[3],m[5]].forEach((t,i)=>{ if(t&&!tOK(t)) add(n,line.indexOf(t)+1,t.length,"err",`Invalid time <b>${t}</b> (HHMM 24h or DDHHMM).`,REF.mvt); });
+      continue;
+    }
+    // EA / EB isolados
+    if((m=line.match(/^(EA|EB)(\d{4}|\d{6})( ([A-Z]{3}))?$/))){
+      if(!tOK(m[2])) add(n,3,m[2].length,"err",`Invalid time <b>${m[2]}</b>.`,REF.mvt);
+      continue;
+    }
+    // AA touchdown/on-block: AA1218/1225 | AA/1225 | AA032355/040005
+    if((m=line.match(/^AA(\d{4}|\d{6})?\/(\d{4}|\d{6})( FLD\d{2})?$/))){
+      [m[1],m[2]].forEach(t=>{ if(t&&!tOK(t)) add(n,line.indexOf(t)+1,t.length,"err",`Invalid time <b>${t}</b>.`,REF.mvt); });
+      continue;
+    }
+    if(/^AA/.test(line)){ add(n,1,line.length,"err","Invalid AA element — <b>AA[touchdown]/onblock</b> (AHM 780 el. 9, e.g. AA1218/1225, AA/1225).",REF.mvt); continue; }
+    // ED / NI — começam SEMPRE com a data (DDHHMM)
+    if((m=line.match(/^(ED|NI)(\d+)$/))){
+      if(!T6.test(m[2])) add(n,3,m[2].length,"err",`Invalid <b>${m[1]}${m[2]}</b> — ED/NI always start with the date: DDHHMM (AHM 780).`,REF.mvt);
+      continue;
+    }
+    // RR / FR
+    if((m=line.match(/^(RR|FR)(\d{4}|\d{6})(\/(\d{4}|\d{6}))?$/))){
+      [m[2],m[4]].forEach(t=>{ if(t&&!tOK(t)) add(n,line.indexOf(t)+1,t.length,"err",`Invalid time <b>${t}</b>.`,REF.mvt); });
+      continue;
+    }
+    // DL / EDL — atrasos: DL72/0120 | DL13/81/0020/0015
+    if((m=line.match(/^(E?DL)([A-Z0-9]{2})(\/([A-Z0-9]{2}))?\/(\d{4})(\/(\d{4}))?$/))){
+      if((m[4]&&!m[7])||(m[7]&&!m[4])) add(n,1,line.length,"err","The number of delay codes and durations must match — <b>DLcc/hhhh</b> or <b>DLcc/cc/hhhh/hhhh</b> (AHM 780 el. 7).",REF.mvt);
+      continue;
+    }
+    if(/^E?DL\d/.test(line)===false && /^E?DL/.test(line) && !/^DLA/.test(line)){
+      add(n,1,line.length,"err","Invalid delay element — <b>DLcc/hhhh</b> or <b>DLcc/cc/hhhh/hhhh</b> (AHM 780 el. 7).",REF.mvt); continue;
+    }
+    // PX
+    if((m=line.match(/^PX\d{1,3}(\/\d{1,3})*$/))){ continue; }
+    if(/^PX/.test(line)){ add(n,1,line.length,"err","Invalid PX element — <b>PXn[/n…]</b> (AHM 780 el. 8, e.g. PX57, PX163/47).",REF.mvt); continue; }
+    // elementos bilaterais conhecidos (DLA…) e restantes
+    add(n,1,line.length,"warn",`Line <b>${line.slice(0,12)}${line.length>12?"…":""}</b> is not a standard AHM 780 MVT element — may be bilateral (e.g. DLA).`,REF.mvt);
+  }
+}
+
+/* ============================ VALIDADOR DIV (AHM 730) ============================ */
+function validateDIV(U,block,scopeEnd,idx,add){
+  if(idx<scopeEnd){
+    const f=U[idx].toUpperCase().trimEnd(); const n=idx+1;
+    if(!/^([A-Z0-9]{2}[A-Z]?\d{1,4}[A-Z]?)\/(\d{2})(\.[A-Z0-9]{2,10})?(\.[A-Z]{3})?$/.test(f))
+      add(n,1,U[idx].length||1,"err","Invalid DIV flight identifier — <b>XX999/DD[.REGISTRATION][.ORIGINALDEST]</b> (AHM 730, e.g. TEF0981/13.LNDIG.HFT).",REF.mvt);
+    idx++;
+  }
+  let inSI=false;
+  for(; idx<scopeEnd; idx++){
+    const line=U[idx].toUpperCase().trimEnd(); const n=idx+1;
+    if(line==="") continue;
+    if(inSI) continue;
+    if(line==="SI"||line.startsWith("SI ")){ inSI=true; continue; }
+    let m;
+    if((m=line.match(/^EA(\d{4}|\d{6}) ([A-Z]{3})$/))){
+      if(!tOK(m[1])) add(n,3,m[1].length,"err",`Invalid time <b>${m[1]}</b>.`,REF.mvt);
+      continue;
+    }
+    if(/^EA/.test(line)){ add(n,1,line.length,"err","Invalid DIV EA element — <b>EAhhmm AAA</b> (new destination), e.g. EA0432 TOS.",REF.mvt); continue; }
+    if((m=line.match(/^([A-Z]{4}) PX(\d{1,3})$/))){ continue; }
+    add(n,1,line.length,"warn","Unrecognised DIV line — expected <b>EAhhmm AAA</b> and <b>REASON PXnnn</b> (e.g. DRWT PX023).",REF.mvt);
+  }
+}
+
+/* ==================== VALIDADOR SSM / ASM (SSIM cap. 2 via Avinor) ==================== */
+const SCHED_REASONS=new Set(["AIRS","ARPT","COMM","CREW","DAMA","EQUI","FUEL","HDLG","HOLI","INDU","OPER","PERF","POLI","POSI","REPO","ROTA","RTNS","RUNW","TECH","WEAT"]);
+const SSM_ACTIONS=new Set(["NEW","CNL","RPL","TIM","FLT","SKD","EQT","ADM","CON"]);
+const ASM_ACTIONS=new Set(["NEW","CNL","RPL","RRT","TIM","RIN","ADM","FLT","CON","EQT"]);
+const RX_FLTDES=/^[A-Z0-9]{2}[A-Z]?\d{1,4}[A-Z]?$/;
+const RX_FLTDT=/^[A-Z0-9]{2}[A-Z]?\d{1,4}[A-Z]?\/\d{2}[A-Z]{3}\d{2}$/;
+const RX_LEG=/^([A-Z]{3})(\d{2})?([01]\d|2[0-3])[0-5]\d(\/[1-9])? ([A-Z]{3})(\d{2})?([01]\d|2[0-3])[0-5]\d(\/[1-9])?$/;
+const RX_EQUIP=/^[A-Z] [A-Z0-9]{3} [A-Z0-9]+(\.[A-Z0-9]+)*( [A-Z][A-Z0-9]{0,2}-?[A-Z0-9]{1,9})?( \d{1,2}\/\S+)*$/;
+const RX_PERIOD=/^(\d{2})([A-Z]{3})(\d{2})?( (\d{2})([A-Z]{3})(\d{2})?)?( ([1-7]{1,7})(\/W[1-9])?)?$/;
+function validateSCHED(kind,U,block,scopeEnd,idx,add){
+  const ACT=(kind==="SSM")?SSM_ACTIONS:ASM_ACTIONS;
+  // time mode opcional
+  if(idx<scopeEnd && /^(UTC|LT)$/.test(U[idx].trim().toUpperCase())) idx++;
+  else if(idx<scopeEnd) add(idx+1,1,U[idx].trim().length||1,"warn","No Time Mode (<b>UTC</b> or <b>LT</b>) after the identifier — recommended in SSIM.",REF.ssim);
+
+  let expect="action";
+  for(; idx<scopeEnd; idx++){
+    const line=U[idx].toUpperCase().trimEnd(); const n=idx+1;
+    if(line==="") continue;
+    if(line==="//"){ expect="action"; continue; }
+    if(line==="SI"||line.startsWith("SI ")){ expect="free"; continue; }
+    if(expect==="free") continue;
+
+    if(expect==="action"){
+      const am=line.match(/^([A-Z]{3})( ([A-Z]{4}))?$/);
+      if(!am||!ACT.has(am[1])){
+        add(n,1,line.length,"err",`Invalid ${kind} Action Identifier — expected ${[...ACT].join(", ")}${kind==="SSM"?"":" (optionally + XASM or reason)"} (SSIM ch. 2).`,REF.ssim);
+        expect="flight"; continue;
+      }
+      if(am[3] && am[3]!=="XASM" && !SCHED_REASONS.has(am[3]))
+        add(n,5,am[3].length,"err",`<b>${am[3]}</b> is neither XASM nor a valid Change Reason (SSIM 2.6: AIRS, ARPT, COMM, CREW, …, WEAT).`,REF.ssim);
+      expect="flight"; continue;
+    }
+    if(expect==="flight"){
+      if(kind==="SSM"){
+        if(!RX_FLTDES.test(line))
+          add(n,1,line.length,"err","Invalid SSM Flight Designator — <b>XX999[suffix]</b> (e.g. TEF9999).",REF.ssim);
+        expect="period"; continue;
+      }else{
+        // ASM: FLT/DDMMMYY [DEIs]  (ação FLT: dois pares na mesma linha)
+        const two=line.match(/^(\S+) (\S+)$/);
+        if(two && RX_FLTDT.test(two[1]) && RX_FLTDT.test(two[2])){ expect="body"; continue; }
+        const fdm=line.match(/^(\S+)((?: \d{1,2}\/\S+)*)$/);
+        if(!fdm || !RX_FLTDT.test(fdm[1]))
+          add(n,1,line.length,"err","Invalid ASM Flight Identifier — <b>XX999/DDMMMYY</b> optionally followed by DEIs (e.g. FZ021/25JUL26 6/FZ022/25).",REF.ssim);
+        else{
+          const dt=fdm[1].match(/\/(\d{2})([A-Z]{3})(\d{2})$/);
+          if(dt){
+            const dd=parseInt(dt[1],10);
+            if(dd<1||dd>31) add(n,line.indexOf("/")+2,2,"err",`Invalid day <b>${dt[1]}</b> (01–31).`,REF.ssim);
+            if(!RULES.months.includes(dt[2])) add(n,line.indexOf("/")+4,3,"err",`Invalid month <b>${dt[2]}</b> — use JAN…DEC.`,REF.ssim);
+          }
+        }
+        expect="body"; continue;
+      }
+    }
+    if(expect==="period"){
+      const pm=line.match(RX_PERIOD);
+      if(pm){
+        if(!RULES.months.includes(pm[2])) add(n,3,3,"err",`Invalid month <b>${pm[2]}</b>.`,REF.ssim);
+        if(pm[6]&&!RULES.months.includes(pm[6])) add(n,line.indexOf(pm[6]),3,"err",`Invalid month <b>${pm[6]}</b>.`,REF.ssim);
+        if(pm[9]){
+          const days=pm[9];
+          for(let i=1;i<days.length;i++) if(days[i]<=days[i-1]){
+            add(n,line.indexOf(days)+1,days.length,"err",`Operating days <b>${days}</b> — digits 1–7 in ascending order, no repeats (SSIM).`,REF.ssim);
+            break;
+          }
+        }
+        expect="body"; continue;
+      }
+      // ação FLT do SSM: depois do período vem novo designator — cai no body
+      add(n,1,line.length,"err","Invalid period/frequency — <b>DDMMM[YY] [DDMMM[YY]] [days][/Wn]</b> (e.g. 04APR24 03MAY24 1234567).",REF.ssim);
+      expect="body"; continue;
+    }
+    // body: equipamento, legs, DEI/rotas, designator novo (FLT)
+    if(RX_LEG.test(line)) continue;
+    if(RX_EQUIP.test(line)) continue;
+    if(RX_FLTDES.test(line)) continue;                      // novo designator (FLT)
+    if(RX_PERIOD.test(line)) continue;                      // período extra (TIM/FLT em SSM)
+    if(/^[A-Z]{6} .+$/.test(line)) continue;                // rota + DEI (OSLKKN 10/XY1234/YX432)
+    if(/^ANA\/\d+$/.test(line)) continue;
+    add(n,1,line.length,"err",`Unrecognised ${kind} line — expected leg (<b>OSL1455 KKN1550</b>), equipment (<b>J 738 C16M165VV738B</b>), route+DEI or //.`,REF.ssim);
+  }
+}
+
+/* Diagnóstico: se o elemento fica válido depois de normalizar espaços,
+   o problema é espaçamento — apontar o sítio exato em vez de erro genérico */
+function spacingDiag(f,rx,n,add,ref,label){
+  const norm=f.replace(/ {2,}/g," ").replace(/ +$/,"").replace(/^ +/,"");
+  if(!rx.test(norm)) return false;
+  const ms=f.match(/ {2,}/);
+  if(ms){ add(n,ms.index+1,ms[0].length,"err",`${ms[0].length} consecutive spaces in the ${label} — the separator is a single space.`,ref); return true; }
+  const tr=f.match(/ +$/);
+  if(tr){ add(n,tr.index+1,tr[0].length,"err",`Extra trailing space(s) in the ${label}.`,ref); return true; }
+  const ld=f.match(/^ +/);
+  if(ld){ add(n,1,ld[0].length,"err",`Space(s) before the ${label}.`,ref); return true; }
+  return false;
+}
+
+/* ============================ VALIDADOR PIL ============================
+   RP 1716 — PIL não tem Address/Comms; começa em PIL (ou identificador extenso).
+   Flight Element: XX999/DDMMM AAA [PARTnn] — PARTnn só quando enviado em partes */
+function validatePIL(U,block,scopeEnd,idx,add,shared,isLastBlock){
+  let declaredPart=null, partRec=null;
+  if(idx<scopeEnd){
+    const f=U[idx].toUpperCase().trimEnd(); const n=idx+1;
+    const RXF=/^([A-Z0-9]{2}[A-Z]?)(\d{1,4})([A-Z])?\/(\d{2})([A-Z]{3}) ([A-Z]{3})( PART\s*(\d{1,2}))?$/;
+    const fm=f.match(RXF);
+    if(!fm){
+      if(!spacingDiag(f,RXF,n,add,REF.flight,"Flight Element"))
+        add(n,1,U[idx].length||1,"err","Invalid PIL Flight Element — <b>XX999/DDMMM AAA</b> or <b>XX999/DDMMM AAA PARTn</b> when in parts (RP 1716 §2.2).",REF.flight);
+    }else{
+      const day=parseInt(fm[4],10);
+      if(day<1||day>31) add(n,f.indexOf("/")+2,2,"err",`Invalid day <b>${fm[4]}</b> (01–31).`,REF.flight);
+      if(!RULES.months.includes(fm[5])) add(n,f.indexOf("/")+4,3,"err",`Invalid month <b>${fm[5]}</b> — use JAN…DEC.`,REF.flight);
+      if(fm[8]){ declaredPart=parseInt(fm[8],10); partRec={num:declaredPart,line:n,key:fm[1]+fm[2]+(fm[3]||"")+"/"+fm[4]+fm[5]}; shared.parts.push(partRec); }
+    }
+    idx++;
+  }
+  let sawEnd=false, inCompartment=false, curSeats=new Set(), lastSeat=null, lastComp=null;
+  for(; idx<scopeEnd; idx++){
+    const rawLine=U[idx]; const line=rawLine.toUpperCase().trimEnd(); const n=idx+1;
+    if(line==="") continue;
+    let m;
+    if((m=line.match(/^END(PIL|PART\s*(\d{1,2}))$/))){
+      sawEnd=true;
+      if(m[1].startsWith("PART")){
+        const p=parseInt(m[2],10);
+        if(declaredPart!==null&&p!==declaredPart)
+          add(n,4,line.length-3,"err",`<b>${line}</b> does not match this part's header (PART${declaredPart}).`,REF.end);
+      }else if(partRec){ partRec.final=true; }
+      continue;
+    }
+    if(sawEnd){ add(n,1,line.length,"warn","Content after the End Element.",REF.end); continue; }
+    // Cabeçalho de compartimento: FCLASS (colado, RP1716 §2.3) ou F CLASS
+    if((m=line.match(/^([A-Z]) ?CLASS$/))){
+      const comp=m[1];
+      const RANK={P:1,F:1,A:1,J:2,C:2,D:2,I:2,Z:2,W:3,Y:4};
+      if(lastComp && (RANK[comp]!==undefined) && (RANK[lastComp]!==undefined) && RANK[comp]<RANK[lastComp])
+        add(n,1,line.length,"warn",`Compartment <b>${comp}</b> after <b>${lastComp}</b> — compartments are listed in descending cabin order (F→C→Y, RP 1716 §2.4 Note 3).`,REF.elem);
+      lastComp=comp; inCompartment=true; curSeats=new Set(); lastSeat=null;
+      continue;
+    }
+    if(line==="NIL"){
+      if(!inCompartment) add(n,1,3,"err","NIL outside a compartment header (RP 1716 §2.4 Note 2).",REF.elem);
+      continue;
+    }
+    // Linha de continuação: indentação de 8 espaços (RP 1716 §2.4 Nota 4)
+    if(/^ {8}\S/.test(rawLine)) continue;
+    if(!inCompartment){
+      add(n,1,line.length,"err","Passenger line without a preceding compartment header (e.g. FCLASS, YCLASS).",REF.elem);
+      continue;
+    }
+    // Passageiro: seat [dest] [NOME/PROPRIO...] [texto livre]; seat sozinho = lugar vago
+    const pm=line.match(/^(\d{1,3}[A-Z]{1,2})( ([A-Z]{3}))?( ([A-Z]+\/[A-Z]+(\/[A-Z]+)*))?( .+)?$/);
+    if(!pm){
+      add(n,1,line.length,"err","Malformed PIL passenger line — <b>seat [dest] [SURNAME/NAME] [SSR/text]</b> (RP 1716 §2.4, e.g. 17D BKK BROWN/JOHN WCHC OWN).",REF.elem);
+      continue;
+    }
+    const seat=pm[1];
+    const seatNum=parseInt(seat.match(/^\d+/)[0],10);
+    if(lastSeat!==null && seatNum<lastSeat)
+      add(n,1,seat.length,"warn",`Seat <b>${seat}</b> out of ascending seat-number order (RP 1716 §2.4).`,REF.elem);
+    lastSeat=seatNum;
+    if(curSeats.has(seat))
+      add(n,1,seat.length,"err",`Seat <b>${seat}</b> duplicated in this compartment.`,REF.elem);
+    curSeats.add(seat);
+    // nome com número antes do apelido é proibido no PIL
+    if(pm[4]===undefined && pm[7]===undefined && pm[2]===undefined){/* lugar vago */}
+    if(/ \d+[A-Z]+\//.test(line))
+      add(n,1,line.length,"err","In PIL the name does NOT take a number before the surname (RP 1716 §2.4: BROWN/JOHN, not 1BROWN/JOHN).",REF.name);
+  }
+  if(!sawEnd) add(scopeEnd,1,1,"err","Missing ENDPIL / ENDPARTn (RP 1716 §2.5).",REF.end);
+}
+
+/* ============================ VALIDADOR PTM ============================
+   RP 1718 — Flight Element com par de estações: XX999/DDMMM AAABBB PARTn */
+function validatePTM(U,block,scopeEnd,idx,add,shared,isLastBlock){
+  let declaredPart=null, partRec=null;
+  if(idx<scopeEnd){
+    const f=U[idx].toUpperCase().trimEnd(); const n=idx+1;
+    const RXF=/^([A-Z0-9]{2}[A-Z]?)(\d{1,4})([A-Z])?\/(\d{2})([A-Z]{3}) ([A-Z]{3})([A-Z]{3}) PART\s*(\d{1,2})$/;
+    const fm=f.match(RXF);
+    if(!fm){
+      if(!spacingDiag(f,RXF,n,add,REF.flight,"Flight Element"))
+        add(n,1,U[idx].length||1,"err","Invalid PTM Flight Element — <b>XX999/DDMMM AAABBB PARTn</b> (origin+destination pair joined, RP 1718 §2.4, e.g. SK347/24NOV ARNJFK PART1).",REF.flight);
+    }else{
+      const day=parseInt(fm[4],10);
+      if(day<1||day>31) add(n,f.indexOf("/")+2,2,"err",`Invalid day <b>${fm[4]}</b> (01–31).`,REF.flight);
+      if(!RULES.months.includes(fm[5])) add(n,f.indexOf("/")+4,3,"err",`Invalid month <b>${fm[5]}</b> — use JAN…DEC.`,REF.flight);
+      declaredPart=parseInt(fm[8],10);
+      partRec={num:declaredPart,line:n,key:fm[1]+fm[2]+(fm[3]||"")+"/"+fm[4]+fm[5]};
+      shared.parts.push(partRec);
+    }
+    idx++;
+  }
+  let sawEnd=false, sawNil=false, sawEntry=false;
+  for(; idx<scopeEnd; idx++){
+    const rawLine=U[idx]; const line=rawLine.toUpperCase().trimEnd(); const n=idx+1;
+    if(line==="") continue;
+    let m;
+    if((m=line.match(/^END(PTM|PART\s*(\d{1,2}))$/))){
+      sawEnd=true;
+      if(m[1].startsWith("PART")){
+        const p=parseInt(m[2],10);
+        if(declaredPart!==null&&p!==declaredPart)
+          add(n,4,line.length-3,"err",`<b>${line}</b> does not match this part's header (PART${declaredPart}).`,REF.end);
+      }else if(partRec){ partRec.final=true; }
+      continue;
+    }
+    if(sawEnd){ add(n,1,line.length,"warn","Content after the End Element.",REF.end); continue; }
+    if(line==="NIL"){ sawNil=true; continue; }
+    if(line==="SI"){ sawEntry=true; continue; }
+    // Entrada: FLT[suf][/DD][/S|N] DEST[/S|N] nC nB[peso K|L] [NOME/PROPRIO...] [.CHDn][.INFn][.RQ|.SA]
+    const em=line.match(/^([A-Z0-9]{2}[A-Z]?\d{1,4})([A-Z])?(\/(\d{2}))?(\/([SN]))? ([A-Z]{3})(\/([SN]))? (\d{1,3})([A-Z]) (\d{1,3})B(\d{1,4}[KL])?((\.(CHD|INF)\d{1,2}|\.(RQ|SA))*)( [A-Z]+(\/[A-Z]+)+((\.(CHD|INF)\d{1,2}|\.(RQ|SA))*))?$/);
+    if(!em){
+      add(n,1,line.length,"err","Invalid PTM entry — <b>FLT[/DD][/S|N] DEST nX nB[weight K|L] [SURNAME/NAME] [.CHDn][.INFn][.RQ|.SA]</b> (RP 1718 §2.5–2.7).",REF.elem);
+      continue;
+    }
+    sawEntry=true;
+    if(em[4] && (parseInt(em[4],10)<1||parseInt(em[4],10)>31))
+      add(n,line.indexOf("/"+em[4])+2,2,"err",`Invalid connection day <b>${em[4]}</b> (01–31).`,REF.elem);
+  }
+  if(!sawEnd) add(scopeEnd,1,1,"err","Missing ENDPTM / ENDPARTn (RP 1718 §2.8).",REF.end);
+  if(!sawEntry && !sawNil)
+    add(block.start+1,1,3,"warn","PTM with no transfer entries and no <b>NIL</b> — with no transfers, the body is a single NIL line (RP 1718 §2.4 Note).",REF.elem);
+}
+
+/* ---- validação dos elementos .X/ numa linha (inline ou isolados) ---- */
+/* Construções da RP1707b Secção 3; códigos da RP1708 §2.12.7/§2.12.8 + AIRIMP §2.11.6.7 */
+const RX={
+  fltinfo:/^([A-Z0-9]{2}[A-Z]?\d{1,4}[A-Z]?)([A-Z])(\d{2})([A-Z]{3})([A-Z]{3})?(\d{4})?([+-][12])?([A-Z]{2})?$/, // .I/ .O/
+  mkt:/^([A-Z0-9]{2}[A-Z]?\d{1,4}[A-Z]?)([A-Z])(\d{2})([A-Z]{3})([A-Z]{3})(\d{4})?([A-Z]{2})?$/,               // .M/
+  pnr:/^[A-Z0-9]{5,8}(\/[A-Z0-9]{2,3})?$/,                                                                      // .L/
+  prio:/^[A-Z0-9]{1,8}(-\d{2}[A-Z]{3}\d{2})?$/,                                                                 // .DG .ID .RG
+  fqt:/^[A-Z0-9]{2} [A-Z0-9]{1,20}$/,                                                                           // .F/
+  bagN:/^\d{10}\d{3}\/[A-Z]{3}$/, bagA:/^[A-Z0-9]{2,15}\/\d{1,3}\/[A-Z]{3}$/,                                   // .N/
+  dbc:/^(V|I)(\/.+)?$/,                                                                                          // .DBC/
+  bg:/^\d{3}$/,                                                                                                  // .BG/
+  wl:/^[A-Z0-9]{1,8}$/,                                                                                          // .WL/
+  sec:/^[A-Z]{2}(\/|$)/,                                                                                         // .S/ começa por país ISO
+  date:/^\d{2}(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\d{2}$/,
+  seatTok:/^(\d{1,3}[A-Z]{1,7}|\d{1,3}[A-Z]?-\d{1,3}[A-Z](-[A-Z])?|\d{1,3}[A-Z]-[A-Z]|\d{1,3}ROW|ALL|REST|NIL)$/,
+  status:/^([A-Z]{2})(\d{1,3})$/
+};
+const PAXID=/-\d{0,2}[A-Z]+(\/[A-Z]+)*\s*$/; // associação -1NOME/APELIDO no fim
+
+function stripPax(s){ return s.replace(PAXID,"").replace(/\s+$/,""); }
+
+function validateDotElements(rawLine, n, fromIdx, add, opts){
+  const line = rawLine.toUpperCase().replace(/\s+$/,"");
+  // apanhar QUALQUER .XXX (com ou sem barra) — a validação decide depois
+  const re=/\.(RN|RG1|RG2|ID1|ID2|DG1|DG2|DBC|BG|SN|WL|O[2-9]?|[A-Z])(\/)?/g;
+  re.lastIndex = fromIdx;
+  const hits=[];
+  let m;
+  while((m=re.exec(line))!==null){
+    // "element position": start of line, or preceded by a space.
+    // Um ponto colado a texto (ex.: free text ".TRUNKS") não é elemento.
+    const atStart = m.index===0 || m.index===fromIdx;
+    const prevCh  = m.index>0 ? line[m.index-1] : " ";
+    const spaced  = atStart || prevCh===" ";
+    if(!m[2]){
+      // elemento sem a barra obrigatória (ex.: .WLSAL, .RSEAT, .ID2N2)
+      // — only when in element position; otherwise it is free text
+      if(spaced)
+        add(n,m.index+1,m[0].length,"err",`Element <b>.${m[1]}</b> without the mandatory slash — the construction is <b>.${m[1]}/value</b> (RP 1707b Sec.3).`,REF.elem);
+      continue;
+    }
+    // elemento colado ao anterior, sem o espaço separador
+    if(!spaced) hits.push({tag:m[1], idx:m.index, len:m[0].length, glued:true});
+    else hits.push({tag:m[1], idx:m.index, len:m[0].length});
+  }
+  // reportar elementos não separados por espaço
+  hits.forEach((h,k)=>{
+    if(!h.glued) return;
+    const prev = k>0 ? "."+hits[k-1].tag+"/" : "the previous element";
+    add(n,h.idx+1,1,"err",`Missing space between <b>${prev}</b> and <b>.${h.tag}/</b> — elements are always separated by a space (RP 1707b Sec.2/3).`,REF.elem);
+  });
+  let lCount=0, lNoDesignator=0, lFirstCol=0;
+
+  hits.forEach((h,k)=>{
+    const col=h.idx+1;
+    const start=h.idx+h.len;
+    const endIdx=(k+1<hits.length)?hits[k+1].idx:line.length;
+    let content=line.slice(start,endIdx).replace(/\s+$/,"");
+    const tag=h.tag;
+
+    const bad=(len,msg,ref)=>add(n,start+1,Math.max(len,1),"err",msg,ref||REF.elem);
+
+    if(RULES.dotNotInUse.has("."+tag)){
+      add(n,col,h.len,"warn",`Element <b>.${tag}/</b> is not in use in the standard (RP1707b Sec.3) — may be bilateral usage; confirm with the recipient.`,REF.elem,{tag:"elemunk",code:"."+tag+"/"});
+      return;
+    }
+
+    switch(true){
+      case tag==="R": validateRemark(content,n,start,add,opts&&opts.elemCount,opts&&opts.msgType,opts&&opts.paxCtx); break;
+      case tag==="RN": {
+        checkHyphens(content,n,start,add,null);
+        const pc=opts&&opts.paxCtx;
+        if(pc&&pc.pendingDocs){
+          // A continuation resumes whatever the 64-character limit cut off, which
+          // is the END of the element. If the association (-1SURNAME/NAME) had
+          // already started, the continuation completes THAT, not the document
+          // fields — e.g. ".R/DOCS …-1KALU/SAMUELJOHNBOSCOM" + ".RN/R".
+          const rec = pc.pendingDocs;
+          const a = content.match(PAXID);
+          if(rec.assoc)      rec.assoc += content;
+          else if(a){        rec.raw += content.slice(0, a.index); rec.assoc = content.slice(a.index); }
+          else               rec.raw += content;
+        }
+        break;
+      } // continuação: texto livre
+      case tag==="SN": break; // continuação de .S/
+      case tag==="L": {
+        lCount++; if(lCount===1) lFirstCol=col;
+        if(opts&&opts.paxCtx) opts.paxCtx.hasPnr=true;
+        const c=stripPax(content);
+        if(RX.pnr.test(c)){ if(!/\//.test(c)) lNoDesignator++; }
+        else {
+          // A locator outside the 5–8 range is not necessarily wrong: several
+          // systems issue longer references. Only a bad character set is an error.
+          const m=c.match(/^([A-Z0-9]+)(\/[A-Z0-9]{2,3})?$/);
+          if(m)
+            add(n,start+1,content.length,"warn",
+              `PNR address <b>${m[1]}</b> has ${m[1].length} characters — RP 1707b §3.18 describes 5–8. Longer locators are used bilaterally; confirm with the recipient.`,REF.elem);
+          else
+            bad(content.length,"Malformed .L/ element (PNR address) — alphanumeric locator, optionally /XX(X) airline (e.g. .L/ABC123/JD).");
+        }
+        break;
+      }
+      case tag==="I": {
+        const c=stripPax(content);
+        if(!RX.fltinfo.test(c)) bad(content.length,"Malformed Inbound Connection .I/ — flight+class+day+airport[+airport][+time][+date-var][+status] (e.g. .I/SR559F07MUC, .I/NZ040X27AKL0651-1HK).");
+        break;
+      }
+      case /^O[2-9]?$/.test(tag): {
+        const c=stripPax(content);
+        if(!RX.fltinfo.test(c)) bad(content.length,`Onward Connection .${tag}/ malformado — voo+classe+dia[+embarque]+destino[+hora][+status] (ex.: .O/BA012C26LHR1500HK).`);
+        break;
+      }
+      case tag==="M": {
+        const c=stripPax(content);
+        if(!RX.mkt.test(c)) bad(content.length,"Malformed Marketing Flight .M/ — flight+class+day+origin+destination[+time][+status] (e.g. .M/UA3517F16FRAJFK1000HK).");
+        break;
+      }
+      case tag==="F": {
+        if(!RX.fqt.test(stripPax(content))) bad(content.length,"Malformed Frequent Traveller .F/ — airline (2 char.) + space + account number (e.g. .F/KL 123456789).");
+        break;
+      }
+      case tag==="N": {
+        const c=stripPax(content);
+        if(!RX.bagN.test(c) && !RX.bagA.test(c)) bad(content.length,"Malformed Baggage Tag .N/ — numeric: 10 digits+3 digits/DES (e.g. .N/0074123456005/SFO) or alphanumeric: TAG/n/DES (e.g. .N/KL123456/5/SFO).");
+        break;
+      }
+      case tag==="BG": {
+        if(!RX.bg.test(stripPax(content))) bad(content.length,"Malformed Baggage Pooling .BG/ — 3-digit reference number (e.g. .BG/001).");
+        break;
+      }
+      case tag==="DBC": {
+        if(!RX.dbc.test(stripPax(content))) bad(content.length,"Malformed Denied Boarding Compensation .DBC/ — V or I, optionally /text (e.g. .DBC/V/USD200 PAID IN CASH).");
+        break;
+      }
+      case /^(DG1|DG2|ID1|ID2|RG1|RG2)$/.test(tag): {
+        if(!RX.prio.test(stripPax(content))) bad(content.length,`Malformed .${tag}/ element — priority code, optionally -seniority date (e.g. .${tag}/PSN49-08AUG91).`);
+        else{
+          const d=stripPax(content).match(/-(\d{2}[A-Z]{3}\d{2})$/);
+          if(d && !RX.date.test(d[1])) add(n,start+1+stripPax(content).indexOf(d[1]),d[1].length,"err",`Invalid seniority date <b>${d[1]}</b> — DDMMMYY format.`,REF.elem);
+        }
+        break;
+      }
+      case tag==="W": {
+        const c=stripPax(content);
+        if(!/^(P\/\d{1,3}|[KL]\/\d{1,3}\/\d{1,4})$/.test(c))
+          bad(content.length,"Malformed Pieces/Weight .W/ — <b>.W/P/n</b> (pieces) or <b>.W/K|L/pieces/weight</b> (e.g. .W/K/2/20), RP 1707b.");
+        break;
+      }
+      case tag==="WL": {
+        if(!RX.wl.test(stripPax(content))) bad(content.length,"Malformed Wait List .WL/ (e.g. .WL/AB84).");
+        break;
+      }
+      case tag==="C": case tag==="D": {
+        if(!stripPax(content).length) bad(1,`Elemento .${tag}/ sem conteúdo.`);
+        break;
+      }
+      case tag==="S": {
+        const c=stripPax(content);
+        if(!RX.sec.test(c)) bad(content.length,"Malformed Security Information .S/ — starts with the 2-letter ISO country code, fields separated by / (e.g. .S/US/8972657824).");
+        /* oblíquas finais vazias aceites — surgem nos exemplos oficiais (.S/US/123454321///, RP1719b) */
+        break;
+      }
+      case tag==="T": add(n,col,h.len,"warn","Element .T/ is reserved (electronic ticketing) — must not be used.",REF.elem); break;
+      default:
+        add(n,col,h.len,"warn",`Unknown element <b>.${tag}/</b> — not in RP1707b Sec.3; may be bilateral, confirm with the recipient.`,REF.elem,{tag:"elemunk",code:"."+tag+"/"});
+    }
+  });
+
+  // múltiplos .L/ no mesmo passageiro exigem designador de companhia em todos
+  if(lCount>1 && lNoDesignator>0)
+    add(n,lFirstCol,3,"err","Multiple .L/ elements on the same passenger — the airline designator (/XX) is mandatory on all (RP1707b §3.18).",REF.elem);
+}
+
+/* Hífens no conteúdo de .R//.RN/: o hífen está reservado para a associação
+   a passageiro no FIM do elemento (RP1707b §3.24/§3.37). Qualquer outro hífen
+   no free text pode ser interpretado pelo sistema recetor como início da
+   identificação de passageiro. Exceção: intervalos de lugares (§2.22) nos
+   SSR de lugar (21A-C, 21-24A-D…). */
+const SEAT_SSRS=["SEAT","RQST","NSST","NSSA","NSSB","NSSW","GPST","SMST","SMSA","SMSB","SMSW","SMSR","NSSR"];
+function checkHyphens(content,n,start,add,code){
+  // associação a passageiro válida no fim do elemento
+  const pax=content.match(PAXID);
+  const paxIdx=pax?content.length-pax[0].length:-1;
+  const seatOk=code&&SEAT_SSRS.includes(code);
+  for(let i=0;i<content.length;i++){
+    if(content[i]!=="-") continue;
+    if(i===paxIdx) continue; // início da associação a passageiro
+    if(i>paxIdx&&paxIdx>=0) continue; // dentro da associação
+    if(seatOk){
+      // hífen dentro de um token de lugares válido (ex.: 21A-C)?
+      const ts=content.lastIndexOf(" ",i)+1;
+      let te=content.indexOf(" ",i); if(te<0)te=content.length;
+      if(RX.seatTok.test(content.slice(ts,te))) continue;
+    }
+    add(n,start+1+i,1,"err","Hyphen in the Remarks Element free text — the hyphen is reserved for passenger association at the end of the element (e.g. -1SILVA/JOAOMR) and may be misinterpreted by the receiving system. Reword the text without a hyphen.",REF.remarks);
+  }
+}
+
+/* Remove o título do nome próprio (MARYLYNMRS -> MARYLYN) */
+function stripTitle(s){
+  const t=(s||"").replace(/\s+/g,"");
+  let best=t;
+  RULES.titles.forEach(x=>{ if(t.length>x.length && t.endsWith(x)){ const c=t.slice(0,-x.length); if(c.length<best.length) best=c; } });
+  return best;
+}
+/* Tolerante a truncagem: aceita quando um é prefixo do outro */
+function nameMatches(a,b){
+  a=(a||"").replace(/[^A-Z0-9]/g,""); b=(b||"").replace(/[^A-Z0-9]/g,"");
+  if(!a||!b) return true;
+  return a.startsWith(b)||b.startsWith(a);
+}
+
+/* Coerência ao nível do passageiro: documentos, datas, INFT/CHLD, género.
+   Fontes: AIRIMP §3.13 (DOCS) e §2.11.6.7 (matriz SSR); a tabela de padrões
+   de passaporte é heurística e externa aos manuais (ver topo do ficheiro). */
+function checkPaxCoherence(pax,add,flightDate){
+  if(!pax) return;
+  const today=new Date();
+  const has=c=>pax.ssrs.includes(c);
+
+  pax.docs.forEach(d=>{
+    const col=x=>d.base+d.posOf(x);
+    // --- nome do documento vs Name Element (AIRIMP §3.13.2) ---
+    if(d.raw){
+      const fs=d.raw.split("/").map(x=>x.trim());
+      const dSur=fs[8]||"", dGiv=(fs[9]||"").replace(/^H$/,"");
+      if(dSur){
+        let tSur=pax.names[0]||"", tGiv=pax.names[1]||"";
+        if(d.assoc){ // associação -1APELIDO/NOME identifica o passageiro
+          const am=d.assoc.replace(/^-\d*/,"").split("/");
+          if(am[0]) tSur=am[0];
+          if(am[1]) tGiv=am[1];
+        } else if(pax.count>1){ tSur=null; } // ambíguo: vários pax sem associação
+        if(tSur){
+          if(!nameMatches(dSur,tSur))
+            add(d.line,d.col,dSur.length,"err",`Surname in DOCS (<b>${dSur}</b>) does not match the passenger (<b>${tSur}</b>) — document associated with the wrong passenger (AIRIMP §3.13.2).`,REF.remarks);
+          else if(dGiv && !nameMatches(dGiv,stripTitle(tGiv)))
+            add(d.line,d.col,dSur.length+1+dGiv.length,"err",`Given name in DOCS (<b>${dGiv}</b>) does not match the passenger (<b>${stripTitle(tGiv)}</b>) — check the document association.`,REF.remarks);
+        }
+      }
+    }
+    // --- nascimento ---
+    const birth=parseDDMMMYY(d.birth,"past");
+    if(birth){
+      const age=(today-birth)/(365.2425*864e5);
+      if(age<0)
+        add(d.line,col(5),d.birth.length,"err",`DOCS: date of birth <b>${d.birth}</b> is in the future.`,REF.remarks);
+      else if(flightDate && birth>flightDate)
+        add(d.line,col(5),d.birth.length,"err",`DOCS: date of birth <b>${d.birth}</b> (${fmtD(birth)}) is after the flight date (${fmtD(flightDate)}).`,REF.remarks);
+    }
+
+    // --- validade vs data do voo ---
+    const exp=parseDDMMMYY(d.expiry,"future");
+    if(exp && flightDate && exp<flightDate)
+      add(d.line,col(7),d.expiry.length,"err",`Document expired at the flight date — expiry <b>${d.expiry}</b> (${fmtD(exp)}) before the flight on ${fmtD(flightDate)}.`,REF.remarks);
+
+    // --- nacionalidade vs país emissor ---
+    if(d.nat && d.issuer && d.nat!==d.issuer)
+      add(d.line,col(4),d.nat.length,"info",`Nationality <b>${d.nat}</b> differs from issuing country <b>${d.issuer}</b> — legitimate, but unusual; please confirm.`,REF.remarks,{tag:"natissuer",code:"natissuer"});
+
+    // --- padrão do nº de passaporte por país (apenas tipo P) ---
+    if(d.type==="P" && d.num){
+      const key=PASSPORT_PATTERNS[d.issuer]?d.issuer:(ISO2TO3[d.issuer]||null);
+      const pat=key?PASSPORT_PATTERNS[key]:null;
+      if(pat && !pat.re.test(d.num))
+        add(d.line,col(3),d.num.length,"warn",`Passport number <b>${d.num}</b> does not match the usual pattern for <b>${key}</b> (e.g. ${pat.ex}) — please confirm. Formats vary over time; heuristic check, not normative.`,REF.remarks,{tag:"ppfmt",code:"ppfmt:"+key});
+    }
+
+    // --- género infantil vs SSR ---
+    const inf=/^(MI|FI)$/.test(d.gender);
+    if(inf && !has("INFT"))
+      add(d.line,col(6),d.gender.length,"warn",`DOCS with gender <b>${d.gender}</b> (infant) but the passenger has no associated <b>INFT</b> SSR.`,REF.remarks);
+    if(!inf && d.gender && has("INFT") && pax.docs.length===1)
+      add(d.line,col(6),d.gender.length,"info",`Passenger with <b>INFT</b> SSR but no infant DOCS (gender MI/FI) — check whether the infant document is missing.`,REF.remarks,{tag:"inftdocs",code:"inftdocs"});
+  });
+
+  // --- idade vs INFT / CHLD ---
+  const yrs=(d1,d2)=>(d2-d1)/(365.2425*864e5);
+  const docBirth=(pax.docs.find(d=>/^(MI|FI)$/.test(d.gender))||{}).birth;
+  if(flightDate){
+    const iRec=pax.inftDate, cRec=pax.chldDate;
+    const iRaw=(iRec&&iRec.raw)||docBirth;
+    if(has("INFT") && iRaw){
+      const b=parseDDMMMYY(iRaw,"past");
+      if(b){
+        const age=yrs(b,flightDate);
+        if(age>=2)
+          add((iRec&&iRec.line)||pax.line,(iRec&&iRec.col)||1,(iRec&&iRec.len)||1,"err",`SSR <b>INFT</b> with birth <b>${iRaw}</b> — the infant would be ${age.toFixed(1)} years old at the flight date; INFT applies to under-2s.`,REF.remarks);
+        else if(age<0)
+          add((iRec&&iRec.line)||pax.line,(iRec&&iRec.col)||1,(iRec&&iRec.len)||1,"err",`SSR <b>INFT</b> with birth <b>${iRaw}</b> after the flight date.`,REF.remarks);
+      }
+    }
+    if(has("CHLD") && cRec && cRec.raw){
+      const b=parseDDMMMYY(cRec.raw,"past");
+      if(b){
+        const age=yrs(b,flightDate);
+        if(age>=12)
+          add(cRec.line,cRec.col,cRec.len,"warn",`SSR <b>CHLD</b> with birth <b>${cRec.raw}</b> — the child would be ${age.toFixed(0)} years old at the flight date; CHLD applies from 2 to 11.`,REF.remarks);
+        else if(age<2)
+          add(cRec.line,cRec.col,cRec.len,"warn",`SSR <b>CHLD</b> with birth <b>${cRec.raw}</b> — under 2 years at the flight date; should be <b>INFT</b>.`,REF.remarks);
+      }
+    }
+  }
+
+  // --- INFT associado a CHLD (AIRIMP §3.16.1) ---
+  // O SSR INFT deve estar no registo do adulto responsavel pelo infant
+  // ("the adult on whose lap the infant will be seated"). Um passageiro CHLD
+  // nao e um adulto e nao pode ser responsavel por um infant.
+  // Guard: only check when count===1. Multi-count name elements share the same
+  // paxCtx, so CHLD and INFT can legitimately belong to different passengers
+  // (e.g. 2SILVA/JOAOMRS/PEDROMSTR where the adult has INFT and the child has CHLD).
+  // When count>1 the engine cannot resolve which SSR belongs to which person.
+  if(has("INFT") && has("CHLD") && pax.count===1){
+    const iRec=pax.inftDate;
+    add((iRec&&iRec.line)||pax.line,(iRec&&iRec.col)||1,(iRec&&iRec.len)||1,
+      "err","SSR <b>INFT</b> on a <b>CHLD</b> passenger — an infant must be in the care of an adult. Move the SSR INFT to the adult passenger’s record (AIRIMP §3.16.1).",
+      REF.ssr);
+  }
+}
+
+/* .R/ Remarks (RP1707b §3.24 + RP1708 §2.12) */
+function validateRemark(content,n,start,add,elemCount,msgType,paxCtx){
+  const mm=content.match(/^(\d{1,2})?([A-Z]+)/);
+  if(!mm){
+    add(n,start+1,Math.max(content.length,1),"err","Remarks Element .R/ without a code — expected an SSR/OSI code (e.g. VGML, WCHR, VIP).",REF.remarks);
+    return;
+  }
+  const cntLen=(mm[1]||"").length;
+  const letters=mm[2];
+  let code=null, attached=false, statusEnd=0;
+  if(letters.length===6 && RULES.pnlCodes.has(letters.slice(0,4)) &&
+     RULES.statusCodes.has(letters.slice(4,6)) && /^\d/.test(content.slice(cntLen+6))){
+    code=letters.slice(0,4); attached=true;
+    const cm=content.slice(cntLen+6).match(/^\d{1,3}/);
+    statusEnd=cntLen+6+cm[0].length;
+  }else{
+    code=letters;
+    statusEnd=cntLen+code.length;
+  }
+  const codeCol=start+1+cntLen;
+  const isOsi=RULES.osiCodes.has(code);
+  if(!RULES.pnlCodes.has(code) && !isOsi){
+    let hint="";
+    if(code==="TOP") hint=" In the standard the tour operator is shown in the <b>.D/</b> element (e.g. .D/AIR2000).";
+    if(code==="CHD") hint=" The CHD code was discontinued (31MAY08) — use SSR <b>CHLD</b>.";
+    add(n,codeCol,code.length,"warn",`<b>${code}</b> is not in RP1708 §2.12.7/§2.12.8 nor the AIRIMP §2.11.6.7 matrix — it may be a bilateral code; confirm with the recipient.${hint}`,REF.ssr,{tag:"ssrunk",code});
+  }
+  if(code==="CHD" )
+    add(n,codeCol,code.length,"warn","OSI code <b>CHD</b> discontinued since 31MAY08 — use SSR <b>CHLD</b>.",REF.ssr);
+  if(cntLen && !isOsi && code!=="CHD")
+    add(n,start+1,cntLen,"err",`A count before the code is only allowed on OSI codes (e.g. 2VIP) — <b>${mm[1]}${code}</b> is not valid.`,REF.remarks);
+
+  // status/action code — exceto FQT*: o free text começa pela companhia (ex.: KL), nunca é status
+  let free="";
+  let hasStatus=attached;
+  const noStatus=/^FQT[VRSU]$/.test(code);
+  if(noStatus){
+    free=content.slice(statusEnd).replace(/^ +/,"");
+  }else if(!attached){
+    let after=content.slice(statusEnd);
+    const hadSpace=/^ /.test(after);
+    after=after.replace(/^ +/,"");
+    const st=after.match(/^([A-Z]{1,2})(\d{1,3})?(?=[ \/\-]|$)/);
+    let consumed=0;
+    if(st){
+      const L=st[1], D=st[2];
+      const looksStatus=(D!==undefined && L.length<=2)||RULES.statusCodes.has(L);
+      if(looksStatus){
+        const stCol=start+1+statusEnd+(hadSpace?1:0);
+        if(!RULES.statusCodes.has(L))
+          add(n,stCol,L.length+(D||"").length,"err",`Invalid status/action code <b>${L}${D||""}</b> — expected 2 letters (HK, KK, NN, UN, NO, XX…) + count (e.g. HK1).`,REF.status);
+        else if(D===undefined)
+          add(n,stCol,L.length,"err",`Status <b>${L}</b> without seat count — expected e.g. <b>${L}1</b>.`,REF.status);
+        else hasStatus=true;
+        consumed=st[0].length;
+      }
+    }
+    free=after.slice(consumed).replace(/^ +/,"");
+  }else{
+    free=content.slice(statusEnd).replace(/^ +/,"");
+  }
+  // hífen no free text: reservado para associação a passageiro (-1NOME/APELIDO)
+  checkHyphens(content,n,start,add,code);
+  free=stripPax(free);
+
+  // ambiguidade: elemento com vários passageiros, remark para menos, sem associação
+  if(elemCount>1){
+    const hasPax=PAXID.test(content);
+    const stC=(function(){ const s=content.match(/\b[A-Z]{2}(\d{1,3})(?=[ \/\-]|$)/); return s?parseInt(s[1],10):null; })();
+    if(!hasPax && stC!==null && stC<elemCount)
+      add(n,start+1,content.length,"warn",`Remark for ${stC} passenger(s) in an element with ${elemCount} — without association (<b>-1SURNAME/NAME</b>) the receiving system cannot tell whom it applies to (RP 1707b §3.24/§3.37).`,REF.remarks);
+  }
+
+  // status obrigatório: em PNL/ADL todos os SSR levam status+contagem (regra operacional);
+  // exceções: códigos OSI (VIP…), FQT* (o texto começa pela companhia) e códigos desconhecidos (já erraram)
+  const pnladl=(msgType==="PNL"||msgType==="ADL");
+  const mx=SSR_MATRIX[code];               // [action][freeTextRequest]
+  const actionRule=mx?mx[0]:null;          // M | O | N
+  const ftRule=mx?mx[1]:null;
+  if(!hasStatus && !noStatus && !isOsi){
+    // Só exigir status quando a matriz do AIRIMP o marca como Mandatory.
+    // Para códigos fora da matriz mantém-se a regra operacional do PNL/ADL.
+    const required = pnladl && (mx ? actionRule==="M" : RULES.pnlCodes.has(code));
+    if(required || RULES.statusRequired.has(code))
+      add(n,codeCol,code.length,"err",`SSR <b>${code}</b> without status/action code — the AIRIMP matrix (§2.11.6.7) marks the action code as mandatory for this code (e.g. ${code} HK1).`,REF.status);
+  }
+  // free text obrigatório segundo a matriz
+  if(ftRule==="M" && !free && !noStatus && pnladl)
+    add(n,codeCol,code.length,"warn",`SSR <b>${code}</b> without text/data after the status — the AIRIMP matrix (§2.11.6.7) marks the free text as mandatory for this code.`,REF.ssr);
+
+  // registar no contexto do passageiro (para verificações de coerência)
+  if(paxCtx){
+    paxCtx.ssrs.push(code);
+    const sh=paxCtx.shared;
+    // lugares atribuídos (deteção de duplicados) — só PNL
+    if(sh && paxCtx.msgType==="PNL" && SEAT_SSRS.includes(code) && free){
+      free.split(/ +/).forEach(tok=>{
+        if(/^\d{1,3}[A-Z]$/.test(tok)){
+          sh.seats=sh.seats||{};
+          const p=content.indexOf(tok);
+          (sh.seats[tok]=sh.seats[tok]||[]).push({line:n,col:start+1+(p>=0?p:0),len:tok.length,pax:paxCtx.name});
+        }
+      });
+    }
+    // SSRs que bloqueiam lugares exigem placeholder 1ZZ/ no mesmo grupo (PSCRM §2.9)
+    if(sh && ["CBBG","STCR","EXST"].includes(code)){
+      sh.zzNeed=sh.zzNeed||[];
+      sh.zzNeed.push({code,line:n,col:codeCol,len:code.length,pax:paxCtx.name,grp:paxCtx.grpId||null});
+    }
+    if(code==="INFT"||code==="CHLD"){
+      const dm=free.match(/\b(\d{2}[A-Z]{3}\d{2})\b/);
+      if(dm) paxCtx[code==="INFT"?"inftDate":"chldDate"]={raw:dm[1],line:n,col:start+1+content.indexOf(dm[1]),len:dm[1].length};
+    }
+  }
+
+  // validação do free text de SSRs estruturados
+  if(["SEAT","RQST","NSST","NSSA","NSSB","NSSW","GPST","SMST","SMSA","SMSB","SMSW"].includes(code) && free){
+    free.split(/ +/).forEach(tok=>{
+      if(!RX.seatTok.test(tok)){
+        const p=content.indexOf(tok);
+        add(n,start+1+(p>=0?p:0),tok.length,"err",`Invalid seat indication <b>${tok}</b> — formats: 4C, 20AC, 21A-C, 21-23A, 25ROW, ALL, REST, NIL (RP1707b §2.22).`,REF.remarks);
+      }
+    });
+  }
+  if(code==="TKNE" && free){
+    if(!/^(INF)?\d{13,14}(\/\d{1,4})?$/.test(free)){
+      const p=content.indexOf(free);
+      add(n,start+1+(p>=0?p:0),free.length,"err",`TKNE with invalid ticket <b>${free}</b> — ticket number (13–14 digits) optionally /coupon (e.g. 0122106026463/2).`,REF.remarks);
+    }
+  }
+  if(code==="DOCS" && free){
+    if(!/^\//.test(free))
+      add(n,start+1+content.indexOf(free),free.length,"err","Malformed DOCS — document fields start with / after the status (e.g. /P/CA/939822373/…).",REF.remarks);
+    else{
+      const f=free.split("/");
+      // Ordem oficial (AIRIMP §3.13.2 — Construction Rules and Sequence of Components):
+      // [1]=tipo [2]=país emissor [3]=nº documento [4]=nacionalidade [5]=nascimento
+      // [6]=género [7]=validade [8..]=apelido / nome(s)
+      const base=start+1+content.indexOf(free);
+      const posOf=i=>{ let p=0; for(let k=0;k<i;k++) p+=f[k].length+1; return p; };
+      const isCountry=x=>/^[A-Z]{2,3}$/.test(x);
+      const isDocNum =x=>/[0-9]/.test(x) && /^[A-Z0-9<]{4,15}$/.test(x);
+      const isDate   =x=>RX.date.test(x);
+
+      if(f[1] && !/^(P|I|A|C|F|V|D|AC|IP)$/.test(f[1]))
+        add(n,base+posOf(1),f[1].length,"err",`DOCS: invalid document type <b>${f[1]}</b> (P, I, A, C, F, V, D, AC).`,REF.remarks);
+
+      // [2] país emissor — se parecer o número do documento, os campos estão trocados
+      if(f[2]!==undefined && f[2]!==""){
+        if(!isCountry(f[2])){
+          if(isDocNum(f[2]) && f[3] && isCountry(f[3]))
+            add(n,base+posOf(2),f[2].length,"err",`DOCS: fields out of order — <b>${f[2]}</b> looks like the document number, but position 2 is the <b>issuing country</b>. Order: /type/<b>issuing-country</b>/number/nationality/birth/gender/expiry/surname/name (AIRIMP §3.13.2).`,REF.remarks);
+          else
+            add(n,base+posOf(2),f[2].length,"err",`DOCS: invalid issuing country <b>${f[2]}</b> — 2–3 letter ISO code (AIRIMP §3.13.2).`,REF.remarks);
+        }
+      }
+      // [3] número do documento
+      if(f[3]!==undefined && f[3]!=="" && !/^[A-Z0-9<]{1,15}$/.test(f[3]))
+        add(n,base+posOf(3),f[3].length,"err",`DOCS: invalid document number <b>${f[3]}</b> — up to 15 alphanumeric characters.`,REF.remarks);
+      // [4] nacionalidade
+      if(f[4]!==undefined && f[4]!=="" && !isCountry(f[4]))
+        add(n,base+posOf(4),f[4].length,"err",`DOCS: invalid nationality <b>${f[4]}</b> — 2–3 letter ISO code (position 4).`,REF.remarks);
+      // [5] data de nascimento
+      if(f[5]!==undefined && f[5]!=="" && !isDate(f[5]))
+        add(n,base+posOf(5),f[5].length,"err",`DOCS: invalid date of birth <b>${f[5]}</b> — DDMMMYY format (position 5).`,REF.remarks);
+      // [6] género
+      if(f[6]!==undefined && f[6]!=="" && !/^(M|F|MI|FI|U|X)$/.test(f[6]))
+        add(n,base+posOf(6),f[6].length,"err",`DOCS: invalid gender <b>${f[6]}</b> — M, F, MI, FI, U or X (position 6).`,REF.remarks);
+      // [7] validade
+      if(f[7]!==undefined && f[7]!=="" && !isDate(f[7]))
+        add(n,base+posOf(7),f[7].length,"err",`DOCS: invalid document expiry <b>${f[7]}</b> — DDMMMYY format (position 7).`,REF.remarks);
+
+      if(paxCtx){
+        const assocM=content.match(PAXID);
+        const rec={type:f[1]||"", issuer:f[2]||"", num:f[3]||"", nat:f[4]||"",
+          birth:f[5]||"", gender:f[6]||"", expiry:f[7]||"", raw:free,
+          assoc:assocM?assocM[0]:null, line:n, base, posOf, col:base+posOf(8)};
+        paxCtx.docs.push(rec); paxCtx.pendingDocs=rec;
+      }
+    }
+  }
+  if(code==="DOCA" && free){
+    if(!/^\/(R|D)(\/|$)/.test(free))
+      add(n,start+1+content.indexOf(free),free.length,"err","Malformed DOCA — first field is R (residence) or D (destination): /R/US/1600 SMITH STREET/… (RP1707b).",REF.remarks);
+  }
+  if(code==="FQTV"||code==="FQTR"||code==="FQTS"||code==="FQTU"){
+    if(free && !/^[A-Z0-9]{2} ?[A-Z0-9]{1,20}$/.test(free))
+      add(n,start+1+content.indexOf(free),free.length,"err",`Malformed ${code} — airline (2 char.) + account number (e.g. FQTV AI 43211).`,REF.remarks);
+  }
+}
+
+
+/*==== FILE: src/modules/msgcheck/examples.js ====*/
+
+const EX_OK=`LISKPTP OPOKPTP
+.FAORMTP 151420
+PNL
+TP1234/16JUL LIS PART1
+RBD J/JCD Y/YBHKM
+-OPO06J
+1ALMEIDA/RUIMR .L/A1B2C3
+2COSTA/ANAMRS/TIAGOMSTR .R/CHLD HK1 12MAY19-1COSTA/TIAGOMSTR
+1FERREIRA/JOAOMR-A3 .R/VGML HK1
+2SANTOS/MARIAMRS/PEDROMR-A3
+-OPO08Y
+1BRAGA/LUISAMS .R/WCHR HK1
+1DUARTE/CARLOSMR .L/X9Y8Z7 .R/TKNE HK1 0471234567890/1
+3LOPES/ANDREMR/SOFIAMRS/RITAMISS .R/KSML NN3
+1MOTA/INESMS .R/INFT HK1 04AUG25 MOTA/JOAOMSTR
+1PINTO/VASCOMR-B2 .R/EXST HK1 23A
+1ZZ/EXST-B2
+ENDPNL`;
+
+const EX_BAD=`LISKPTP AMSKLKL
+.FAORMTP 151420
+PNL
+TP1234/16JUL LIS   PART2
+RBD J/JCD Y/YBHKM
+CFG/179Y020J
+-OPO06Z
+1ALMEIDA/RUIMR .L/A1B2C3 
+2COSTA/ANAMRS .R/CHLD HK1 12MAY95
+1FERREIRA/JOAOMR-A3 .R/VGGL XY1
+2SANTOS/MARIAMRS/PEDROMR-A3
+-OPO08Y
+1BRAGA/LUISAMS .R/WCHR HK1 PAX NEEDS FULL ASSISTANCE FROM CHECKIN TO GATE
+.RN/AND ON ARRIVAL - CONFIRMED BY STATION
+1ARAUJO/TIAGOMR .P/TEST
+1DUARTE/CARLOSMR .L/X9Y8Z7.R/TKNE HK1 12345/2
+3LOPES/ANDREMR/SOFIAMRS .R/KSML NN3
+1MOTA/INESMS .R/INFT HK1 04AUG20 MOTA/JOAOMSTR
+1PINTO/VASCOMR-B2 .R/EXST HK1 23A
+1SILVA/JOAOMR .R/SEAT HK1 12A
+1COSTA/ANAMS .R/SEAT HK1 12A
+1TAEMMLER/EVAMRS-AU2.L/032UHI
+1WEBER/ANNAMRS-AU2 .L/999999
+1CURRIE/MARIE MRS .U/A456789
+1MONROE/MARYMRS
+.R/DOCS HK1/P/3333333333/CAN/CAN/15APR30/F/15APR30/CURRIE
+.WLSAL
+1SMITH/JOHNMR
+.R/DOCS HK1/P/USA/AB12/USA/12MAY80/M/01JAN20/SMITH/JOHN
+1SILVA/JOAOMR
+.R/OTHS HK1
+.R/3VGML HK1
+ENDPART2`;
+
+const EX_BY_TYPE={
+  PNL: EX_OK,
+  PSM:`HDQRMNW
+.AMSKPKL 131313
+PSM
+NW055/13MAR AMS PART1
+-DTW 3PAX/4SSR
+DEAF 001F 000C 000Y
+WCHR 001F 000C 001Y
+VIP 001F 000C 000Y
+F CLASS 2PAX/3SSR
+1VINCENT/GERARDMR  22A
+ NW1234F13SFO
+WCHS HAS OWN CARRY CASE
+DEAF
+1ROBERTS/ALANMR  1D
+VIP PRESIDENT OF GEORGIA STATE UNIV
+Y CLASS 1PAX/1SSR
+1NELSON/MARYDR  12A
+WCHR NEEDS ASSISTANCE FOR ALL MOBILE ACTIVITIES
+SI
+EXPECT COMPLAINTS AT ARRIVAL
+ENDPSM`,
+  PTM:`JFKKPBA
+.LHRKPJD 261455
+PTM
+JD1234/26JAN LHRJFK PART1
+AA021 LAX 4Y 3B
+AA021 LAX 1Y 0B.SA
+AA595 DTW 3Y 4B.INF1
+AA665 SJU 1Y 1B.CHD1
+AC189S YUL/S 1F 2B
+CO456/27 DEN 1C 0B
+DL327 MIA 4Y 5B.CHD2.INF1
+AF935 CCS 1Y 3B CHAILLOT/YOLANDAMRS.INF1
+ENDPTM`,
+  PFS:`ZRHKMXR
+.AMSRMKL 260714
+PFS
+KL774/26JUN ZRH PART1
+CFG/020F179Y
+RBD F/FA Y/BEGHKLMQSTVW
+FCO 13/047/032 PAD0/2/1
+-FCO
+OFFLN 1F
+1SETTER/LENMR
+GOSHO 2Y
+2JOHNSON/AL/VIVIAN .L/S4627W/BA
+2KOURAJIAN/ART/PUR
+ENDPFS`,
+  PIL:`PIL
+NX890/27MAY DFW
+FCLASS
+01A DEN GREEN/LEROYMR
+01B JMS JOHNSON/TERRYMRS VGML
+02C DEN OHARA/KENDRAMS VGML SPEAKS GERMAN ONLY
+02D DEN FULTON/ELEANORMS SFML
+CCLASS
+NIL
+YCLASS
+16C DEN BACCOUCHE/LISAMS WCHR AND NECK BRACE
+18J DEN SNYDER/THOMASMR MEDA USING CRUTCHES
+ENDPIL`,
+  SOM:`QU ZRHKPSR
+.LHRKCBA 142015
+SOM
+BA0930/14APR LHR PART1
+-ZRH.02A 05F 12AB 18C 21B 24EF
+PAD
+SI
+EQUIPMENT CHANGE PENDING
+ENDSOM`,
+  SPM:`HDQRMUW
+.MSPJKNW 141815
+SPM
+UW888/08AUG JMS PART1
+-DEN.06EF 14ABC
+ENDSPM`,
+  FTL:`HDQRMNW
+.AMSKMKL 131313
+FTL
+NW0055/13MAR AMS PART1
+CFG/113Y/MD8
+STD/1405
+-MSP010C
+1VERVAAT/HAROLDMR
+.L/ABC123
+.M/CX3322F22HKGNRT1230HK
+.R/FQTU KL 654321T
+ENDFTL`,
+  PRL:`HDQRMNW
+.AMSKMKL 131313
+PRL
+NW0055/13MAR AMS PART1
+CFG/16C120Y
+RBD C/CDJZ Y/BEGHKLMQSTVW
+-MSP010C
+1VERVAAT/JACKMR
+.L/ABC123
+.M/CX3322F28HKGTYO1230HK
+.ID1/0070-22JAN97
+.W/P/5
+.W/K/2/20
+.BG/001
+.N/0074123456003/SFO
+.I/KL312C13ZRH
+.O/NW1234F13SFO
+.R/VGML
+.S/US/123454321///
+ENDPRL`,
+  ETL:`HDQRMNW
+.AMSKMKL 131313
+ETL
+NW0055/13MAR AMS PART1
+CFG/F22C33Y222
+ATD/1427
+-MSP010C
+1VERVAAT/JILLMRS
+.L/ABC123/NW
+.M/CX3322F22HKGNRT1230HK
+.R/TKNE HK1 0188765434567/2
+ENDETL`,
+  MVT:`MVT
+TEF402/27.LNDIG.TRF
+AD0410/0414 EA0459 BGO
+DL89/0007
+PX57
+SI OPERATING TRF BGO`,
+  DIV:`DIV
+TEF0981/13.LNDIG.HFT
+EA0432 TOS
+DRWT PX023`,
+  SSM:`SSM
+UTC
+NEW
+TEF9999
+04APR24 03MAY24 1234567
+J 738 C16M165VV738B.X103
+OSL1455 KKN1550
+OSLKKN 10/XY1234/YX432
+//
+CNL
+TEF9994
+06FEB24 12FEB24 1234567`,
+  ASM:`ASM
+UTC
+NEW
+TEF7999/04APR24
+J 738 C16M165VV738B.X103
+OSL1455 KKN1550
+//
+CNL
+TEF7995/06FEB24`
+};
+
+/* Faulty example per message type — each one carries deliberate, realistic errors.
+   PNL uses the comprehensive EX_BAD; the rest are the clean examples with planted faults. */
+const EX_BAD_BY_TYPE = {
+  PNL: EX_BAD,
+  PSM: `HDQRMNW
+.AMSKPKL 131313
+PSM
+NW055/13MAR AMS  PART1
+-DTW 3PAX/4SSR
+DEAF 001F 000C 000Y
+WCHR 01F 000C 001Y
+VIP 001F 000C 000Y
+F CLASS 2PAX/3SSR
+1VINCENT/GERARDMR  22A
+ NW1234F13SFO
+WCHS HAS OWN CARRY CASE
+DEAF
+1ROBERTS/ALANMR  1D
+XYZQ PRESIDENT OF GEORGIA STATE UNIV
+Y CLASS 1PAX/1SSR
+2NELSON/MARYDR  12A
+WCHR NEEDS ASSISTANCE FOR ALL MOBILE ACTIVITIES
+SI
+EXPECT COMPLAINTS AT ARRIVAL
+ENDPSM`,
+  PTM: `JFKKPBA
+.LHRKPJD 261455
+PTM
+JD1234/26JAN LHRJFK
+AA021 LAX 4Y 3B 
+AA021 LAX 1Y 0B.SA
+AA595 DTW 3Y 4B.INF1
+AA665 SJU 1Y 1B.CHD1
+AC189S YUL/S 1F 2B
+CO456/47 DEN 1C 0B
+DL327 MIA 4Y 5B.CHD2.INF1
+AF935 CCS 1Y 3B CHAILLOT/YOLANDAMRS.INF1
+ENDPTM`,
+  PFS: `ZRHKMXR
+.AMSRMKL 260714
+PFS
+KL774/26JUN ZRH PART1
+CFG/179Y020F
+RBD F/FA Y/BEGHKLMQSTVW
+FCO 13/047/03X PAD0/2/1
+-FCO
+OFFLN 1F
+1SETTER/LENMR
+GOSHX 2Y
+2JOHNSON/AL/VIVIAN .L/S4627W/BA
+2KOURAJIAN/ART/PUR
+ENDPFS`,
+  PIL: `PIL
+NX890/27MAY  DFW
+FCLASS
+01A DEN GREEN/LEROYMR
+01B JMS 1JOHNSON/TERRYMRS VGML
+02C DEN OHARA/KENDRAMS VGML SPEAKS GERMAN ONLY
+01D DEN FULTON/ELEANORMS SFML
+CCLASS
+NIL
+YCLASS
+16C DEN BACCOUCHE/LISAMS WCHR AND NECK BRACE
+18J DEN SNYDER/THOMASMR MEDA USING CRUTCHES
+ENDPIL`,
+  SOM: `QU ZRHKPSR
+.LHRKCBA 142015
+SOM
+BA0930/14APR LHR PART1
+-ZRH.02A 05F 12AB 18C 2B1 24EF
+PAD
+SI
+EQUIPMENT CHANGE PENDING
+ENDSOM`,
+  SPM: `HDQRMUW
+.MSPJKNW 141815
+SPM
+UW888/08AUG JMS PART1 
+-DEN.06EF 14A3C 9Z9
+ENDSPM`,
+  FTL: `HDQRMNW
+.AMSKMKL 131313
+FTL
+NW0055/13MAR AMS PART1
+CFG/113Y/MD8
+STD/2505
+-MSP010C
+1VERVAAT/HAROLDMR
+.L/ABC123
+.M/CX3322F22HKGNRT1230HK
+.R/FQTU KL654321T
+ENDFTL`,
+  PRL: `HDQRMNW
+.AMSKMKL 131313
+PRL
+NW0055/13MAR AMS PART1
+CFG/16C120Y
+RBD C/CDJZ Y/BEGHKLMQSTVW
+-MSP010X
+1VERVAAT/JACKMR
+.L/ABC123
+.M/CX3322F28HKGTYO1230HK
+.ID1/0070-22JAN97
+.W/P/5
+.W/K/2
+.BG/001
+.N/007412345600/SFO
+.I/KL312C13ZRH
+.O/NW1234F13SFO
+.R/VGML
+.S/US/123454321///
+ENDPRL`,
+  ETL: `HDQRMNW
+.AMSKMKL 131313
+ETL
+NW0055/13MAR AMS PART1
+CFG/F22C33Y222
+ATD/9999
+-MSP010C
+1VERVAAT/JILLMRS
+.L/ABC123/NW
+.M/CX3322F22HKGNRT1230HK
+.R/TKNE HK1 018876/2
+ENDETL`,
+  MVT: `MVT
+TEF402/27.LN-DIG.TRF
+AD0410/0414 EA2559 BGO
+DL89/0007/0012
+PX57
+SI OPERATING TRF BGO`,
+  DIV: `DIV
+TEF0981/13.LN-DIG.HFT
+EA2532 TOS
+DRWT PX023`,
+  SSM: `SSM
+UTC
+XXX
+TEF9999
+04APR24 03MAY24 1234576
+J 738 C16M165VV738B.X103
+OSL1455 KKN1550
+OSLKKN 10/XY1234/YX432
+//
+CNL
+TEF9994
+06FEB24 12FEB24 1234567`,
+  ASM: `ASM
+UTC
+NEW
+TEF7999/04XXX24
+J 738 C16M165VV738B.X103
+OSL1455 KKN2599
+//
+XCL
+TEF7995/06FEB24`
+};
+
+/*==== FILE: src/core/store.js ====*/
+
+
+/* ============================================================================
+   PERSISTENCE — autosave for the load planner
+   Two backends, because the toolkit runs in two places: the artifact sandbox
+   offers window.storage, a downloaded file offers localStorage. Whichever is
+   there gets used; if neither is, the unsaved-changes guard still protects you.
+   ============================================================================ */
+var Store = (function(){
+  var mode = "none";
+  try {
+    if (typeof window !== "undefined" && window.storage && window.storage.get) mode = "artifact";
+  } catch(e){}
+  if (mode === "none") {
+    try {
+      var k = "__ops_probe";
+      window.localStorage.setItem(k, "1");
+      window.localStorage.removeItem(k);
+      mode = "local";
+    } catch(e){ mode = "none"; }
+  }
+  return {
+    available: mode !== "none",
+    mode: mode,
+    get: function(key){
+      try {
+        if (mode === "artifact") return window.storage.get(key).then(function(r){ return r ? r.value : null; });
+        if (mode === "local")    return Promise.resolve(window.localStorage.getItem(key));
+      } catch(e){}
+      return Promise.resolve(null);
+    },
+    set: function(key, value){
+      try {
+        if (mode === "artifact") return window.storage.set(key, value);
+        if (mode === "local"){ window.localStorage.setItem(key, value); return Promise.resolve(); }
+      } catch(e){}
+      return Promise.resolve();
+    },
+    del: function(key){
+      try {
+        if (mode === "artifact") return window.storage.delete(key);
+        if (mode === "local"){ window.localStorage.removeItem(key); return Promise.resolve(); }
+      } catch(e){}
+      return Promise.resolve();
+    }
+  };
+})();
+
+var ULD_KEY = "uld_workspace";
+var uldDirty = false, uldSaveTimer = null, uldLastSaved = null;
+
+function uldSnapshot(){
+  return JSON.stringify({
+    v: 1,
+    savedAt: new Date().toISOString(),
+    ulds: U.ulds,
+    compartments: U.compartments,
+    refStation: U.refStation
+  });
+}
+function uldHasWork(){ return U.ulds.length > 0 || U.compartments.length > 0; }
+
+function setSaveState(state, when){
+  var el = document.getElementById("uldSaveState");
+  if(!el) return;
+  if(state === "saved"){
+    el.className = "savestate ok";
+    el.textContent = "Saved " + (when || "");
+  } else if(state === "saving"){
+    el.className = "savestate"; el.textContent = "Saving…";
+  } else if(state === "dirty"){
+    el.className = "savestate warn"; el.textContent = "Unsaved changes";
+  } else {
+    el.className = "savestate"; el.textContent = "";
+  }
+}
+
+/* Called by every action that changes the workspace. */
+function uldTouch(){
+  uldDirty = true;
+  if(!Store.available){ setSaveState("dirty"); return; }
+  setSaveState("dirty");
+  clearTimeout(uldSaveTimer);
+  uldSaveTimer = setTimeout(uldSaveNow, 800);   // settles after typing stops
+}
+function uldSaveNow(){
+  if(!Store.available) return;
+  setSaveState("saving");
+  Store.set(ULD_KEY, uldSnapshot()).then(function(){
+    uldDirty = false;
+    uldLastSaved = new Date();
+    setSaveState("saved", uldLastSaved.toTimeString().slice(0,5));
+  }).catch(function(){ setSaveState("dirty"); });
+}
+
+/* Offer to bring back the previous session, never silently overwrite. */
+function uldRestorePrompt(){
+  if(!Store.available) return;
+  Store.get(ULD_KEY).then(function(raw){
+    if(!raw || uldHasWork()) return;
+    var data;
+    try { data = JSON.parse(raw); } catch(e){ return; }
+    var n = (data.compartments||[]).reduce(function(s,c){
+      return s + (c.uldGroups||[]).reduce(function(k,g){ return k + g.positions.length; }, 0); }, 0);
+    if(!(data.ulds||[]).length && !n) return;
+    var when = data.savedAt ? new Date(data.savedAt) : null;
+    var bar = document.getElementById("uldRestore");
+    if(!bar) return;
+    bar.hidden = false;
+    bar.innerHTML =
+      '<span>Previous session found — ' + (data.ulds||[]).length + ' ULDs, ' +
+      (data.compartments||[]).length + ' compartments, ' + n + ' positions' +
+      (when ? ' (saved ' + when.toLocaleString() + ')' : '') + '.</span>' +
+      '<span style="display:flex;gap:8px">' +
+        '<button class="btn small primary" id="btnUldRestore">Restore</button>' +
+        '<button class="btn small quiet" id="btnUldDiscard">Discard</button>' +
+      '</span>';
+    document.getElementById("btnUldRestore").addEventListener("click", function(){
+      U.ulds = data.ulds || [];
+      U.compartments = data.compartments || [];
+      U.refStation = data.refStation || "";
+      var rs = document.getElementById("refStation"); if(rs) rs.value = U.refStation;
+      U.step = 0; U.layouts = null; U.activeComp = 0;
+      bar.hidden = true;
+      uldRender();
+      setSaveState("saved", when ? when.toTimeString().slice(0,5) : "");
+    });
+    document.getElementById("btnUldDiscard").addEventListener("click", function(){
+      Store.del(ULD_KEY); bar.hidden = true; setSaveState("none");
+    });
+  });
+}
+
+/* Last line of defence: the browser's own confirmation on close or reload. */
+window.addEventListener("beforeunload", function(e){
+  if(!uldDirty || !uldHasWork()) return;
+  e.preventDefault();
+  e.returnValue = "";     // browsers show their own wording
+  return "";
+});
+
+
+/*==== FILE: src/core/crypto.js ====*/
+
+/* ============================================================================
+   CRYPTO PRIMITIVES — pure JS, no dependencies, no WebCrypto requirement.
+   WebCrypto (crypto.subtle) is unavailable on plain http:// intranet pages,
+   so everything needed for WinZip AES-256 is implemented here:
+   SHA-1, HMAC-SHA1, PBKDF2-HMAC-SHA1, AES-256, AES-CTR (WinZip variant), CRC32.
+   ============================================================================ */
+
+/* ---------- SHA-1 ---------- */
+function sha1(bytes){
+  var ml = bytes.length;
+  var withOne = new Uint8Array(((ml + 8) >> 6 << 6) + 64);
+  withOne.set(bytes);
+  withOne[ml] = 0x80;
+  var bitLenHi = Math.floor(ml / 536870912);      // (ml*8) >> 32
+  var bitLenLo = (ml << 3) >>> 0;
+  var dv = new DataView(withOne.buffer);
+  dv.setUint32(withOne.length - 8, bitLenHi);
+  dv.setUint32(withOne.length - 4, bitLenLo);
+
+  var h0=0x67452301, h1=0xEFCDAB89, h2=0x98BADCFE, h3=0x10325476, h4=0xC3D2E1F0;
+  var w = new Int32Array(80);
+  for(var i=0; i<withOne.length; i+=64){
+    for(var j=0;j<16;j++) w[j] = dv.getInt32(i + j*4);
+    for(j=16;j<80;j++){ var n = w[j-3]^w[j-8]^w[j-14]^w[j-16]; w[j] = (n<<1)|(n>>>31); }
+    var a=h0,b=h1,c=h2,d=h3,e=h4;
+    for(j=0;j<80;j++){
+      var f,k;
+      if(j<20){ f=(b&c)|((~b)&d); k=0x5A827999; }
+      else if(j<40){ f=b^c^d; k=0x6ED9EBA1; }
+      else if(j<60){ f=(b&c)|(b&d)|(c&d); k=0x8F1BBCDC; }
+      else { f=b^c^d; k=0xCA62C1D6; }
+      var t = (((a<<5)|(a>>>27)) + f + e + k + w[j])|0;
+      e=d; d=c; c=(b<<30)|(b>>>2); b=a; a=t;
+    }
+    h0=(h0+a)|0; h1=(h1+b)|0; h2=(h2+c)|0; h3=(h3+d)|0; h4=(h4+e)|0;
+  }
+  var out = new Uint8Array(20), odv = new DataView(out.buffer);
+  odv.setInt32(0,h0); odv.setInt32(4,h1); odv.setInt32(8,h2); odv.setInt32(12,h3); odv.setInt32(16,h4);
+  return out;
+}
+
+/* ---------- HMAC-SHA1 ---------- */
+function hmacSha1(key, msg){
+  var block = 64;
+  if(key.length > block) key = sha1(key);
+  var k = new Uint8Array(block); k.set(key);
+  var ipad = new Uint8Array(block + msg.length);
+  var opad = new Uint8Array(block + 20);
+  for(var i=0;i<block;i++){ ipad[i] = k[i] ^ 0x36; opad[i] = k[i] ^ 0x5c; }
+  ipad.set(msg, block);
+  opad.set(sha1(ipad), block);
+  return sha1(opad);
+}
+
+/* ---------- PBKDF2-HMAC-SHA1 ---------- */
+function pbkdf2Sha1(pass, salt, iterations, dkLen){
+  var out = new Uint8Array(dkLen), off = 0, block = 1;
+  while(off < dkLen){
+    var msg = new Uint8Array(salt.length + 4);
+    msg.set(salt);
+    msg[salt.length]   = (block >>> 24) & 0xff;
+    msg[salt.length+1] = (block >>> 16) & 0xff;
+    msg[salt.length+2] = (block >>> 8) & 0xff;
+    msg[salt.length+3] = block & 0xff;
+    var u = hmacSha1(pass, msg);
+    var t = u.slice(0);
+    for(var i=1;i<iterations;i++){
+      u = hmacSha1(pass, u);
+      for(var j=0;j<20;j++) t[j] ^= u[j];
+    }
+    var take = Math.min(20, dkLen - off);
+    out.set(t.subarray(0, take), off);
+    off += take; block++;
+  }
+  return out;
+}
+
+/* ---------- AES (128/192/256) block cipher ---------- */
+var AES_SBOX = (function(){
+  var sbox = new Uint8Array(256), p = 1, q = 1;
+  do {
+    p = p ^ ((p << 1) & 0xff) ^ ((p & 0x80) ? 0x1b : 0);
+    q ^= q << 1; q ^= q << 2; q ^= q << 4; q &= 0xff;
+    if(q & 0x80) q ^= 0x09;
+    var x = (q ^ ((q<<1)|(q>>>7)) ^ ((q<<2)|(q>>>6)) ^ ((q<<3)|(q>>>5)) ^ ((q<<4)|(q>>>4))) & 0xff;
+    sbox[p] = x ^ 0x63;
+  } while(p !== 1);
+  sbox[0] = 0x63;
+  return sbox;
+})();
+function xtime(a){ return ((a<<1) ^ ((a & 0x80) ? 0x1b : 0)) & 0xff; }
+
+function aesExpandKey(key){
+  var Nk = key.length / 4, Nr = Nk + 6;
+  var w = new Uint8Array(16 * (Nr + 1));
+  w.set(key);
+  var rcon = 1;
+  for(var i = Nk; i < 4 * (Nr + 1); i++){
+    var t = [w[(i-1)*4], w[(i-1)*4+1], w[(i-1)*4+2], w[(i-1)*4+3]];
+    if(i % Nk === 0){
+      t = [AES_SBOX[t[1]] ^ rcon, AES_SBOX[t[2]], AES_SBOX[t[3]], AES_SBOX[t[0]]];
+      rcon = xtime(rcon);
+    } else if(Nk > 6 && i % Nk === 4){
+      t = [AES_SBOX[t[0]], AES_SBOX[t[1]], AES_SBOX[t[2]], AES_SBOX[t[3]]];
+    }
+    for(var j=0;j<4;j++) w[i*4+j] = w[(i-Nk)*4+j] ^ t[j];
+  }
+  return { w:w, Nr:Nr };
+}
+
+function aesEncryptBlock(ks, block){
+  var s = block.slice(0), w = ks.w, Nr = ks.Nr, i, r;
+  for(i=0;i<16;i++) s[i] ^= w[i];
+  for(r=1;r<=Nr;r++){
+    for(i=0;i<16;i++) s[i] = AES_SBOX[s[i]];
+    // ShiftRows (column-major state: byte index = col*4 + row)
+    var t1=s[1]; s[1]=s[5]; s[5]=s[9]; s[9]=s[13]; s[13]=t1;
+    var t2=s[2], t6=s[6]; s[2]=s[10]; s[6]=s[14]; s[10]=t2; s[14]=t6;
+    var t15=s[15]; s[15]=s[11]; s[11]=s[7]; s[7]=s[3]; s[3]=t15;
+    if(r < Nr){
+      for(var c=0;c<4;c++){
+        var o=c*4, a0=s[o], a1=s[o+1], a2=s[o+2], a3=s[o+3];
+        var all = a0^a1^a2^a3;
+        s[o]   = a0 ^ all ^ xtime(a0^a1);
+        s[o+1] = a1 ^ all ^ xtime(a1^a2);
+        s[o+2] = a2 ^ all ^ xtime(a2^a3);
+        s[o+3] = a3 ^ all ^ xtime(a3^a0);
+      }
+    }
+    for(i=0;i<16;i++) s[i] ^= w[r*16 + i];
+  }
+  return s;
+}
+
+/* ---------- AES-CTR, WinZip flavour: 128-bit little-endian counter from 1 ---------- */
+function winzipCtrCrypt(key, data){
+  var ks = aesExpandKey(key);
+  var out = new Uint8Array(data.length);
+  var ctr = new Uint8Array(16);
+  for(var off=0; off<data.length; off+=16){
+    // increment little-endian counter first (first block uses 1)
+    // NB: ++ctr[i] on a Uint8Array yields 256 (pre-wrap), so the carry must be
+    // tested on the stored value, not on the expression result.
+    for(var i=0;i<16;i++){ ctr[i] = (ctr[i] + 1) & 0xff; if(ctr[i] !== 0) break; }
+    var ksBlock = aesEncryptBlock(ks, ctr);
+    var n = Math.min(16, data.length - off);
+    for(var j=0;j<n;j++) out[off+j] = data[off+j] ^ ksBlock[j];
+  }
+  return out;
+}
+
+/* ---------- CRC32 ---------- */
+var CRC_TABLE = (function(){
+  var t = new Uint32Array(256);
+  for(var n=0;n<256;n++){
+    var c = n;
+    for(var k=0;k<8;k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes){
+  var c = 0xFFFFFFFF;
+  for(var i=0;i<bytes.length;i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+/* ---------- random ---------- */
+function randomBytes(n){
+  var b = new Uint8Array(n);
+  if(typeof crypto !== "undefined" && crypto.getRandomValues) crypto.getRandomValues(b);
+  else throw new Error("No secure random source available in this browser.");
+  return b;
+}
+
+/* ============================================================================
+   ZIP writer — WinZip AES-256 (AE-2)
+   Layout per entry: salt(16) | passwordVerify(2) | ciphertext | authCode(10)
+   ============================================================================ */
+function utf8(str){
+  var out = [], i, c;
+  for(i=0;i<str.length;i++){
+    c = str.charCodeAt(i);
+    if(c < 0x80) out.push(c);
+    else if(c < 0x800){ out.push(0xc0|(c>>6), 0x80|(c&63)); }
+    else if(c >= 0xd800 && c <= 0xdbff){
+      var c2 = str.charCodeAt(++i);
+      var cp = 0x10000 + ((c & 0x3ff) << 10) + (c2 & 0x3ff);
+      out.push(0xf0|(cp>>18), 0x80|((cp>>12)&63), 0x80|((cp>>6)&63), 0x80|(cp&63));
+    }
+    else { out.push(0xe0|(c>>12), 0x80|((c>>6)&63), 0x80|(c&63)); }
+  }
+  return new Uint8Array(out);
+}
+
+function dosDateTime(d){
+  var time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  var date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  return { time:time & 0xffff, date:date & 0xffff };
+}
+
+/* entries: [{name, data:Uint8Array, deflated:Uint8Array|null}] */
+function buildEncryptedZip(entries, password){
+  var passBytes = utf8(password);
+  var chunks = [], central = [], offset = 0;
+  var now = dosDateTime(new Date());
+
+  entries.forEach(function(entry){
+    var raw = entry.data;
+    var useDeflate = !!entry.deflated;
+    var payload = useDeflate ? entry.deflated : raw;
+    var method = useDeflate ? 8 : 0;
+
+    // key derivation: 32B enc + 32B auth + 2B verifier
+    var salt = randomBytes(16);
+    var dk = pbkdf2Sha1(passBytes, salt, 1000, 32 + 32 + 2);
+    var encKey = dk.subarray(0, 32);
+    var authKey = dk.subarray(32, 64);
+    var pv = dk.subarray(64, 66);
+
+    var cipher = winzipCtrCrypt(encKey, payload);
+    var mac = hmacSha1(authKey, cipher).subarray(0, 10);
+
+    var body = new Uint8Array(16 + 2 + cipher.length + 10);
+    body.set(salt, 0); body.set(pv, 16); body.set(cipher, 18);
+    body.set(mac, 18 + cipher.length);
+
+    var nameBytes = utf8(entry.name);
+    var crc = crc32(raw);            // AE-2 stores 0 in the header, CRC kept for reference
+    var compSize = body.length;
+    var uncompSize = raw.length;
+
+    // AES extra field (0x9901)
+    var extra = new Uint8Array(11);
+    var edv = new DataView(extra.buffer);
+    edv.setUint16(0, 0x9901, true);  // header id
+    edv.setUint16(2, 7, true);       // data size
+    edv.setUint16(4, 2, true);       // AE-2
+    extra[6] = 0x41; extra[7] = 0x45; // "AE"
+    extra[8] = 3;                    // AES-256
+    edv.setUint16(9, method, true);  // real compression method
+
+    var lh = new Uint8Array(30 + nameBytes.length + extra.length);
+    var ldv = new DataView(lh.buffer);
+    ldv.setUint32(0, 0x04034b50, true);
+    ldv.setUint16(4, 51, true);        // version needed 5.1
+    ldv.setUint16(6, 0x0801, true);    // bit0 encrypted + bit11 UTF-8 names
+    ldv.setUint16(8, 99, true);        // method 99 = AES
+    ldv.setUint16(10, now.time, true);
+    ldv.setUint16(12, now.date, true);
+    ldv.setUint32(14, 0, true);        // CRC = 0 for AE-2
+    ldv.setUint32(18, compSize, true);
+    ldv.setUint32(22, uncompSize, true);
+    ldv.setUint16(26, nameBytes.length, true);
+    ldv.setUint16(28, extra.length, true);
+    lh.set(nameBytes, 30);
+    lh.set(extra, 30 + nameBytes.length);
+
+    chunks.push(lh, body);
+
+    var ch = new Uint8Array(46 + nameBytes.length + extra.length);
+    var cdv = new DataView(ch.buffer);
+    cdv.setUint32(0, 0x02014b50, true);
+    cdv.setUint16(4, 51, true);        // version made by
+    cdv.setUint16(6, 51, true);        // version needed
+    cdv.setUint16(8, 0x0801, true);
+    cdv.setUint16(10, 99, true);
+    cdv.setUint16(12, now.time, true);
+    cdv.setUint16(14, now.date, true);
+    cdv.setUint32(16, 0, true);        // CRC = 0 for AE-2
+    cdv.setUint32(20, compSize, true);
+    cdv.setUint32(24, uncompSize, true);
+    cdv.setUint16(28, nameBytes.length, true);
+    cdv.setUint16(30, extra.length, true);
+    cdv.setUint16(32, 0, true);        // comment length
+    cdv.setUint16(34, 0, true);        // disk number
+    cdv.setUint16(36, 0, true);        // internal attrs
+    cdv.setUint32(38, 0, true);        // external attrs
+    cdv.setUint32(42, offset, true);
+    ch.set(nameBytes, 46);
+    ch.set(extra, 46 + nameBytes.length);
+    central.push(ch);
+
+    offset += lh.length + body.length;
+    entry._crc = crc;
+  });
+
+  var cdSize = central.reduce(function(s,c){ return s + c.length; }, 0);
+  var eocd = new Uint8Array(22);
+  var v = new DataView(eocd.buffer);
+  v.setUint32(0, 0x06054b50, true);
+  v.setUint16(8, entries.length, true);
+  v.setUint16(10, entries.length, true);
+  v.setUint32(12, cdSize, true);
+  v.setUint32(16, offset, true);
+
+  var total = chunks.reduce(function(s,c){ return s + c.length; }, 0) + cdSize + 22;
+  var out = new Uint8Array(total), p = 0;
+  chunks.forEach(function(c){ out.set(c, p); p += c.length; });
+  central.forEach(function(c){ out.set(c, p); p += c.length; });
+  out.set(eocd, p);
+  return out;
+}
+
+
+/*==== FILE: src/core/ui.js ====*/
+
+
+/* ============================================================================
+   SHARED UI HELPERS — used by several modules, so they live in core rather
+   than inside whichever module happened to need them first.
+   ============================================================================ */
+function showTextModal(title, content, filename){
+  var host = $("modalHost");
+  host.innerHTML = '<div class="modal-back"><div class="modal">'+
+    '<div class="mh"><b>'+esc(title)+'</b><button class="btn small quiet" data-act="close-modal">Close</button></div>'+
+    '<div class="mb"><p class="note">Use <b>Download</b>, or select the text and copy it into a <b>'+
+      esc((filename||"file").split(".").pop())+'</b> file.</p>'+
+    '<textarea id="modalText" spellcheck="false"></textarea>'+
+    '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+
+      '<button class="btn small primary" data-act="dl-file" data-name="'+esc(filename||"export.txt")+'">&#8595; Download</button>'+
+      '<button class="btn small" data-act="select-all">&#128203; Select all</button>'+
+    '</div></div></div></div>';
+  $("modalText").value = content;
+  host.querySelector('[data-act="close-modal"]').addEventListener("click", function(){ host.innerHTML=""; });
+  host.querySelector('[data-act="select-all"]').addEventListener("click", function(){
+    var t=$("modalText"); t.focus(); t.select();
+  });
+  host.querySelector('[data-act="dl-file"]').addEventListener("click", function(){
+    downloadText($("modalText").value, filename||"export.txt");
+  });
+  host.querySelector(".modal-back").addEventListener("click", function(e){
+    if(e.target===this) host.innerHTML="";
+  });
+}
+function downloadText(text, filename){
+  try{
+    var blob = new Blob([text], {type:"text/plain;charset=utf-8"});
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  } catch(e){ alert("Download not available here — select the text and copy it instead."); }
+}
+
+
+/*==== FILE: src/modules/builder/builder.js ====*/
+
+
+/* ============================================================================
+   CSV → PNL
+   ============================================================================ */
+function parseCSV(text){
+  var rows = [], row = [], field = "", inQ = false;
+  text = String(text||"").replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+  // Work out the separator from the header line only. Assuming several at once
+  // splits values that legitimately contain one — "KSML;VGML" is a single cell.
+  var head = text.split("\n")[0] || "";
+  var counts = { ",": (head.match(/,/g)||[]).length,
+                 ";": (head.match(/;/g)||[]).length,
+                 "\t":(head.match(/\t/g)||[]).length };
+  var sep = ",";
+  if(counts[";"] > counts[sep]) sep = ";";
+  if(counts["\t"] > counts[sep]) sep = "\t";
+  for(var i=0;i<text.length;i++){
+    var c = text[i];
+    if(inQ){
+      if(c === '"'){ if(text[i+1] === '"'){ field += '"'; i++; } else inQ = false; }
+      else field += c;
+    } else if(c === '"') inQ = true;
+    else if(c === sep){ row.push(field); field = ""; }
+    else if(c === '\n'){ row.push(field); rows.push(row); row = []; field = ""; }
+    else field += c;
+  }
+  if(field !== "" || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(function(r){ return r.some(function(x){ return String(x).trim() !== ""; }); });
+}
+
+/* Header names we recognise, in the order we try them. */
+var CSV_FIELDS = {
+  surname: ["surname","last name","lastname","family name","apelido","nome proprio"],
+  given:   ["given","given name","first name","firstname","name","nome"],
+  title:   ["title","titulo","título"],
+  dest:    ["dest","destination","to","arrival","destino"],
+  cls:     ["class","cls","cabin","classe","rbd"],
+  pnr:     ["pnr","record locator","locator","booking","reserva"],
+  ssr:     ["ssr","service","special","ssrs","servico","serviço"],
+  seat:    ["seat","lugar","assento"]
+};
+function mapColumns(header){
+  var map = {};
+  header.forEach(function(h, i){
+    var k = String(h||"").trim().toLowerCase();
+    Object.keys(CSV_FIELDS).forEach(function(f){
+      if(map[f] === undefined && CSV_FIELDS[f].indexOf(k) >= 0) map[f] = i;
+    });
+  });
+  return map;
+}
+
+/* Build a standards-compliant PNL from rows. */
+function buildPNL(rows, opts){
+  var problems = [];
+  if(!rows.length) return { error:"The CSV has no rows." };
+  var header = rows[0], map = mapColumns(header), body = rows.slice(1);
+  if(map.surname === undefined || map.given === undefined)
+    return { error:"Could not find a surname and a given-name column. Expected headers such as: surname, given name, destination, class." };
+
+  var pax = [];
+  body.forEach(function(r, i){
+    var sur = String(r[map.surname]||"").trim().toUpperCase().replace(/[^A-Z0-9 '\-]/g,"");
+    var giv = String(r[map.given]||"").trim().toUpperCase().replace(/[^A-Z0-9 '\-]/g,"");
+    if(!sur || !giv){ problems.push("Row " + (i+2) + " skipped: missing surname or given name."); return; }
+    var title = map.title !== undefined ? String(r[map.title]||"").trim().toUpperCase().replace(/[^A-Z]/g,"") : "";
+    var dest  = map.dest  !== undefined ? String(r[map.dest]||"").trim().toUpperCase().replace(/[^A-Z]/g,"") : (opts.defaultDest||"");
+    var cls   = map.cls   !== undefined ? String(r[map.cls]||"").trim().toUpperCase().replace(/[^A-Z]/g,"")  : (opts.defaultCls||"Y");
+    if(dest.length !== 3){ problems.push("Row " + (i+2) + ": destination \"" + dest + "\" is not a 3-letter airport code."); return; }
+    if(cls.length !== 1){ cls = (opts.defaultCls||"Y"); }
+    pax.push({
+      surname: sur.replace(/\s+/g," "),
+      given: (giv + title).replace(/\s+/g,""),
+      dest: dest, cls: cls,
+      pnr: map.pnr !== undefined ? String(r[map.pnr]||"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"") : "",
+      ssr: map.ssr !== undefined ? String(r[map.ssr]||"").trim().toUpperCase() : "",
+      seat: map.seat !== undefined ? String(r[map.seat]||"").trim().toUpperCase() : ""
+    });
+  });
+  if(!pax.length) return { error:"No usable rows.", problems: problems };
+
+  // group by destination + class, alphabetise by surname (RP 1707b §2.9)
+  var groups = {};
+  pax.forEach(function(p){
+    var k = p.dest + "|" + p.cls;
+    (groups[k] = groups[k] || []).push(p);
+  });
+
+  var out = [];
+  out.push("PNL");
+  out.push(opts.flight);
+
+  var groupSeq = 0;
+  Object.keys(groups).sort().forEach(function(k){
+    var members = groups[k].slice().sort(function(a,b){
+      return a.surname.localeCompare(b.surname) || a.given.localeCompare(b.given);
+    });
+    var d = k.split("|");
+    out.push("-" + d[0] + String(members.length).replace(/^(\d)$/,"0$1") + d[1]);
+
+    // passengers sharing a PNR become a party/group
+    var byPnr = {};
+    members.forEach(function(p){ if(p.pnr) (byPnr[p.pnr] = byPnr[p.pnr] || []).push(p); });
+    var gid = {};
+    Object.keys(byPnr).forEach(function(pnr){
+      if(byPnr[pnr].length > 1){
+        var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        var id = groupSeq < 26 ? letters[groupSeq]
+               : letters[Math.floor(groupSeq/26)-1] + letters[groupSeq%26];
+        gid[pnr] = id + byPnr[pnr].length;
+        groupSeq++;
+      }
+    });
+
+    var pnrDone = {};
+    members.forEach(function(p){
+      var line = "1" + p.surname.replace(/\s/g,"") + "/" + p.given;
+      if(p.pnr && gid[p.pnr]) line += "-" + gid[p.pnr];
+      var els = [];
+      if(p.pnr && !pnrDone[p.pnr]){ els.push(".L/" + p.pnr); pnrDone[p.pnr] = 1; }
+      if(p.seat) els.push(".R/RQST HK1 " + p.seat);
+      (p.ssr ? p.ssr.split(/[;,\s]+/) : []).filter(Boolean).forEach(function(code){
+        if(/^[A-Z]{4}$/.test(code)) els.push(".R/" + code + " HK1");
+        else problems.push(p.surname + "/" + p.given + ": \"" + code + "\" is not a 4-letter SSR code — left out.");
+      });
+      // keep every line within the 64-character limit (RP 1707b Sec.2 Note 3)
+      var first = line;
+      var spill = [];
+      els.forEach(function(e){
+        if((first + " " + e).length <= 64) first += " " + e;
+        else spill.push(e);
+      });
+      out.push(first);
+      spill.forEach(function(e){ out.push(e); });
+    });
+  });
+
+  out.push("ENDPNL");
+  return { text: out.join("\n"), problems: problems, count: pax.length };
+}
+
+
+
+/*==== FILE: src/modules/builder/ui.js ====*/
+
+
+/* ============================================================================
+   PNL BUILDER — UI
+   ============================================================================ */
+/* ---------- PNL builder ---------- */
+var CSV_EXAMPLE = [
+  "Surname,Given name,Title,Destination,Class,PNR,SSR,Seat",
+  "Silva,Joao,MR,OPO,Y,ABC123,VGML,12A",
+  "Silva,Maria,MRS,OPO,Y,ABC123,,12B",
+  "Almeida,Rui,MR,OPO,Y,,WCHR,",
+  "Braga,Luisa,MS,FAO,Y,XYZ789,,",
+  "Costa,Ana,MRS,FAO,J,,KSML,"
+].join("\n");
+
+function runBuild(){
+  var flight = ($("bFlight").value||"").trim().toUpperCase() + "/" +
+               ($("bDate").value||"").trim().toUpperCase() + " " +
+               ($("bOrigin").value||"").trim().toUpperCase() +
+               " PART" + (parseInt($("bPart").value,10) || 1);
+  var r = buildPNL(parseCSV($("csvInput").value), {
+    flight: flight, defaultCls: ($("bCls").value||"Y").trim().toUpperCase()
+  });
+  var box = $("buildOut");
+  if(r.error){
+    box.innerHTML = '<div class="warnbox" style="border-color:var(--red);background:var(--red-soft);color:var(--red)">'+
+      esc(r.error)+'</div>';
+    return;
+  }
+  // the generator is judged by our own validator — no special treatment
+  var findings = validate(r.text).filter(function(f){ return !f.dup; });
+  var errs = findings.filter(function(f){ return f.sev==="err"; });
+
+  box.innerHTML =
+    '<div class="sec mt">Generated message</div>'+
+    '<div class="telex" style="max-height:360px;overflow:auto">'+
+      r.text.split("\n").map(function(l,i){
+        return '<div class="row"><span class="n">'+(i+1)+'</span><span class="t">'+esc(l)+'</span></div>';
+      }).join("")+
+    '</div>'+
+    '<div class="controls">'+
+      '<button class="btn primary" id="btnBuildCopy">&#8595; Export message</button>'+
+      '<button class="btn" id="btnBuildToValidator">Open in validator</button>'+
+      '<span class="note">'+r.count+' passengers · '+r.text.split("\\n").length+' lines</span>'+
+    '</div>'+
+    '<div style="margin-top:6px" class="'+(errs.length?'warnbox':'')+'">'+
+      (findings.length===0
+        ? '<span style="color:var(--green);font-family:var(--mono);font-size:12px">&#10003; CHECKED AGAINST THE VALIDATOR — NO FINDINGS</span>'
+        : '<b>'+findings.length+' finding'+(findings.length!==1?"s":"")+' from the validator:</b>'+
+          '<ul style="margin:8px 0 0 18px;padding:0;font-size:12.5px;line-height:1.7">'+
+          findings.slice(0,10).map(function(f){
+            return '<li>L'+f.line+': '+esc(f.msg.replace(/<[^>]+>/g,""))+'</li>'; }).join("")+'</ul>')+
+    '</div>'+
+    (r.problems.length ?
+      '<div class="warnbox"><b>Rows needing attention</b><ul style="margin:8px 0 0 18px;padding:0;font-size:12.5px;line-height:1.7">'+
+      r.problems.map(function(p){ return '<li>'+esc(p)+'</li>'; }).join("")+'</ul></div>' : '');
+
+  document.getElementById("btnBuildCopy").addEventListener("click", function(){
+    showTextModal("Generated PNL", r.text, "pnl.txt");
+  });
+  document.getElementById("btnBuildToValidator").addEventListener("click", function(){
+    $("msgInput").value = r.text;
+    openTool("msgcheck");
+    runValidation(false);
+  });
+}
+$("btnBuild").addEventListener("click", runBuild);
+$("btnCsvExample").addEventListener("click", function(){ $("csvInput").value = CSV_EXAMPLE; runBuild(); });
+$("btnBuildClear").addEventListener("click", function(){ $("csvInput").value = ""; $("buildOut").innerHTML = ""; });
+$("csvFile").addEventListener("change", function(e){
+  var f = e.target.files[0]; if(!f) return;
+  var rd = new FileReader();
+  rd.onload = function(ev){ $("csvInput").value = ev.target.result; runBuild(); };
+  rd.readAsText(f);
+  e.target.value = "";
+});
+
+</script>
+</body>
+</html>

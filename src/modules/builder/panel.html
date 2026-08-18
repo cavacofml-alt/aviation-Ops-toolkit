@@ -1,0 +1,29 @@
+        <!-- ============ PNL BUILDER ============ -->
+        <section id="panel-builder" class="panel-hidden">
+          <div class="sec">Passenger list (CSV)</div>
+          <textarea id="csvInput" spellcheck="false"
+            placeholder="Paste a CSV, or use Load file. First row must be the header.&#10;&#10;Surname,Given name,Title,Destination,Class,PNR,SSR,Seat&#10;Silva,Joao,MR,OPO,Y,ABC123,VGML,12A"
+            style="width:100%;min-height:170px;resize:vertical;padding:14px;border-radius:var(--radius-sm);
+                   border:1px solid var(--line);background:var(--term-bg);color:var(--term-fg);
+                   font-family:var(--mono);font-size:12.5px;line-height:1.6;outline:none"></textarea>
+          <div class="controls">
+            <label class="btn" style="display:inline-flex;align-items:center">
+              &#128206; Load file<input type="file" id="csvFile" accept=".csv,.txt,.tsv" style="display:none">
+            </label>
+            <button class="btn quiet" id="btnCsvExample">Load example</button>
+          </div>
+
+          <div class="sec mt">Flight</div>
+          <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:14px">
+            <div class="field"><label for="bFlight">Flight</label><input id="bFlight" placeholder="TP1234" value="TP1234"></div>
+            <div class="field"><label for="bDate">Date</label><input id="bDate" placeholder="16JUL" value="16JUL"></div>
+            <div class="field"><label for="bOrigin">Origin</label><input id="bOrigin" placeholder="LIS" value="LIS"></div>
+            <div class="field"><label for="bPart">Part</label><input id="bPart" type="number" min="1" value="1"></div>
+            <div class="field"><label for="bCls">Default class</label><input id="bCls" placeholder="Y" value="Y"></div>
+          </div>
+          <div class="controls" style="margin-top:0">
+            <button class="btn primary" id="btnBuild">Build PNL</button>
+            <button class="btn quiet" id="btnBuildClear">Clear</button>
+          </div>
+          <div id="buildOut"></div>
+        </section>

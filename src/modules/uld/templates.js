@@ -1,0 +1,253 @@
+var TPL_B787 = {
+  name:"Boeing 787-900", refStation:"1199.2",
+  ulds:[
+    {id:"u1",uldType:"LD3",    iata:"AKE",maxWeight:1587,tare:63},
+    {id:"u2",uldType:"LD3",    iata:"PKC",maxWeight:1587,tare:37},
+    {id:"u3",uldType:"LD7/P88",iata:"PAG",maxWeight:4626,tare:85},
+    {id:"u4",uldType:"LD7/P96",iata:"PMC",maxWeight:5102,tare:91},
+    {id:"u5",uldType:"LD8",    iata:"PLA",maxWeight:3174,tare:90},
+  ],
+  compartments:[
+  {id:"c1",number:1,uldGroups:[
+    {id:"g1",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
+      {name:"11L",fwd:"340.95",aft:"401.5",left:"0",  right:"108",index:"-0.00414",maxWeight:"1587"},
+      {name:"11R",fwd:"340.95",aft:"401.5",left:"108",right:"0",  index:"-0.00414",maxWeight:"1587"},
+      {name:"12L",fwd:"402.35",aft:"462.9",left:"0",  right:"108",index:"-0.00383",maxWeight:"1587"},
+      {name:"12R",fwd:"402.35",aft:"462.9",left:"108",right:"0",  index:"-0.00383",maxWeight:"1587"},
+      {name:"13L",fwd:"463.65",aft:"524.2",left:"0",  right:"108",index:"-0.00353",maxWeight:"1587"},
+      {name:"13R",fwd:"463.65",aft:"524.2",left:"108",right:"0",  index:"-0.00353",maxWeight:"1587"},
+      {name:"14L",fwd:"525.05",aft:"585.6",left:"0",  right:"108",index:"-0.00322",maxWeight:"1587"},
+      {name:"14R",fwd:"525.05",aft:"585.6",left:"108",right:"0",  index:"-0.00322",maxWeight:"1587"},
+      {name:"15L",fwd:"586.35",aft:"646.9",left:"0",  right:"108",index:"-0.00291",maxWeight:"1587"},
+      {name:"15R",fwd:"586.35",aft:"646.9",left:"108",right:"0",  index:"-0.00291",maxWeight:"1587"},
+    ]},
+    {id:"g2",uldType:"LD7/P88",iata:"PAG",label:"LD7/P88 — PAG",positions:[
+      {name:"11P",fwd:"341",  aft:"437",  left:"0",right:"0",index:"-0.00407",maxWeight:"4626"},
+      {name:"12P",fwd:"441",  aft:"537.1",left:"0",right:"0",index:"-0.00357",maxWeight:"4626"},
+      {name:"13P",fwd:"568.6",aft:"664.6",left:"0",right:"0",index:"-0.00289",maxWeight:"4626"},
+    ]},
+    {id:"g3",uldType:"LD7/P96",iata:"PMC",label:"LD7/P96 — PMC",positions:[
+      {name:"11P",fwd:"341",  aft:"437",  left:"0",right:"0",index:"-0.00405",maxWeight:"5102"},
+      {name:"12P",fwd:"441",  aft:"537.1",left:"0",right:"0",index:"-0.00355",maxWeight:"5102"},
+      {name:"13P",fwd:"568.6",aft:"664.5",left:"0",right:"0",index:"-0.00291",maxWeight:"5102"},
+    ]},
+    {id:"g4",uldType:"LD8",iata:"PLA",label:"LD8 — PLA",positions:[
+      {name:"11",fwd:"340.95",aft:"401.5", left:"0",right:"0",index:"-0.00414",maxWeight:"3174"},
+      {name:"12",fwd:"402.35",aft:"462.6", left:"0",right:"0",index:"-0.00383",maxWeight:"3174"},
+      {name:"13",fwd:"463.65",aft:"524.2", left:"0",right:"0",index:"-0.00352",maxWeight:"3174"},
+      {name:"14",fwd:"525.05",aft:"586.35",left:"0",right:"0",index:"-0.00322",maxWeight:"3174"},
+      {name:"15",fwd:"586.35",aft:"646.9", left:"0",right:"0",index:"-0.00291",maxWeight:"3174"},
+    ]}
+  ]},
+  {id:"c2",number:2,uldGroups:[
+    {id:"g5",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
+      {name:"21L",fwd:"647.75",aft:"709.05",left:"0",  right:"108",index:"-0.00261",maxWeight:"1587"},
+      {name:"21R",fwd:"647.75",aft:"709.05",left:"108",right:"0",  index:"-0.00261",maxWeight:"1587"},
+      {name:"22L",fwd:"709.05",aft:"769.6", left:"0",  right:"108",index:"-0.0023", maxWeight:"1587"},
+      {name:"22R",fwd:"709.05",aft:"769.6", left:"108",right:"0",  index:"-0.0023", maxWeight:"1587"},
+      {name:"23L",fwd:"770.45",aft:"831",   left:"0",  right:"108",index:"-0.00199",maxWeight:"1587"},
+      {name:"23R",fwd:"770.45",aft:"831",   left:"108",right:"0",  index:"-0.00199",maxWeight:"1587"},
+      {name:"24L",fwd:"832.6", aft:"893.3", left:"0",  right:"108",index:"-0.00168",maxWeight:"1587"},
+      {name:"24R",fwd:"832.6", aft:"893.3", left:"108",right:"0",  index:"-0.00168",maxWeight:"1587"},
+      {name:"25L",fwd:"894.95",aft:"955.45",left:"0",  right:"108",index:"-0.00137",maxWeight:"1587"},
+      {name:"25R",fwd:"894.95",aft:"955.45",left:"108",right:"0",  index:"-0.00137",maxWeight:"1587"},
+    ]},
+    {id:"g6",uldType:"LD7/P88",iata:"PAG",label:"LD7/P88 — PAG",positions:[
+      {name:"21P",fwd:"673.4",aft:"761.6",left:"0",right:"0",index:"-0.00241",maxWeight:"4626"},
+      {name:"22P",fwd:"770.4",aft:"858.6",left:"0",right:"0",index:"-0.00192",maxWeight:"4626"},
+      {name:"23P",fwd:"867.3",aft:"955.4",left:"0",right:"0",index:"-0.00144",maxWeight:"5102"},
+    ]},
+    {id:"g7",uldType:"LD7/P96",iata:"PMC",label:"LD7/P96 — PMC",positions:[
+      {name:"21P",fwd:"665.5",aft:"761.6",left:"0",right:"0",index:"-0.00242",maxWeight:"5102"},
+      {name:"22P",fwd:"762.5",aft:"858.6",left:"0",right:"0",index:"-0.00194",maxWeight:"5102"},
+      {name:"23P",fwd:"859.4",aft:"955.4",left:"0",right:"0",index:"-0.00145",maxWeight:"5669"},
+    ]},
+    {id:"g8",uldType:"LD8",iata:"PLA",label:"LD8 — PLA",positions:[
+      {name:"21",fwd:"647.75",aft:"708.3", left:"0",right:"0",index:"-0.0026", maxWeight:"3174"},
+      {name:"22",fwd:"709.05",aft:"770.45",left:"0",right:"0",index:"-0.0023", maxWeight:"3174"},
+      {name:"23",fwd:"770.45",aft:"831",   left:"0",right:"0",index:"-0.00199",maxWeight:"3174"},
+      {name:"24",fwd:"832.6", aft:"893.3", left:"0",right:"0",index:"-0.00168",maxWeight:"3174"},
+      {name:"25",fwd:"894.95",aft:"955.45",left:"0",right:"0",index:"-0.00137",maxWeight:"3174"},
+    ]}
+  ]},
+  {id:"c3",number:3,uldGroups:[
+    {id:"g9",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
+      {name:"31L",fwd:"1417.2",aft:"1477.8",left:"0",  right:"108",index:"0.00124",maxWeight:"1587"},
+      {name:"31R",fwd:"1417.2",aft:"1477.8",left:"108",right:"0",  index:"0.00124",maxWeight:"1587"},
+      {name:"32L",fwd:"1479.4",aft:"1540.1",left:"0",  right:"108",index:"0.00155",maxWeight:"1587"},
+      {name:"32R",fwd:"1479.4",aft:"1540.1",left:"108",right:"0",  index:"0.00155",maxWeight:"1587"},
+      {name:"33L",fwd:"1541.7",aft:"1602.3",left:"0",  right:"108",index:"0.00186",maxWeight:"1587"},
+      {name:"33R",fwd:"1541.7",aft:"1602.3",left:"108",right:"0",  index:"0.00186",maxWeight:"1587"},
+      {name:"34L",fwd:"1603.1",aft:"1663.7",left:"0",  right:"108",index:"0.00217",maxWeight:"1587"},
+      {name:"34R",fwd:"1603.2",aft:"1663.7",left:"108",right:"0",  index:"0.00217",maxWeight:"1587"},
+    ]},
+    {id:"g10",uldType:"LD7/P88",iata:"PAG",label:"LD7/P88 — PAG",positions:[
+      {name:"31P",fwd:"1417.3",aft:"1505.4",left:"0",right:"0",index:"0.00133",maxWeight:"5102"},
+      {name:"32P",fwd:"1514.2",aft:"1602.3",left:"0",right:"0",index:"0.00179",maxWeight:"4626"},
+      {name:"33P",fwd:"1611.2",aft:"1699.3",left:"0",right:"0",index:"0.00228",maxWeight:"4626"},
+    ]},
+    {id:"g11",uldType:"LD7/P96",iata:"PMC",label:"LD7/P96 — PMC",positions:[
+      {name:"31P",fwd:"1417.3",aft:"1513.4",left:"0",right:"0",index:"0.00133",maxWeight:"5669"},
+      {name:"32P",fwd:"1514.2",aft:"1610.3",left:"0",right:"0",index:"0.00182",maxWeight:"5102"},
+      {name:"33P",fwd:"1611.2",aft:"1707.3",left:"0",right:"0",index:"0.0023", maxWeight:"5102"},
+    ]},
+    {id:"g12",uldType:"LD8",iata:"PLA",label:"LD8 — PLA",positions:[
+      {name:"31",fwd:"1417.3",aft:"1477.8",left:"0",right:"0",index:"0.00124",maxWeight:"3174"},
+      {name:"32",fwd:"1479.6",aft:"1540.1",left:"0",right:"0",index:"0.00155",maxWeight:"3174"},
+      {name:"33",fwd:"1541.8",aft:"1602.3",left:"0",right:"0",index:"0.00186",maxWeight:"3174"},
+      {name:"34",fwd:"1603.2",aft:"1663.7",left:"0",right:"0",index:"0.00217",maxWeight:"3174"},
+    ]}
+  ]},
+  {id:"c4",number:4,uldGroups:[
+    {id:"g13",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
+      {name:"41L",fwd:"1664.4",aft:"1725",  left:"0",  right:"108",index:"0.00248",maxWeight:"1587"},
+      {name:"41R",fwd:"1664.4",aft:"1725",  left:"108",right:"0",  index:"0.00248",maxWeight:"1587"},
+      {name:"42L",fwd:"1725.8",aft:"1786.4",left:"0",  right:"108",index:"0.00278",maxWeight:"1587"},
+      {name:"42R",fwd:"1725.8",aft:"1786.4",left:"108",right:"0",  index:"0.00278",maxWeight:"1587"},
+      {name:"43L",fwd:"1787.1",aft:"1847.7",left:"0",  right:"108",index:"0.00309",maxWeight:"1587"},
+      {name:"43R",fwd:"1787.2",aft:"1847.7",left:"108",right:"0",  index:"0.00309",maxWeight:"1587"},
+      {name:"44L",fwd:"1848.5",aft:"1909.1",left:"0",  right:"108",index:"0.0034", maxWeight:"1587"},
+      {name:"44R",fwd:"1848.5",aft:"1909.1",left:"108",right:"0",  index:"0.0034", maxWeight:"1587"},
+    ]},
+    {id:"g14",uldType:"LD7/P88",iata:"PAG",label:"LD7/P88 — PAG",positions:[
+      {name:"41P",fwd:"1720.8",aft:"1809", left:"0",right:"0",index:"0.00282",maxWeight:"4626"},
+      {name:"42P",fwd:"1820.9",aft:"1909.1",left:"0",right:"0",index:"0.00332",maxWeight:"4626"},
+    ]},
+    {id:"g15",uldType:"LD7/P96",iata:"PMC",label:"LD7/P96 — PMC",positions:[
+      {name:"41P",fwd:"1712.8",aft:"1809", left:"0",right:"0",index:"0.00281",maxWeight:"5102"},
+      {name:"42P",fwd:"1812.9",aft:"1909.1",left:"0",right:"0",index:"0.00331",maxWeight:"5102"},
+    ]},
+    {id:"g16",uldType:"LD8",iata:"PLA",label:"LD8 — PLA",positions:[
+      {name:"41",fwd:"1664.4",aft:"1725",  left:"0",right:"0",index:"0.00248",maxWeight:"3174"},
+      {name:"42",fwd:"1725.9",aft:"1787.2",left:"0",right:"0",index:"0.00278",maxWeight:"3174"},
+      {name:"43",fwd:"1787.1",aft:"1847.7",left:"0",right:"0",index:"0.00309",maxWeight:"3174"},
+      {name:"44",fwd:"1848.5",aft:"1909.1",left:"0",right:"0",index:"0.0034", maxWeight:"3174"},
+    ]}
+  ]}
+  ]
+};
+
+
+var TPL_A330 = {
+  name:"Airbus A330-300", refStation:"36.35",
+  ulds:[
+    {id:"u1",uldType:"LD3",    iata:"AKE",maxWeight:1587,tare:63},
+    {id:"u2",uldType:"LD3",    iata:"PKC",maxWeight:1587,tare:37},
+    {id:"u3",uldType:"LD7/P88",iata:"PAG",maxWeight:4626,tare:85},
+    {id:"u4",uldType:"LD7/P96",iata:"PMC",maxWeight:5103,tare:91},
+    {id:"u5",uldType:"LD8",    iata:"PLA",maxWeight:3174,tare:90},
+  ],
+  compartments:[
+    {id:"c1",number:1,uldGroups:[
+      {id:"g1",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
+        {name:"11L",fwd:"14.662",aft:"16.202",left:"0",  right:"2.82",index:"-0.00837",maxWeight:"1587"},
+        {name:"11R",fwd:"14.662",aft:"16.202",left:"2.82",right:"0", index:"-0.00837",maxWeight:"1587"},
+        {name:"12L",fwd:"16.448",aft:"17.988",left:"0",  right:"2.82",index:"-0.00765",maxWeight:"1587"},
+        {name:"12R",fwd:"16.448",aft:"17.988",left:"2.82",right:"0", index:"-0.00765",maxWeight:"1587"},
+        {name:"13L",fwd:"18.03", aft:"19.571",left:"0",  right:"2.82",index:"-0.00702",maxWeight:"1587"},
+        {name:"13R",fwd:"18.03", aft:"19.571",left:"2.82",right:"0", index:"-0.00702",maxWeight:"1587"},
+      ]},
+      {id:"g2",uldType:"LD7/P88",iata:"PAG",label:"LD7/P88 — PAG",positions:[
+        {name:"11P",fwd:"14.662",aft:"16.904",left:"0",right:"0",index:"-0.00823",maxWeight:"4626"},
+        {name:"12P",fwd:"17.329",aft:"19.571",left:"0",right:"0",index:"-0.00716",maxWeight:"4626"},
+      ]},
+      {id:"g3",uldType:"LD7/P96",iata:"PMC",label:"LD7/P96 — PMC",positions:[
+        {name:"11P",fwd:"14.662",aft:"17.107",left:"0",right:"0",index:"-0.00819",maxWeight:"5103"},
+        {name:"12P",fwd:"17.126",aft:"19.571",left:"0",right:"0",index:"-0.0072", maxWeight:"5103"},
+      ]},
+      {id:"g4",uldType:"LD8",iata:"PLA",label:"LD8 — PLA",positions:[
+        {name:"11",fwd:"14.662",aft:"16.202",left:"0",right:"0",index:"-0.00837",maxWeight:"3174"},
+        {name:"12",fwd:"16.448",aft:"17.988",left:"0",right:"0",index:"-0.00765",maxWeight:"3174"},
+        {name:"13",fwd:"18.03", aft:"19.571",left:"0",right:"0",index:"-0.00702",maxWeight:"3174"},
+      ]},
+    ]},
+    {id:"c2",number:2,uldGroups:[
+      {id:"g5",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
+        {name:"21L",fwd:"19.793",aft:"21.333",left:"0",   right:"2.82",index:"-0.00631",maxWeight:"1587"},
+        {name:"21R",fwd:"19.793",aft:"21.333",left:"2.82",right:"0",   index:"-0.00631",maxWeight:"1587"},
+        {name:"22L",fwd:"21.375",aft:"22.916",left:"0",   right:"2.82",index:"-0.00568",maxWeight:"1587"},
+        {name:"22R",fwd:"21.375",aft:"22.916",left:"2.82",right:"0",   index:"-0.00568",maxWeight:"1587"},
+        {name:"23L",fwd:"22.958",aft:"24.498",left:"0",   right:"2.82",index:"-0.00505",maxWeight:"1587"},
+        {name:"23R",fwd:"22.958",aft:"24.498",left:"2.82",right:"0",   index:"-0.00505",maxWeight:"1587"},
+        {name:"24L",fwd:"24.721",aft:"26.261",left:"0",   right:"2.82",index:"-0.00434",maxWeight:"1587"},
+        {name:"24R",fwd:"24.721",aft:"26.261",left:"2.82",right:"0",   index:"-0.00434",maxWeight:"1587"},
+        {name:"25L",fwd:"26.303",aft:"27.843",left:"0",   right:"2.82",index:"-0.00371",maxWeight:"1587"},
+        {name:"25R",fwd:"26.303",aft:"27.843",left:"2.82",right:"0",   index:"-0.00371",maxWeight:"1587"},
+        {name:"26L",fwd:"27.885",aft:"29.425",left:"0",   right:"2.82",index:"-0.00308",maxWeight:"1587"},
+        {name:"26R",fwd:"27.885",aft:"29.425",left:"2.82",right:"0",   index:"-0.00308",maxWeight:"1587"},
+      ]},
+      {id:"g6",uldType:"LD7/P88",iata:"PAG",label:"LD7/P88 — PAG",positions:[
+        {name:"21P",fwd:"19.793",aft:"22.034",left:"0",right:"0",index:"-0.00617",maxWeight:"4626"},
+        {name:"22P",fwd:"22.256",aft:"24.498",left:"0",right:"0",index:"-0.00519",maxWeight:"4626"},
+        {name:"23P",fwd:"24.72", aft:"26.962",left:"0",right:"0",index:"-0.0042", maxWeight:"4626"},
+        {name:"24P",fwd:"27.184",aft:"29.426",left:"0",right:"0",index:"-0.00322",maxWeight:"4626"},
+      ]},
+      {id:"g7",uldType:"LD7/P96",iata:"PMC",label:"LD7/P96 — PMC",positions:[
+        {name:"21P",fwd:"19.59", aft:"22.034",left:"0",right:"0",index:"-0.00622",maxWeight:"5103"},
+        {name:"22P",fwd:"22.053",aft:"24.498",left:"0",right:"0",index:"-0.00523",maxWeight:"5103"},
+        {name:"23P",fwd:"24.517",aft:"26.962",left:"0",right:"0",index:"-0.00424",maxWeight:"5103"},
+        {name:"24P",fwd:"26.98", aft:"29.426",left:"0",right:"0",index:"-0.00326",maxWeight:"5103"},
+      ]},
+      {id:"g8",uldType:"LD8",iata:"PLA",label:"LD8 — PLA",positions:[
+        {name:"21",fwd:"19.793",aft:"21.333",left:"0",right:"0",index:"-0.00631",maxWeight:"3174"},
+        {name:"22",fwd:"21.375",aft:"22.916",left:"0",right:"0",index:"-0.00568",maxWeight:"3174"},
+        {name:"23",fwd:"22.958",aft:"24.498",left:"0",right:"0",index:"-0.00505",maxWeight:"3174"},
+        {name:"24",fwd:"24.721",aft:"26.261",left:"0",right:"0",index:"-0.00434",maxWeight:"3174"},
+        {name:"25",fwd:"26.303",aft:"27.843",left:"0",right:"0",index:"-0.00371",maxWeight:"3174"},
+        {name:"26",fwd:"27.885",aft:"29.425",left:"0",right:"0",index:"-0.00308",maxWeight:"3174"},
+      ]},
+    ]},
+    {id:"c3",number:3,uldGroups:[
+      {id:"g9",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
+        {name:"31L",fwd:"40.118",aft:"41.659",left:"0",   right:"2.82",index:"0.00182",maxWeight:"1587"},
+        {name:"31R",fwd:"40.118",aft:"41.659",left:"2.82",right:"0",   index:"0.00182",maxWeight:"1587"},
+        {name:"32L",fwd:"42.582",aft:"44.122",left:"0",   right:"2.82",index:"0.0028", maxWeight:"1587"},
+        {name:"32R",fwd:"42.582",aft:"44.122",left:"2.82",right:"0",   index:"0.0028", maxWeight:"1587"},
+        {name:"33L",fwd:"44.165",aft:"45.705",left:"0",   right:"2.82",index:"0.00343",maxWeight:"1587"},
+        {name:"33R",fwd:"44.165",aft:"45.705",left:"2.82",right:"0",   index:"0.00343",maxWeight:"1587"},
+        {name:"34L",fwd:"45.747",aft:"47.287",left:"0",   right:"2.82",index:"0.00407",maxWeight:"1587"},
+        {name:"34R",fwd:"45.747",aft:"47.287",left:"2.82",right:"0",   index:"0.00407",maxWeight:"1587"},
+      ]},
+      {id:"g10",uldType:"LD7/P88",iata:"PAG",label:"LD7/P88 — PAG",positions:[
+        {name:"31P",fwd:"40.118",aft:"42.36", left:"0",right:"0",index:"0.00196",maxWeight:"4626"},
+        {name:"32P",fwd:"42.582",aft:"44.824",left:"0",right:"0",index:"0.00294",maxWeight:"4626"},
+        {name:"33P",fwd:"44.843",aft:"47.085",left:"0",right:"0",index:"0.00385",maxWeight:"4626"},
+      ]},
+      {id:"g11",uldType:"LD7/P96",iata:"PMC",label:"LD7/P96 — PMC",positions:[
+        {name:"31P",fwd:"40.118",aft:"42.563",left:"0",right:"0",index:"0.002",  maxWeight:"5103"},
+        {name:"32P",fwd:"42.582",aft:"45.027",left:"0",right:"0",index:"0.00298",maxWeight:"5103"},
+        {name:"33P",fwd:"44.843",aft:"47.287",left:"0",right:"0",index:"0.00389",maxWeight:"5103"},
+      ]},
+      {id:"g12",uldType:"LD8",iata:"PLA",label:"LD8 — PLA",positions:[
+        {name:"31",fwd:"40.118",aft:"41.659",left:"0",right:"0",index:"0.00182",maxWeight:"3174"},
+        {name:"32",fwd:"42.582",aft:"44.122",left:"0",right:"0",index:"0.0028", maxWeight:"3174"},
+        {name:"33",fwd:"44.165",aft:"45.705",left:"0",right:"0",index:"0.00343",maxWeight:"3174"},
+        {name:"34",fwd:"45.747",aft:"47.287",left:"0",right:"0",index:"0.00407",maxWeight:"3174"},
+      ]},
+    ]},
+    {id:"c4",number:4,uldGroups:[
+      {id:"g13",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
+        {name:"41L",fwd:"47.306",aft:"48.847",left:"0",   right:"2.82",index:"0.00469",maxWeight:"1587"},
+        {name:"41R",fwd:"47.306",aft:"48.847",left:"2.82",right:"0",   index:"0.00469",maxWeight:"1587"},
+        {name:"42L",fwd:"48.889",aft:"50.429",left:"0",   right:"2.82",index:"0.00532",maxWeight:"1587"},
+        {name:"42R",fwd:"48.889",aft:"50.429",left:"2.82",right:"0",   index:"0.00532",maxWeight:"1587"},
+        {name:"43L",fwd:"50.471",aft:"52.011",left:"0",   right:"2.82",index:"0.00596",maxWeight:"1587"},
+        {name:"43R",fwd:"50.471",aft:"52.011",left:"2.82",right:"0",   index:"0.00596",maxWeight:"1587"},
+      ]},
+      {id:"g14",uldType:"LD7/P88",iata:"PAG",label:"LD7/P88 — PAG",positions:[
+        {name:"41P",fwd:"47.306",aft:"49.548",left:"0",right:"0",index:"0.00483",maxWeight:"4626"},
+        {name:"42P",fwd:"49.567",aft:"51.809",left:"0",right:"0",index:"0.00574",maxWeight:"4626"},
+      ]},
+      {id:"g15",uldType:"LD7/P96",iata:"PMC",label:"LD7/P96 — PMC",positions:[
+        {name:"41P",fwd:"47.103",aft:"49.548",left:"0",right:"0",index:"0.00479",maxWeight:"5103"},
+        {name:"42P",fwd:"49.567",aft:"52.012",left:"0",right:"0",index:"0.00578",maxWeight:"5103"},
+      ]},
+      {id:"g16",uldType:"LD8",iata:"PLA",label:"LD8 — PLA",positions:[
+        {name:"41",fwd:"47.306",aft:"48.847",left:"0",right:"0",index:"0.00469",maxWeight:"3174"},
+        {name:"42",fwd:"48.889",aft:"50.429",left:"0",right:"0",index:"0.00532",maxWeight:"3174"},
+        {name:"43",fwd:"50.471",aft:"52.011",left:"0",right:"0",index:"0.00596",maxWeight:"3174"},
+      ]},
+    ]},
+  ]
+};
+var TEMPLATES = [TPL_B787, TPL_A330];
