@@ -1,0 +1,104 @@
+{
+  "name": "Aviation Ops Toolkit",
+  "version": "1.2.27",
+  "author": "Lu\u00eds Cavaco",
+  "output": "dist/aviation-ops-toolkit.html",
+  "_how_to_add_a_module": [
+    "Create src/modules/<id>/ with panel.html (markup), <id>.js (logic) and",
+    "ui.js (wiring). Add an entry below and one to TOOLS in shell-core.js.",
+    "Move an entry to \"disabled\" to switch a module off; the files stay put."
+  ],
+  "_variants": [
+    "python3 build.py                 the full suite",
+    "python3 build.py --only recon    just that module, as its own file",
+    "A variant pulls in the module's own files plus whatever it declares in",
+    "\"needs\" \u2014 so a standalone builder still gets the validation engine."
+  ],
+  "_order": [
+    "1. shell.core   \u2014 $() , TOOLS, navigation, theme",
+    "2. core         \u2014 engine, examples, storage, crypto, shared UI helpers",
+    "3. module logic \u2014 in listed order",
+    "4. module ui    \u2014 binds DOM ids, so it comes last"
+  ],
+  "shell": {
+    "html": "src/shell/index.html",
+    "core": "src/shell/shell-core.js"
+  },
+  "core": [
+    "src/core/engine.js",
+    "src/modules/msgcheck/examples.js",
+    "src/core/store.js",
+    "src/core/crypto.js",
+    "src/core/ui.js"
+  ],
+  "modules": [
+    {
+      "id": "msgcheck",
+      "name": "Message Validator",
+      "panel": "src/modules/msgcheck/panel.html",
+      "logic": [],
+      "ui": [
+        "src/modules/msgcheck/ui.js",
+        "src/modules/msgcheck/report.js"
+      ]
+    },
+    {
+      "id": "securezip",
+      "name": "Secure ZIP",
+      "panel": "src/modules/securezip/panel.html",
+      "logic": [],
+      "ui": [
+        "src/modules/securezip/securezip.js"
+      ]
+    },
+    {
+      "id": "uld",
+      "name": "ULD Layout Generator",
+      "panel": "src/modules/uld/panel.html",
+      "logic": [
+        "src/modules/uld/templates.js",
+        "src/modules/uld/visuals.js"
+      ],
+      "ui": [
+        "src/modules/uld/uld.js"
+      ]
+    },
+    {
+      "id": "ahm",
+      "name": "AHM Audit",
+      "panel": "src/modules/ahm/panel.html",
+      "logic": [],
+      "ui": [
+        "src/modules/ahm/ui.js"
+      ]
+    }
+  ],
+  "disabled": [
+    {
+      "id": "recon",
+      "name": "PNL/ADL Reconcile",
+      "panel": "src/modules/recon/panel.html",
+      "logic": [
+        "src/modules/recon/recon.js"
+      ],
+      "ui": [
+        "src/modules/recon/ui.js"
+      ],
+      "tools_entry": "{ id:\"recon\", name:\"PNL/ADL Reconcile\", badge:\"RECONCILE\", code:\"REC\", accent:\"green\", wide:true, blurb:\"Paste a PNL and its ADLs and see the resulting passenger list \u2014 what each message added, removed or changed, and how the totals compare with the telex.\", sources:\"PSCRM RP 1708 \u00a73.2 (ADL sections) \u00b7 RP 1707b \u00a72.9\" }",
+      "note": "under test on its own; build with --only recon"
+    },
+    {
+      "id": "builder",
+      "name": "PNL Builder",
+      "panel": "src/modules/builder/panel.html",
+      "logic": [
+        "src/modules/builder/builder.js"
+      ],
+      "ui": [
+        "src/modules/builder/ui.js"
+      ],
+      "tools_entry": "{ id:\"builder\", name:\"PNL Builder\", badge:\"CSV \u2192 PNL\", code:\"GEN\", accent:\"cyan\", blurb:\"Turn a passenger list in CSV into a PNL: alphabetised, grouped by destination and class, within the 64-character limit \u2014 then checked by the validator.\", sources:\"PSCRM RP 1708 \u00b7 RP 1707b \u00a72.5/\u00a72.9\" }",
+      "note": "under test on its own; build with --only builder"
+    }
+  ]
+}

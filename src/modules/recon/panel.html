@@ -1,0 +1,20 @@
+        <!-- ============ RECONCILE ============ -->
+        <section id="panel-recon" class="panel-hidden">
+          <div class="msg-split">
+          <div class="msg-col">
+          <div class="sec">PNL and its ADLs</div>
+          <textarea id="reconInput" spellcheck="false"
+            placeholder="Paste the PNL first, then every ADL for the same flight, in the order they arrived.&#10;Parts can be pasted one after another.&#10;&#10;PNL&#10;TP1234/16JUL LIS PART1&#10;…&#10;ENDPNL&#10;ADL&#10;TP1234/16JUL LIS PART1&#10;…&#10;ENDADL"></textarea>
+          <div class="controls">
+            <button class="btn primary" id="btnRecon">Reconcile</button>
+            <button class="btn" id="btnReconExample">Load example</button>
+            <button class="btn quiet" id="btnReconClear">Clear</button>
+            <span class="note" style="flex-basis:100%">Applies each ADL section in order — DEL removes, ADD adds, CHG restates a passenger's elements — and shows the resulting list.</span>
+          </div>
+          </div>
+          <div class="msg-col">
+          <div class="sec">Result</div>
+          <div id="reconOut"><div class="empty">Paste a PNL and its ADLs, then select <b>Reconcile</b>.</div></div>
+          </div>
+          </div>
+        </section>

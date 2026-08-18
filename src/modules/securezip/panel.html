@@ -1,0 +1,57 @@
+        <!-- ============ SECURE ZIP ============ -->
+        <section id="panel-securezip" class="panel-hidden">
+          <div class="sec">Files to protect</div>
+          <div id="szList"></div>
+
+          <div class="controls" style="margin-top:0">
+            <label class="btn" style="display:inline-flex;align-items:center">
+              &#128206; Attach files<input type="file" id="szFiles" multiple style="display:none">
+            </label>
+            <span class="note" id="szTotal"></span>
+          </div>
+
+          <div class="card" style="margin-top:16px">
+            <h3>Or paste text</h3>
+            <textarea id="szText" spellcheck="false" placeholder="Paste a message, a list, any text…"
+              style="width:100%;min-height:120px;resize:vertical;padding:12px;border-radius:var(--radius-sm);
+                     border:1px solid var(--line);background:var(--input-bg);color:var(--text);
+                     font-family:var(--mono);font-size:12.5px;line-height:1.6;outline:none"></textarea>
+            <div style="display:flex;gap:10px;align-items:end;margin-top:10px;flex-wrap:wrap">
+              <div class="field" style="min-width:200px">
+                <label for="szTextName">File name</label>
+                <input id="szTextName" type="text" placeholder="message.txt">
+              </div>
+              <button class="btn small" id="btnSzAddText">+ Add as file</button>
+            </div>
+          </div>
+
+          <div class="sec mt">Password</div>
+          <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:16px">
+            <div class="field" style="min-width:210px">
+              <label for="szPwMode">Style</label>
+              <select id="szPwMode">
+                <option value="strong">Random — letters, digits, symbols</option>
+                <option value="alnum">Random — letters and digits only</option>
+                <option value="words">Words — easier to read aloud</option>
+              </select>
+            </div>
+            <div class="field" id="szPwLenWrap" style="min-width:120px">
+              <label for="szPwLen">Length</label>
+              <select id="szPwLen">
+                <option>16</option><option selected>24</option><option>32</option><option>40</option>
+              </select>
+            </div>
+            <button class="btn primary" id="btnSzMake" disabled>&#128274; Encrypt &amp; download</button>
+            <button class="btn quiet" id="btnSzClear">Clear</button>
+            <span class="note" id="szStatus"></span>
+          </div>
+
+          <div id="szResult" hidden></div>
+
+          <div class="note" style="margin-top:16px;line-height:1.8;border-top:1px solid var(--line);padding-top:14px">
+            <b style="color:var(--text)">How it works.</b> Files are encrypted with <b>AES-256</b> in your browser
+            (WinZip AE-2: PBKDF2-HMAC-SHA1, 1000 iterations, 16-byte salt, HMAC-SHA1 authentication).
+            Nothing is uploaded and the password is never stored — if you lose it, the archive cannot be recovered.
+            The weak legacy ZipCrypto cipher is not used.
+          </div>
+        </section>

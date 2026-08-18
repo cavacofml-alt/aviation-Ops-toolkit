@@ -1,0 +1,36 @@
+        <!-- ============ AHM AUDIT ============ -->
+        <section id="panel-ahm" class="panel-hidden">
+          <div class="ahm-wrap">
+            <div class="ahm-card">
+              <div class="ahm-brand">
+                <span class="ahm-mark">&#9992;</span>
+                <div>
+                  <b>AHM Audit</b>
+                  <i>Opens the application on the local network</i>
+                </div>
+              </div>
+
+              <div class="field" style="margin-bottom:12px">
+                <label for="ahmUrl">Application address</label>
+                <input type="text" id="ahmUrl" list="ahmPorts" spellcheck="false"
+                  value="http://192.168.2.15:5000/Account/Login">
+                <datalist id="ahmPorts">
+                  <option value="http://192.168.2.15:5000/Account/Login"></option>
+                  <option value="http://localhost:5000/Account/Login"></option>
+                </datalist>
+              </div>
+              <a class="btn primary" id="btnAhmLogin" target="_blank" rel="noopener"
+                 style="width:100%;display:block;text-align:center;text-decoration:none">Open AHM Audit</a>
+              <div class="note" id="ahmStatus" style="margin-top:10px;min-height:18px"></div>
+
+              <div class="ahm-note">
+                <b>How this works.</b> AHM Audit keeps its own sign-in page, so this is a shortcut, not a
+                login: asking for a user and password here would only mean typing them twice. Nothing is
+                stored or sent by this toolkit.
+                <br><br>
+                <b>Not opening?</b> <code>ERR_CONNECTION_REFUSED</code> comes from the browser: nothing is
+                listening at that address — the application is not running, or the port is different.
+              </div>
+            </div>
+          </div>
+        </section>

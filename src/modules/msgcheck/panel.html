@@ -1,0 +1,43 @@
+        <!-- ============ MESSAGE VALIDATOR ============ -->
+        <section id="panel-msgcheck">
+          <div class="msg-split">
+          <div class="msg-col">
+          <div class="sec">Input message</div>
+          <textarea id="msgInput" spellcheck="false" autocapitalize="off" autocomplete="off"
+            placeholder="Paste the message here (PNL, ADL, PSM, MVT, SSM…) — the type is detected automatically.&#10;&#10;LISKPTP AMSKLKL&#10;.FAORMTP 151420&#10;PNL&#10;TP1234/16JUL LIS PART1&#10;…"></textarea>
+          <div class="controls">
+            <button class="btn primary" id="btnValidate">Validate message</button>
+            <span style="display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden">
+              <button class="btn" id="btnExample" style="border:0;border-radius:0">Load example</button>
+              <select id="msgtype" title="Example message type — applies to both example buttons"
+                style="padding:9px 8px;border:0;border-left:1px solid var(--line);background:var(--panel2);color:var(--cyan);font-family:var(--mono);font-size:12px;font-weight:600">
+                <option>PNL</option><option>PSM</option><option>PTM</option><option>PFS</option>
+                <option>PIL</option><option>SOM</option><option>SPM</option><option>FTL</option>
+                <option>PRL</option><option>ETL</option><option>MVT</option><option>DIV</option>
+                <option>SSM</option><option>ASM</option>
+              </select>
+            </span>
+            <button class="btn" id="btnExampleBad">Example with errors</button>
+            <button class="btn quiet" id="btnClear">Clear</button>
+            <span class="note" style="flex-basis:100%">The selector chooses which message type both example buttons load. Validation always detects the type on its own.
+              After the first run, edit directly in the telex printout — click any highlighted character to select the finding, then type the fix in place. The list refreshes as you type.</span>
+          </div>
+
+          </div>
+          <div class="msg-col">
+          <div class="sec" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span>Telex printout — errors flagged character by character</span>
+            <button class="btn small quiet" id="btnTelexCopy" style="margin-left:auto" hidden>&#128203; Copy message</button>
+          </div>
+          <div class="telex" id="telex"><div class="empty">The validated message is printed here, with a 64-column ruler and underlines on the exact problem characters.</div></div>
+
+          </div>
+          </div>
+          <div class="sec mt" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span>Validation result</span>
+            <span id="liveFlag" class="liveflag"></span>
+            <button class="btn small" id="btnReport" style="margin-left:auto" hidden>&#128203; Export report</button>
+          </div>
+          <div id="summary" hidden></div>
+          <div id="findings"><div class="empty">Paste a message and select <b>Validate</b>. Findings appear here with the manual rule behind each one.</div></div>
+        </section>

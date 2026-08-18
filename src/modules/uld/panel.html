@@ -1,0 +1,38 @@
+        <!-- ============ ULD LAYOUT GENERATOR ============ -->
+        <section id="panel-uld" class="panel-hidden">
+          <div class="uld-head">
+            <div class="uld-head-title">
+              <span class="plane">&#9992;</span>
+              <span>
+                <b>ULD Layout Generator</b>
+                <i>Define ULDs · groups per compartment → valid combinations, no overlaps</i>
+                <span id="uldTplBadge" style="display:none;margin-left:10px;padding:2px 8px;
+                  border-radius:2px;border:1px solid var(--cyan);color:var(--cyan);
+                  font-size:11px;font-weight:600;letter-spacing:.03em;font-style:normal"></span>
+              </span>
+            </div>
+          <div class="uld-toolbar">
+            <div class="ref">
+              <label for="refStation">REF. STATION</label>
+              <input type="number" id="refStation" placeholder="1199.2">
+            </div>
+            <button class="btn small tpl" id="btnPresets">&#9992; Templates</button>
+            <button class="btn small" id="btnSaveCfg" title="Download the whole setup as a file you can share or keep">&#8595; Export file</button>
+            <label class="btn small" style="display:inline-flex;align-items:center">
+              &#8593; Import<input type="file" id="fileCfg" accept=".json" style="display:none">
+            </label>
+            <button class="btn small danger" id="btnReset" title="Remove all ULDs and compartments">&#8635; Reset</button>
+            <span class="savestate" id="uldSaveState" title="Your work is kept in this browser automatically. Use Export file to take it elsewhere."></span>
+          </div>
+          </div>
+          <div class="restorebar" id="uldRestore" hidden></div>
+          <div class="stepbar" id="stepbar"></div>
+          <div id="uldStep"></div>
+          <div style="display:flex;justify-content:space-between;margin-top:20px;gap:10px;flex-wrap:wrap">
+            <button class="btn" id="btnPrev">&#8592; Back</button>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="note" id="nextHint"></span>
+              <button class="btn primary" id="btnNext">Next &#8594;</button>
+            </div>
+          </div>
+        </section>
