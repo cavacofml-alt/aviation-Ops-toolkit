@@ -485,17 +485,12 @@ function generateLayouts(){
   var allLayouts = {};
   U.compartments.forEach(function(comp){
     var zoneOptionsMap = {};
-    // Two groups can offer numerically identical options at the same zone
-    // (e.g. AKE and PKC at a position where both are rated the same) — those
-    // are interchangeable and collapse to a single option instead of being
-    // enumerated as separate, look-alike layouts. Only a genuinely different
-    // number (a position where one ULD type is derated relative to another)
-    // creates a real second option, still mutually exclusive at that zone.
-    var zoneSignatures = {};
-    function addOption(base, sig, opt){
-      if(!zoneSignatures[base]) zoneSignatures[base] = {};
-      if(zoneSignatures[base][sig]) return;
-      zoneSignatures[base][sig] = true;
+    // Every group stays its own option at every zone, even where two ULD
+    // types (e.g. AKE and PKC) happen to certify the same weight — so a
+    // "full AKE" and a "full PKC" compartment layout are always both
+    // offered as distinct, explicit choices, never silently collapsed just
+    // because their numbers matched in that particular compartment.
+    function addOption(base, opt){
       if(!zoneOptionsMap[base]) zoneOptionsMap[base]=[];
       zoneOptionsMap[base].push(opt);
     }
@@ -521,28 +516,24 @@ function generateLayouts(){
           var base = posL.name.slice(0,-1);
           var posR = Rs.filter(function(p){ return p.name===base+"R"; })[0];
           if(!posR) return;
-          var mw = Math.min(parseFloat(posL.maxWeight||0), parseFloat(posR.maxWeight||0));
-          var sig = posL.fwd+"|"+posL.aft+"|"+posL.index+"|"+mw;
           // the IATA code rides in the label so two combos that differ only by
           // which ULD filled a zone never collapse into one at the final
           // name-based dedup below — that would silently discard whichever
           // alternative sorted second, even though both are valid layouts.
-          addOption(base, sig, { label:"2"+group.uldType.replace("/","")+"("+uldDef.iata+")",
+          addOption(base, { label:"2"+group.uldType.replace("/","")+"("+uldDef.iata+")",
             positions:[ Object.assign({},posL,{uld:uldDef.iata,uldType:group.uldType}),
                         Object.assign({},posR,{uld:uldDef.iata,uldType:group.uldType}) ] });
         });
       } else if(cfgType==="P"){
         group.positions.forEach(function(pos){
           var base = pos.name.replace(/P$/,"");
-          var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
-          addOption(base, sig, { label:"1"+group.uldType.replace("/","")+"("+uldDef.iata+")",
+          addOption(base, { label:"1"+group.uldType.replace("/","")+"("+uldDef.iata+")",
             positions:[ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ] });
         });
       } else {
         group.positions.forEach(function(pos){
           var base = pos.name;
-          var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
-          addOption(base, sig, { label:"1"+group.uldType+"("+uldDef.iata+")",
+          addOption(base, { label:"1"+group.uldType+"("+uldDef.iata+")",
             positions:[ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ] });
         });
       }

@@ -1,6 +1,6 @@
 {
   "name": "Aviation Ops Toolkit",
-  "version": "1.2.41",
+  "version": "1.2.44",
   "author": "Lu\u00eds Cavaco",
   "output": "dist/aviation-ops-toolkit.html",
   "_how_to_add_a_module": [

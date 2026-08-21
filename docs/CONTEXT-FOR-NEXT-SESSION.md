@@ -147,15 +147,15 @@ warning, because it trains people to ignore the tool. When in doubt, warn.
   versa) whenever their weights happened to collide, and could leak in a
   weight tier that belonged to a different IATA code entirely. Fixed by
   matching `uldType` **and** `iata` to the group's own declaration.
-- **Numerically-identical options at the same bay collapse to one; genuinely
-  different ones do not.** When AKE and PKC (or PLA and ALF) certify the same
-  fwd/aft/index/max-weight at a position, they're interchangeable — only one
-  option is generated there, so the layout list doesn't show two look-alike
-  entries that differ only by IATA code. Where they diverge (e.g. PKC derated
-  below AKE at some B777-200 bays), both remain as distinct, separately
-  selectable options. This dedup is generic (keyed on the option's own
-  numbers, not on any AKE/PKC-specific logic), so it applies to any pair of
-  ULD types sharing a bay footprint.
+- **Every ULD group stays its own option, even where two types certify the
+  same weight.** AKE and PKC are both "LD3" and match exactly at some B777-200
+  bays, but they're never merged into one generated option — the layout list
+  always offers a "full AKE" and a "full PKC" compartment layout as distinct,
+  explicit choices, each combining normally with the compartment's other ULD
+  types. An earlier version collapsed numerically-identical options into one
+  to avoid look-alike duplicates; reverted on request — since PKC diverges
+  from AKE at some bays anyway (comp3/comp4), keeping them always separate is
+  the more predictable rule than one that behaves differently per compartment.
 - **Layout names now carry the IATA code** (e.g. `2LD3(AKE)` vs `2LD3(PKC)`),
   not just the type. Without it, two full-compartment combinations that used
   different containers at a divergent bay could still produce the exact same
