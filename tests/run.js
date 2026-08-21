@@ -178,7 +178,7 @@ if(inBuild("uld")) try {
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
        ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues};");
-  ok("both aircraft templates load", ULD.TEMPLATES.length === 2);
+  ok("all aircraft templates load", ULD.TEMPLATES.length === 3);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
   ok("a zero index asks for confirmation", ULD.validateIndex("0", "19", "36") !== null);
@@ -201,6 +201,17 @@ if(inBuild("uld")) try {
   ULD.generateLayouts();
   const b787counts = ULD.U.compartments.map(c => (ULD.U.layouts[c.number] || []).length);
   ok("B787 template generates layouts in every compartment", b787counts.every(n => n > 0), b787counts.join("/"));
+
+  const g = ULD.TEMPLATES[2];
+  ULD.U.ulds = JSON.parse(JSON.stringify(g.ulds));
+  ULD.U.compartments = JSON.parse(JSON.stringify(g.compartments));
+  ULD.U.refStation = g.refStation;
+  ok("B777 template has all 4 compartments", ULD.U.compartments.length === 4,
+     ULD.U.compartments.length + '/4');
+  ok("B777 raises no blocking index issue", ULD.indexIssues().hard.length === 0);
+  ULD.generateLayouts();
+  const b777counts = ULD.U.compartments.map(c => (ULD.U.layouts[c.number] || []).length);
+  ok("B777 template generates layouts in every compartment", b777counts.every(n => n > 0), b777counts.join("/"));
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {
