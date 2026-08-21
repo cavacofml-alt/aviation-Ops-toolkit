@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.48</title>
+<title>Aviation Ops Toolkit v1.2.52</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.48</span>
+      <span class="build-ver">v1.2.52</span>
     </header>
 
     <main>
@@ -705,7 +705,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.48 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.52 — Luís Cavaco
     Built 2026-08-21 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -3886,7 +3886,7 @@ function aircraftPanel(activeNum, mode){
   }).join("");
 
   var svg = '<div style="overflow-x:auto">'+
-    '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:760px;height:auto;display:block;margin:0 auto" role="img" '+
+    '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:1100px;height:auto;display:block;margin:0 auto" role="img" '+
       'aria-label="Side view of the aircraft with cargo compartments">'+
       '<path d="M '+noseX+' 100 C '+(noseX+30)+' 62, '+(noseX+120)+' 48, 300 48 '+
         'L 690 48 C 760 48, 800 56, '+(tailX-40)+' 66 L '+tailX+' 74 L '+(tailX-26)+' 92 '+
@@ -3992,6 +3992,32 @@ function zoneGrid(comp){
         'border:1px solid var(--'+l[0]+')"></i>'+esc(l[1])+'</span>';
     }).join("")+'</div>'+
   '</div>';
+}
+
+/* ============================================================================
+   DECKS — a visual strip of one generated layout's positions, ordered by
+   station. Each tile carries a native tooltip listing every ULD certified
+   for that exact slot (an L/R pair can be certified for more than one type
+   when two ULDs match the same fwd/aft/index/max-weight there).
+   ============================================================================ */
+function deckStrip(layout){
+  var positions = layout.positions.slice().sort(function(a,b){
+    return parseFloat(a.fwd)-parseFloat(b.fwd) || (a.name<b.name?-1:1);
+  });
+  var tiles = positions.map(function(p){
+    var col = groupColor(p.uldType);
+    var cert = (p.certified||[{type:p.uldType,iata:p.uld}])
+      .map(function(c){ return c.type+" ("+c.iata+")"; }).join(", ");
+    return '<div title="Certified ULDs: '+esc(cert)+'" style="min-width:56px;height:40px;'+
+      'border:1.5px solid '+col+';background:color-mix(in srgb, '+col+' 14%, transparent);'+
+      'border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;'+
+      'font-family:var(--mono);cursor:default">'+
+      '<span style="font-size:11px;color:'+col+'">'+esc(p.name)+'</span>'+
+      '<span style="font-size:9px;color:var(--dim)">'+esc(p.uld)+'</span>'+
+    '</div>';
+  }).join("");
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;padding:10px;background:var(--panel2);'+
+    'border-radius:3px;margin-top:8px">'+tiles+'</div>';
 }
 
 /* ============================================================================
@@ -5227,12 +5253,15 @@ function renderLayoutList(compNum, list){
     var key = compNum + ":" + i;
     var open = !!U.openLayout[key];
     var body = open
-      ? '<div style="overflow-x:auto;margin-top:8px"><table><thead><tr><th>Position</th><th>ULD</th>'+
-        '<th>FWD</th><th>AFT</th><th>Index</th><th>Max wt</th></tr></thead><tbody>'+
+      ? deckStrip(l) +
+        '<div style="overflow-x:auto;margin-top:8px"><table><thead><tr><th>Position</th><th>ULD</th>'+
+        '<th>Certified ULDs</th><th>FWD</th><th>AFT</th><th>Index</th><th>Max wt</th></tr></thead><tbody>'+
         l.positions.map(function(p){
           var pc = groupColor(p.uldType);
+          var cert = (p.certified||[{type:p.uldType,iata:p.uld}]).map(function(c){ return esc(c.type+" ("+c.iata+")"); }).join(", ");
           return '<tr><td>'+esc(p.name)+'</td><td><span class="badge" style="color:'+pc+'">'+
             esc(p.uld)+'</span> <span style="color:'+pc+'">'+esc(p.uldType)+'</span></td>'+
+            '<td style="color:var(--dim)">'+cert+'</td>'+
             '<td>'+esc(p.fwd)+'</td><td>'+esc(p.aft)+'</td><td>'+esc(p.index)+'</td><td>'+esc(p.maxWeight)+'</td></tr>';
         }).join("")+'</tbody></table></div>'
       : '';
@@ -5260,12 +5289,26 @@ function generateLayouts(){
   var allLayouts = {};
   U.compartments.forEach(function(comp){
     var zoneOptionsMap = {};
-    // Every group stays its own option at every zone, even where two ULD
-    // types (e.g. AKE and PKC) happen to certify the same weight — so a
-    // "full AKE" and a "full PKC" compartment layout are always both
-    // offered as distinct, explicit choices, never silently collapsed just
-    // because their numbers matched in that particular compartment.
-    function addOption(base, opt){
+    // Two groups can certify the same fwd/aft/index/max-weight at a zone
+    // (e.g. AKE and PKC, when they haven't been derated relative to each
+    // other) — that's one physical slot with more than one certified ULD,
+    // not two competing layouts. The first group to reach a signature keeps
+    // the slot; every later group with the identical signature is folded
+    // into its "certified" list instead of creating a look-alike duplicate.
+    // A genuinely different signature (PKC derated below AKE) still creates
+    // a separate, mutually exclusive option, as before.
+    var zoneBySignature = {};
+    function addOption(base, sig, positions, label){
+      if(!zoneBySignature[base]) zoneBySignature[base] = {};
+      var existing = zoneBySignature[base][sig];
+      if(existing){
+        existing.certified.push({type:positions[0].uldType, iata:positions[0].uld});
+        return;
+      }
+      var certified = [{type:positions[0].uldType, iata:positions[0].uld}];
+      positions.forEach(function(p){ p.certified = certified; });
+      var opt = { label:label, positions:positions, certified:certified };
+      zoneBySignature[base][sig] = opt;
       if(!zoneOptionsMap[base]) zoneOptionsMap[base]=[];
       zoneOptionsMap[base].push(opt);
     }
@@ -5291,25 +5334,28 @@ function generateLayouts(){
           var base = posL.name.slice(0,-1);
           var posR = Rs.filter(function(p){ return p.name===base+"R"; })[0];
           if(!posR) return;
-          // the IATA code rides in the label so two combos that differ only by
-          // which ULD filled a zone never collapse into one at the final
-          // name-based dedup below — that would silently discard whichever
-          // alternative sorted second, even though both are valid layouts.
-          addOption(base, { label:"2"+group.uldType.replace("/","")+"("+uldDef.iata+")",
-            positions:[ Object.assign({},posL,{uld:uldDef.iata,uldType:group.uldType}),
-                        Object.assign({},posR,{uld:uldDef.iata,uldType:group.uldType}) ] });
+          var mw = Math.min(parseFloat(posL.maxWeight||0), parseFloat(posR.maxWeight||0));
+          var sig = posL.fwd+"|"+posL.aft+"|"+posL.index+"|"+mw;
+          addOption(base, sig,
+            [ Object.assign({},posL,{uld:uldDef.iata,uldType:group.uldType}),
+              Object.assign({},posR,{uld:uldDef.iata,uldType:group.uldType}) ],
+            "2"+group.uldType.replace("/","")+"("+uldDef.iata+")");
         });
       } else if(cfgType==="P"){
         group.positions.forEach(function(pos){
           var base = pos.name.replace(/P$/,"");
-          addOption(base, { label:"1"+group.uldType.replace("/","")+"("+uldDef.iata+")",
-            positions:[ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ] });
+          var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
+          addOption(base, sig,
+            [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ],
+            "1"+group.uldType.replace("/","")+"("+uldDef.iata+")");
         });
       } else {
         group.positions.forEach(function(pos){
           var base = pos.name;
-          addOption(base, { label:"1"+group.uldType+"("+uldDef.iata+")",
-            positions:[ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ] });
+          var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
+          addOption(base, sig,
+            [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ],
+            "1"+group.uldType+"("+uldDef.iata+")");
         });
       }
     });
