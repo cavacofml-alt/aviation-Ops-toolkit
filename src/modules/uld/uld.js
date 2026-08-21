@@ -674,6 +674,14 @@ function crossCompartmentWarnings(){
 }
 
 /* ---------- CSV ---------- */
+// Header and field order match the operator's own upload template exactly
+// (YU_B777200ER_TEMPLATE.xlsx) — including ";" joining multiple certified
+// ULDs inside one quoted "Certified ULDs" field, confirmed against that
+// template's own row (12R: "LD3,LA;L3P/PKC,LA"). Do not swap the join
+// character for anything else without re-checking that template: the
+// upload system reads this format directly, and Excel merely mis-previewing
+// a raw .csv under certain regional settings is a separate, cosmetic
+// concern that must never drive a change to the actual exported format.
 var CSV_HEADER = "Compartment,Layout,Position,Certified ULDs,FWD Stat,AFT Stat,Left,Right,Index,Volume,Max weight";
 function csvLines(compNum){
   var lines = [];
@@ -682,11 +690,8 @@ function csvLines(compNum){
       // A merged slot (e.g. AKE and PKC certified identically there) lists
       // every certified type, not just whichever one the layout happened to
       // be built with — pos.uldType/pos.uld alone would silently drop PKC.
-      // "|" joins them: Excel's regional list separator (e.g. ";" in
-      // Portuguese locales, where "," is the decimal point) would otherwise
-      // get misread as a real column break even inside the quoted field.
       var certTypes = (pos.certified||[{type:pos.uldType}])
-        .map(function(c){ return c.type+",LA"; }).join(" | ");
+        .map(function(c){ return c.type+",LA"; }).join(";");
       lines.push([compNum, layout.name, pos.name, '"'+certTypes+'"', pos.fwd, pos.aft,
         (pos.left===""||pos.left==null)?0:pos.left,
         (pos.right===""||pos.right==null)?0:pos.right,

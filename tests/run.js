@@ -277,7 +277,7 @@ if(inBuild("uld")) try {
   // list both certified types for that slot, not just the winning one.
   const csvC1 = ULD.csvLines(1).join("\n");
   ok("B777 CSV export: a merged zone lists every certified type",
-     csvC1.includes('"LD3,LA | L3P/PKC,LA"'));
+     csvC1.includes('"LD3,LA;L3P/PKC,LA"'));
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {
