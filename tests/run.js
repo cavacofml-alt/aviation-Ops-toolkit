@@ -272,6 +272,12 @@ if(inBuild("uld")) try {
      csv.includes('"L3P/PKC,LA"'));
   ok("B777 CSV export: AKE positions stay coded as plain LD3",
      csv.includes('"LD3,LA"'));
+
+  // Comp1 merges AKE and PKC into one option per zone — the CSV must still
+  // list both certified types for that slot, not just the winning one.
+  const csvC1 = ULD.csvLines(1).join("\n");
+  ok("B777 CSV export: a merged zone lists every certified type",
+     csvC1.includes('"LD3,LA/L3P/PKC,LA"'));
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {

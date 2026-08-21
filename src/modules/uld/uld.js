@@ -679,7 +679,12 @@ function csvLines(compNum){
   var lines = [];
   (U.layouts[compNum]||[]).forEach(function(layout){
     layout.positions.forEach(function(pos){
-      lines.push([compNum, layout.name, pos.name, '"'+pos.uldType+',LA"', pos.fwd, pos.aft,
+      // A merged slot (e.g. AKE and PKC certified identically there) lists
+      // every certified type, not just whichever one the layout happened to
+      // be built with — pos.uldType/pos.uld alone would silently drop PKC.
+      var certTypes = (pos.certified||[{type:pos.uldType}])
+        .map(function(c){ return c.type+",LA"; }).join("/");
+      lines.push([compNum, layout.name, pos.name, '"'+certTypes+'"', pos.fwd, pos.aft,
         (pos.left===""||pos.left==null)?0:pos.left,
         (pos.right===""||pos.right==null)?0:pos.right,
         pos.index, 0, pos.maxWeight].join(","));
