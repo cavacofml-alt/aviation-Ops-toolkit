@@ -240,6 +240,14 @@ if(inBuild("uld")) try {
   ok("B777 comp1: 11L lists both AKE and PKC as certified (identical there)",
      c1CertTypes.join(",") === "AKE,PKC", c1CertTypes.join(","));
 
+  // The layout name itself must reflect every certified IATA at a merged
+  // zone ("2LD3(AKE/PKC)") — not just whichever group happened to reach it
+  // first, which would misrepresent the layout as AKE-only.
+  const c1MergedName = (ULD.U.layouts[1] || []).find(l => l.name.indexOf("2LD3(AKE/PKC)") >= 0
+    || l.name.indexOf("2LD3(PKC/AKE)") >= 0);
+  ok("B777 comp1: merged-zone layout names list every certified IATA", !!c1MergedName,
+     (ULD.U.layouts[1]||[]).slice(0,3).map(l=>l.name).join(" | "));
+
   // Comp4: PKC is derated below AKE at every position there — a genuinely
   // different number must still surface as its own option somewhere in the
   // generated results, not get silently merged away.
