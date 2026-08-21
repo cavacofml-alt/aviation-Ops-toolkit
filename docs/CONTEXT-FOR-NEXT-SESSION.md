@@ -140,6 +140,27 @@ warning, because it trains people to ignore the tool. When in doubt, warn.
   they collapse to a single slot before the string is walked end to end; the
   P row (size M/A/N/Q) is a separate longitudinal string and is excluded from
   this check entirely.
+- **Two ULDs of the same type (e.g. AKE and PKC, both "LD3") are scoped by
+  IATA code, not just type.** `generateLayouts()` used to pick a candidate
+  from the whole `U.ulds` catalog filtered only by `uldType`, so a group
+  declared as PKC could silently end up offering AKE's identity (or vice
+  versa) whenever their weights happened to collide, and could leak in a
+  weight tier that belonged to a different IATA code entirely. Fixed by
+  matching `uldType` **and** `iata` to the group's own declaration.
+- **Numerically-identical options at the same bay collapse to one; genuinely
+  different ones do not.** When AKE and PKC (or PLA and ALF) certify the same
+  fwd/aft/index/max-weight at a position, they're interchangeable — only one
+  option is generated there, so the layout list doesn't show two look-alike
+  entries that differ only by IATA code. Where they diverge (e.g. PKC derated
+  below AKE at some B777-200 bays), both remain as distinct, separately
+  selectable options. This dedup is generic (keyed on the option's own
+  numbers, not on any AKE/PKC-specific logic), so it applies to any pair of
+  ULD types sharing a bay footprint.
+- **Layout names now carry the IATA code** (e.g. `2LD3(AKE)` vs `2LD3(PKC)`),
+  not just the type. Without it, two full-compartment combinations that used
+  different containers at a divergent bay could still produce the exact same
+  name string and one would vanish at the final `seen[name]` dedup — a real
+  layout silently discarded, not just a cosmetic duplicate.
 
 ### Layout: full-height, full-width per tool
 
