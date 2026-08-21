@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.56</title>
+<title>Aviation Ops Toolkit v1.2.58</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.56</span>
+      <span class="build-ver">v1.2.58</span>
     </header>
 
     <main>
@@ -705,7 +705,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.56 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.58 — Luís Cavaco
     Built 2026-08-21 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -3847,8 +3847,8 @@ function aircraftPanel(activeNum, mode){
   var maxSt = Math.max.apply(null, all.map(function(x){return x[1];}));
   if(!(maxSt > minSt)) return "";
 
-  var W = 900, H = 200, noseX = 40, tailX = 860;
-  var holdY = 128, holdH = 30;
+  var W = 900, H = 240, noseX = 40, tailX = 860;
+  var holdY = 108, holdH = 68;
   var span = maxSt - minSt, pad = span * 0.30;
   var st2x = function(st){ return noseX + ((st - (minSt - pad)) / (span + pad*2)) * (tailX - noseX); };
 
@@ -3872,43 +3872,75 @@ function aircraftPanel(activeNum, mode){
     var nPos = c.uldGroups.reduce(function(s,g){ return s + g.positions.length; }, 0);
     var on = (c.number === activeNum);
     var idx = U.compartments.indexOf(c);
+    var y = on?holdY-3:holdY, h = on?holdH+6:holdH;
+
+    // Active hold: draw each K/L/P zone (11, 12, 13…) as its own tick inside
+    // the box, at its real station width, instead of leaving the enlarged
+    // box empty. The "A/M/N/Q" (P-row) string sits on a separate deck in
+    // real aircraft, so it's left out of this single-row view — the
+    // detailed zone grid below still covers it.
+    var zonesHtml = "";
+    if(on){
+      var zoneBases = {};
+      c.uldGroups.forEach(function(g){ g.positions.forEach(function(p){
+        if(/P$/.test(p.name)) return;
+        var f=parseFloat(p.fwd), a=parseFloat(p.aft);
+        if(isNaN(f)||isNaN(a)) return;
+        var base = p.name.replace(/[LR]$/,"");
+        if(!zoneBases[base]) zoneBases[base] = {f:f,a:a};
+        else { zoneBases[base].f = Math.min(zoneBases[base].f,f); zoneBases[base].a = Math.max(zoneBases[base].a,a); }
+      }); });
+      var zones = Object.keys(zoneBases).map(function(b){
+        return {name:b, f:zoneBases[b].f, a:zoneBases[b].a}; }).sort(function(p,q){ return p.f-q.f; });
+      var zy = y+18, zh = h-26;
+      zonesHtml = zones.map(function(z){
+        var zx1=st2x(z.f), zx2=st2x(z.a), zw=Math.max(2,zx2-zx1);
+        return '<rect x="'+zx1.toFixed(1)+'" y="'+zy+'" width="'+zw.toFixed(1)+'" height="'+zh+'" '+
+            'fill="'+col+'" fill-opacity="0.16" stroke="'+col+'" stroke-width="1" rx="1"></rect>'+
+          '<text x="'+((zx1+zx2)/2).toFixed(1)+'" y="'+(zy+zh/2+4)+'" text-anchor="middle" '+
+            'style="fill:'+col+'" font-size="9" font-family="monospace">'+esc(z.name)+'</text>';
+      }).join("");
+    }
+
     return '<g class="hold" data-act="'+act+'" data-i="'+idx+'" data-n="'+i+'" style="cursor:pointer">'+
       '<title>Compartment '+c.number+' — '+nPos+' positions</title>'+
-      '<rect x="'+x1.toFixed(1)+'" y="'+(on?holdY-3:holdY)+'" width="'+Math.max(2,(x2-x1)).toFixed(1)+'" '+
-        'height="'+(on?holdH+6:holdH)+'" fill="'+col+'" fill-opacity="'+(on?0.34:0.16)+'" '+
+      '<rect x="'+x1.toFixed(1)+'" y="'+y+'" width="'+Math.max(2,(x2-x1)).toFixed(1)+'" '+
+        'height="'+h+'" fill="'+col+'" fill-opacity="'+(on?0.12:0.16)+'" '+
         'stroke="'+col+'" stroke-width="'+(on?2.5:1.3)+'" rx="2"></rect>'+
-      '<text x="'+((x1+x2)/2).toFixed(1)+'" y="'+(holdY+holdH/2+4)+'" text-anchor="middle" '+
-        'style="fill:'+col+'" font-size="'+(on?14:12)+'" font-weight="'+(on?"700":"400")+'" '+
-        'font-family="monospace">'+c.number+'</text>'+
-      '<text x="'+((x1+x2)/2).toFixed(1)+'" y="'+(holdY+holdH+18)+'" text-anchor="middle" '+
-        'style="fill:'+(on?col:"var(--dim)")+'" font-size="9" font-family="monospace">'+nPos+' pos</text>'+
+      (on
+        ? '<text x="'+(x1+6).toFixed(1)+'" y="'+(y+13)+'" style="fill:'+col+'" font-size="12" '+
+          'font-weight="700" font-family="monospace">'+c.number+'</text>'+ zonesHtml
+        : '<text x="'+((x1+x2)/2).toFixed(1)+'" y="'+(y+h/2+4)+'" text-anchor="middle" '+
+          'style="fill:'+col+'" font-size="12" font-family="monospace">'+c.number+'</text>'+
+          '<text x="'+((x1+x2)/2).toFixed(1)+'" y="'+(y+h+16)+'" text-anchor="middle" '+
+          'style="fill:var(--dim)" font-size="9" font-family="monospace">'+nPos+' pos</text>')+
     '</g>';
   }).join("");
 
   var svg = '<div style="overflow-x:auto">'+
     '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:1100px;height:auto;display:block;margin:0 auto" role="img" '+
       'aria-label="Side view of the aircraft with cargo compartments">'+
-      '<path d="M '+noseX+' 100 C '+(noseX+30)+' 62, '+(noseX+120)+' 48, 300 48 '+
-        'L 690 48 C 760 48, 800 56, '+(tailX-40)+' 66 L '+tailX+' 74 L '+(tailX-26)+' 92 '+
-        'C '+(tailX-60)+' 112, 700 132, 620 138 L 210 140 C 130 140, '+(noseX+20)+' 126, '+noseX+' 100 Z" '+
+      '<path d="M '+noseX+' 120 C '+(noseX+30)+' 74.4, '+(noseX+120)+' 57.6, 300 57.6 '+
+        'L 690 57.6 C 760 57.6, 800 67.2, '+(tailX-40)+' 79.2 L '+tailX+' 88.8 L '+(tailX-26)+' 110.4 '+
+        'C '+(tailX-60)+' 134.4, 700 158.4, 620 165.6 L 210 168 C 130 168, '+(noseX+20)+' 151.2, '+noseX+' 120 Z" '+
         'style="fill:var(--panel);stroke:var(--line-2)" stroke-width="1.6"></path>'+
-      '<path d="M 700 50 L 742 8 L 772 8 L 762 50 Z" style="fill:var(--panel);stroke:var(--line-2)" stroke-width="1.4"></path>'+
-      '<path d="M 430 132 L 520 132 L 588 176 L 520 176 Z" style="fill:var(--panel2);stroke:var(--line-2)" stroke-width="1.4"></path>'+
-      '<line x1="150" y1="80" x2="690" y2="76" style="stroke:var(--line)" stroke-width="1"></line>'+
+      '<path d="M 700 60 L 742 9.6 L 772 9.6 L 762 60 Z" style="fill:var(--panel);stroke:var(--line-2)" stroke-width="1.4"></path>'+
+      '<path d="M 430 158.4 L 520 158.4 L 588 211.2 L 520 211.2 Z" style="fill:var(--panel2);stroke:var(--line-2)" stroke-width="1.4"></path>'+
+      '<line x1="150" y1="96" x2="690" y2="91.2" style="stroke:var(--line)" stroke-width="1"></line>'+
       '<line x1="90" y1="'+holdY+'" x2="'+(tailX-40)+'" y2="'+holdY+'" style="stroke:var(--line)" stroke-width="1"></line>'+
       blocks +
       (refX!==null
-        ? '<line x1="'+refX.toFixed(1)+'" y1="40" x2="'+refX.toFixed(1)+'" y2="182" style="stroke:var(--magenta)" '+
+        ? '<line x1="'+refX.toFixed(1)+'" y1="48" x2="'+refX.toFixed(1)+'" y2="'+(holdY+holdH+16)+'" style="stroke:var(--magenta)" '+
           'stroke-width="1" stroke-dasharray="4 3"></line>'+
-          '<text x="'+refX.toFixed(1)+'" y="194" text-anchor="middle" style="fill:var(--magenta)" font-size="9" '+
+          '<text x="'+refX.toFixed(1)+'" y="'+(holdY+holdH+30)+'" text-anchor="middle" style="fill:var(--magenta)" font-size="9" '+
           'font-family="monospace">REF '+esc(U.refStation)+'</text>'
         : (refOff!==0
-          ? '<text x="'+(refOff>0? (tailX-4) : (noseX+4))+'" y="194" text-anchor="'+(refOff>0?"end":"start")+'" '+
+          ? '<text x="'+(refOff>0? (tailX-4) : (noseX+4))+'" y="'+(holdY+holdH+30)+'" text-anchor="'+(refOff>0?"end":"start")+'" '+
             'style="fill:var(--magenta)" font-size="9" font-family="monospace">'+
             (refOff>0? 'REF '+esc(U.refStation)+' \u25b8 off scale' : '\u25c2 REF '+esc(U.refStation)+' off scale')+'</text>'
           : ''))+
-      '<text x="'+noseX+'" y="184" style="fill:var(--faint)" font-size="9" font-family="monospace">FWD</text>'+
-      '<text x="'+tailX+'" y="184" text-anchor="end" style="fill:var(--faint)" font-size="9" font-family="monospace">AFT</text>'+
+      '<text x="'+noseX+'" y="'+(holdY+holdH+20)+'" style="fill:var(--faint)" font-size="9" font-family="monospace">FWD</text>'+
+      '<text x="'+tailX+'" y="'+(holdY+holdH+20)+'" text-anchor="end" style="fill:var(--faint)" font-size="9" font-family="monospace">AFT</text>'+
     '</svg></div>';
 
   var active = U.compartments.filter(function(c){ return c.number===activeNum; })[0];
