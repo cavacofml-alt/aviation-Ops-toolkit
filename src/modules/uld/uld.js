@@ -17,7 +17,7 @@ var ULD_TYPE_HINTS = {
 };
 /* one colour per ULD type, carried through group box, badge and buttons */
 var GROUP_COLORS = { "LD3":"var(--cyan)", "L3P/PKC":"var(--cyan)", "LD7/P88":"var(--green)", "LD7/P96":"var(--teal)",
-                     "LD8":"var(--amber)", "PLA":"var(--amber)" };
+                     "LD8":"var(--amber)", "PLA":"var(--amber)", "LD6":"var(--magenta)" };
 function groupColor(t){ return GROUP_COLORS[t] || "var(--dim)"; }
 var ULD_TYPE_LABELS = {
   "LD3":"LD3 (AKE)", "L3P/PKC":"L3P/PKC (Pallet)", "LD7/P88":"LD7/P88 (PAG)", "LD7/P96":"LD7/P96 (PMC)",
