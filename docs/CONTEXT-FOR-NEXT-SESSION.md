@@ -181,6 +181,24 @@ warning, because it trains people to ignore the tool. When in doubt, warn.
   different containers at a divergent bay could still produce the exact same
   name string and one would vanish at the final `seen[name]` dedup — a real
   layout silently discarded, not just a cosmetic duplicate.
+- **`TPL_A330_200` is a separate template from `TPL_A330` (the -300)** —
+  different aircraft, different reference station (33.1555 vs 36.35),
+  different `refStation`/`K`/`C`, different position count (68 vs 70) and a
+  visibly lopsided compartment 3 (only zone 33 + one PAG-only P-zone, 32P —
+  confirmed against the source table, not a data-entry gap: `CPT 3` in the
+  ULD Holds summary carries the same single-zone weight as the others).
+  Appended to the end of `TEMPLATES` rather than inserted after `TPL_A330`,
+  specifically so `TPL_B777`'s array index never has to move — a prior
+  session flagged that reordering as an unwanted change to B777 even though
+  no B777 data was touched, just its position in the list.
+  Unlike `TPL_A330` (which still uses one merged `"LD3"` group for AKE/PKC,
+  since their weights never diverged there), `TPL_A330_200` splits them into
+  separate `LD3`/`L3P/PKC` groups from the start — the split-by-default
+  approach settled on for B777. Since AKE and PKC certify identically at
+  every A330-200 position (no divergence anywhere in the source table), the
+  merge-when-identical logic collapses them back into one option per zone
+  at generation time anyway; the split groups exist so the data model stays
+  consistent across templates, not because this aircraft needed it.
 
 ### Layout: full-height, full-width per tool
 

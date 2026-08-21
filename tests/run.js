@@ -178,7 +178,7 @@ if(inBuild("uld")) try {
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
        ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines};");
-  ok("all aircraft templates load", ULD.TEMPLATES.length === 3);
+  ok("all aircraft templates load", ULD.TEMPLATES.length === 4);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
   ok("a zero index asks for confirmation", ULD.validateIndex("0", "19", "36") !== null);
@@ -278,6 +278,28 @@ if(inBuild("uld")) try {
   const csvC1 = ULD.csvLines(1).join("\n");
   ok("B777 CSV export: a merged zone lists every certified type",
      csvC1.includes('"LD3,LA;L3P/PKC,LA"'));
+
+  // A330-200: appended last in TEMPLATES so this and the B777 checks above
+  // never need to track each other's array index.
+  const a2 = ULD.TEMPLATES[3];
+  ULD.U.ulds = JSON.parse(JSON.stringify(a2.ulds));
+  ULD.U.compartments = JSON.parse(JSON.stringify(a2.compartments));
+  ULD.U.refStation = a2.refStation;
+  ok("A330-200 template has all 4 compartments", ULD.U.compartments.length === 4,
+     ULD.U.compartments.length + '/4');
+  ok("A330-200 raises no blocking index issue", ULD.indexIssues().hard.length === 0);
+  ULD.generateLayouts();
+  const a2counts = ULD.U.compartments.map(c => (ULD.U.layouts[c.number] || []).length);
+  ok("A330-200 template generates layouts in every compartment", a2counts.every(n => n > 0), a2counts.join("/"));
+
+  // Comp3 has only one K-size zone (33) and a single PAG-only P-zone (32P,
+  // no PMC there) per the source manual — confirm that lopsided shape
+  // survived unmangled rather than silently padded out.
+  const c3 = ULD.U.compartments.find(c => c.number === 3);
+  const c3ZoneBases = new Set();
+  c3.uldGroups.forEach(g => g.positions.forEach(p => c3ZoneBases.add(p.name.replace(/[LR]$/, ""))));
+  ok("A330-200 comp3: only zones 33 and 32P exist, matching the source table",
+     [...c3ZoneBases].sort().join(",") === "32P,33");
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {
