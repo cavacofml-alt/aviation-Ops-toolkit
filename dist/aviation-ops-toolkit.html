@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.37</title>
+<title>Aviation Ops Toolkit v1.2.39</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.37</span>
+      <span class="build-ver">v1.2.39</span>
     </header>
 
     <main>
@@ -705,7 +705,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.37 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.39 — Luís Cavaco
     Built 2026-08-21 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -5304,7 +5304,13 @@ function generateLayouts(){
     }
     comp.uldGroups.forEach(function(group){
       if(group.include === false) return;         // excluded from generation
-      var cfgType = group.uldType==="LD3" ? "LR" : (group.uldType.indexOf("LD7")===0 ? "P" : "Simple");
+      // L/R pairing is a property of the position names, not of any one ULD
+      // type — PLA and LD6 (half pallets) also sit in L/R bays and must be
+      // pairable the same way LD3 is, or a bare L/R suffix conflict check
+      // would treat the two sides as mutually exclusive instead of side by
+      // side, and only ever offer one side at a time.
+      var cfgType = group.positions.some(function(p){ return /[LR]$/.test(p.name); }) ? "LR"
+        : (group.uldType.indexOf("LD7")===0 ? "P" : "Simple");
       // Scoped to this group's own declared ULD (type + IATA code) — not just
       // type — so a group never silently borrows another group's identity or
       // weight tier when two ULDs of the same type are in the fleet catalog
