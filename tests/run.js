@@ -177,7 +177,7 @@ if(inBuild("uld")) try {
   const uldAll = fileOf("src/modules/uld/templates.js") + fileOf("src/modules/uld/uld.js");
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
-       ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, ROBUST_STRING_TYPES};");
+       ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, ROBUST_STRING_TYPES, csvLines};");
   ok("all aircraft templates load", ULD.TEMPLATES.length === 3);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
@@ -259,6 +259,15 @@ if(inBuild("uld")) try {
     l.positions.some(p => p.name === "12" && p.uldType === "PLA")) &&
     !(ULD.U.layouts[1] || []).some(l => l.positions.some(p => /^12[LR]$/.test(p.name) && p.uldType === "PLA"));
   ok("B777 comp1: PLA occupies a whole bay as a single position, not an L/R pair", plaSingle);
+
+  // CSV export distinguishes the PKC pallet from the AKE container with its
+  // own type code ("L3P/PKC") instead of the bare "LD3" both would otherwise
+  // share.
+  const csv = ULD.csvLines(1).join("\n");
+  ok("B777 CSV export: PKC positions are coded L3P/PKC, not bare LD3",
+     csv.includes('"L3P/PKC,LA"'));
+  ok("B777 CSV export: AKE positions stay coded as plain LD3",
+     csv.includes('"LD3,LA"'));
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {

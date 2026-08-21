@@ -671,7 +671,10 @@ function csvLines(compNum){
   var lines = [];
   (U.layouts[compNum]||[]).forEach(function(layout){
     layout.positions.forEach(function(pos){
-      lines.push([compNum, layout.name, pos.name, '"'+pos.uldType+',LA"', pos.fwd, pos.aft,
+      // PKC is the pallet form of an LD3 — CSV type codes distinguish it from
+      // the AKE container as "L3P/PKC" rather than the bare "LD3".
+      var csvType = pos.uld==="PKC" ? "L3P/PKC" : pos.uldType;
+      lines.push([compNum, layout.name, pos.name, '"'+csvType+',LA"', pos.fwd, pos.aft,
         (pos.left===""||pos.left==null)?0:pos.left,
         (pos.right===""||pos.right==null)?0:pos.right,
         pos.index, 0, pos.maxWeight].join(","));
