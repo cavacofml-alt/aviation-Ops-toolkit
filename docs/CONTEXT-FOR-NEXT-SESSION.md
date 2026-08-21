@@ -131,6 +131,15 @@ warning, because it trains people to ignore the tool. When in doubt, warn.
 - **Changing a ULD's max weight never propagates silently** to positions. The
   position limit comes from the aircraft structure (AHM), not from the container;
   the tool offers, explains, and only acts if told to.
+- **Intermixing is enforced, not just generated.** In a K/L/P bay string, only
+  the two end positions touch the restraint net; only rigid-wall types
+  (`ROBUST_STRING_TYPES` = LD-1/3/5/6/10/11) may sit there, and an LD-2 must
+  be next to another LD-2 or LD-3. `generateLayouts()` filters out any combo
+  that would leave a pallet unrestrained at either end, per aircraft manuals'
+  "ULD Configurations / Intermixing" section. L/R pairs share one station, so
+  they collapse to a single slot before the string is walked end to end; the
+  P row (size M/A/N/Q) is a separate longitudinal string and is excluded from
+  this check entirely.
 
 ### Layout: full-height, full-width per tool
 
