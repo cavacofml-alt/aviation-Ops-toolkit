@@ -201,6 +201,14 @@ warning, because it trains people to ignore the tool. When in doubt, warn.
   760px to 1100px on request) — its `viewBox` has a fixed aspect ratio, so
   letting it stretch to the wide panel's full width would make it enormous;
   the cap keeps it large but bounded.
+- **The active hold's zone numbers are drawn inside the SVG rectangle**, not
+  just below it. Each K/L/P zone (11, 12, 13…) gets its own tick at its real
+  station width, computed from that zone's own min-fwd/max-aft across every
+  group. The separate "A/M/N/Q" (P-row) string is deliberately left out of
+  this single-row view — it lives on a different deck in the real aircraft —
+  the detailed `zoneGrid()` below the SVG still covers it. All the fuselage's
+  fixed path coordinates were scaled by the same factor as the taller hold
+  boxes (H 200→240, holdH 30→68) so the nose/tail/wing stay proportional.
 
 ### Reconciliation
 
