@@ -201,14 +201,21 @@ warning, because it trains people to ignore the tool. When in doubt, warn.
   760px to 1100px on request) — its `viewBox` has a fixed aspect ratio, so
   letting it stretch to the wide panel's full width would make it enormous;
   the cap keeps it large but bounded.
-- **The active hold's zone numbers are drawn inside the SVG rectangle**, not
-  just below it. Each K/L/P zone (11, 12, 13…) gets its own tick at its real
-  station width, computed from that zone's own min-fwd/max-aft across every
-  group. The separate "A/M/N/Q" (P-row) string is deliberately left out of
-  this single-row view — it lives on a different deck in the real aircraft —
-  the detailed `zoneGrid()` below the SVG still covers it. All the fuselage's
-  fixed path coordinates were scaled by the same factor as the taller hold
-  boxes (H 200→240, holdH 30→68) so the nose/tail/wing stay proportional.
+- **The active hold draws its full position grid inside the SVG rectangle**
+  — one row per ULD group (AKE, PKC, PLA, ALF, PAG, PMC…), each position its
+  own cell at its real station width, colour-coded by `groupColor(uldType)`,
+  with the group's IATA as a tiny row label. This replaced an earlier,
+  smaller attempt (zone-number ticks only) that didn't show which type went
+  where; on request it became the full grid, literally inside the plane's
+  hold box, not a separate panel. The box's height is computed from however
+  many groups that compartment actually has (`activeBoxH`), so a B777-200
+  compartment (6 groups) gets more room than a B787 one (4) — and the SVG's
+  overall `viewBox` height grows to fit whichever compartment is currently
+  active, `H = max(240, holdY + activeBoxH + 56)`. The fuselage's own path is
+  fixed at the H=240 baseline and does not rescale further; a tall active box
+  is allowed to extend past the drawn hull line as a callout, which reads as
+  "zoomed detail" rather than broken. The separate `zoneGrid()` panel below
+  the SVG still exists and covers the same ground in HTML/table form.
 
 ### Reconciliation
 
