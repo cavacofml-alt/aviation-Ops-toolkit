@@ -248,6 +248,14 @@ if(inBuild("uld")) try {
   }));
   ok("B777 comp4: AKE(1587) and PKC(1478) at 41L both appear as separate generated options",
      c4Weights41.has("AKE:1587") && c4Weights41.has("PKC:1478"), [...c4Weights41].join(", "));
+
+  // PLA and ALF occupy a bay in its entirety (unlike AKE/PKC, which pair two
+  // to a bay) — their positions carry no L/R suffix, and a generated PLA/ALF
+  // option must be a single position, not a pair.
+  const plaSingle = (ULD.U.layouts[1] || []).some(l =>
+    l.positions.some(p => p.name === "12" && p.uldType === "PLA")) &&
+    !(ULD.U.layouts[1] || []).some(l => l.positions.some(p => /^12[LR]$/.test(p.name) && p.uldType === "PLA"));
+  ok("B777 comp1: PLA occupies a whole bay as a single position, not an L/R pair", plaSingle);
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {

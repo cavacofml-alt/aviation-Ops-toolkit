@@ -501,7 +501,13 @@ function generateLayouts(){
     }
     comp.uldGroups.forEach(function(group){
       if(group.include === false) return;         // excluded from generation
-      var cfgType = group.uldType==="LD3" ? "LR" : (group.uldType.indexOf("LD7")===0 ? "P" : "Simple");
+      // L/R pairing is a property of the position names, not of any one ULD
+      // type — PLA and LD6 (half pallets) also sit in L/R bays and must be
+      // pairable the same way LD3 is, or a bare L/R suffix conflict check
+      // would treat the two sides as mutually exclusive instead of side by
+      // side, and only ever offer one side at a time.
+      var cfgType = group.positions.some(function(p){ return /[LR]$/.test(p.name); }) ? "LR"
+        : (group.uldType.indexOf("LD7")===0 ? "P" : "Simple");
       // Scoped to this group's own declared ULD (type + IATA code) — not just
       // type — so a group never silently borrows another group's identity or
       // weight tier when two ULDs of the same type are in the fleet catalog
