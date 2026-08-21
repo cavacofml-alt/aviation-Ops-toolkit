@@ -356,7 +356,12 @@ function viewStep3(){
 
   var head = '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'+
     '<button class="btn primary" data-act="generate"'+(blocked?" disabled":"")+'>&#9889; Generate all layouts</button>'+
-    (U.layouts && !blocked ? '<button class="btn" data-act="csv-all">&#8595; Export all</button>':'')+'</div>' + gate;
+    (U.layouts && !blocked ? '<button class="btn" data-act="csv-all">&#8595; Export all</button>':'')+'</div>' + gate+
+    (U.layouts && U.layoutsStale && !blocked ? '<div class="warnbox" style="margin-bottom:14px">'+
+      '<b>&#9888; Data changed since these layouts were generated</b>'+
+      '<div style="margin-top:4px;color:var(--dim)">A position was edited after the layouts below were computed — '+
+      'they still describe the old numbers. Click <b>Generate all layouts</b> again to bring them up to date.</div>'+
+    '</div>' : '');
 
   if(blocked) return head;
   if(!U.layouts) return head +
@@ -635,6 +640,7 @@ function generateLayouts(){
     });
   });
   U.layouts = allLayouts;
+  U.layoutsStale = false;
   U.activeLayoutComp = 0;
 }
 
@@ -730,6 +736,7 @@ function bindStep(){
       var group = comp.uldGroups[g], pos = group.positions[p];
       pos[k] = inp.value;
       refreshWarn(g, p);
+      if(U.layouts) U.layoutsStale = true;   // generated results no longer describe this data
       if(typeof uldTouch === "function") uldTouch();
       if(k==="index" || k==="fwd" || k==="aft"){ U.signAck = false; }
       // auto-mirror L -> R for LD3 pairs (fwd/aft/index/max weight shared, left/right swapped)
