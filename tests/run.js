@@ -249,16 +249,13 @@ if(inBuild("uld")) try {
   ok("B777 comp4: AKE(1587) and PKC(1478) at 41L both appear as separate generated options",
      c4Weights41.has("AKE:1587") && c4Weights41.has("PKC:1478"), [...c4Weights41].join(", "));
 
-  // PLA and ALF sit in L/R bays exactly like LD3 — both sides must be able to
-  // load together in one option, not be treated as mutually exclusive because
-  // they share a station (a bare fwd/aft conflict check would think so).
-  // 12/13 are middle-of-string zones (unlike 11, the string's fwd end, which
-  // the intermixing rule reserves for a rigid-wall type), so PLA is a legal
-  // choice there and the pairing itself is what's under test.
-  const plaPaired = (ULD.U.layouts[1] || []).some(l =>
-    l.positions.some(p => p.name === "12L" && p.uldType === "PLA") &&
-    l.positions.some(p => p.name === "12R" && p.uldType === "PLA"));
-  ok("B777 comp1: PLA fills both 12L and 12R together in some generated layout", plaPaired);
+  // PLA and ALF occupy a bay in its entirety (unlike AKE/PKC, which pair two
+  // to a bay) — their positions carry no L/R suffix, and a generated PLA/ALF
+  // option must be a single position, not a pair.
+  const plaSingle = (ULD.U.layouts[1] || []).some(l =>
+    l.positions.some(p => p.name === "12" && p.uldType === "PLA")) &&
+    !(ULD.U.layouts[1] || []).some(l => l.positions.some(p => /^12[LR]$/.test(p.name) && p.uldType === "PLA"));
+  ok("B777 comp1: PLA occupies a whole bay as a single position, not an L/R pair", plaSingle);
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {
