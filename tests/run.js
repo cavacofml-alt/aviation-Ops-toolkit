@@ -230,14 +230,17 @@ if(inBuild("uld")) try {
   ok("B777 intermixing: no generated layout leaves a non-rigid type at a string end",
      badEnds.length === 0, badEnds.slice(0, 3).join("; "));
 
-  // Comp1: AKE and PKC are both rated 1587 at every position — interchangeable,
-  // so they must collapse to one option per zone, not two look-alike ones.
-  const c1 = ULD.U.compartments.find(c => c.number === 1);
-  const c1AllLayout = (ULD.U.layouts[1] || []).find(l => l.positions.length >= 8);
-  const c1Idents = new Set((c1AllLayout ? c1AllLayout.positions : [])
-    .filter(p => !/P$/.test(p.name)).map(p => p.name.replace(/[LR]$/, "")));
-  ok("B777 comp1: AKE/PKC (identical everywhere) collapse to one option per zone",
-     !!c1AllLayout && c1Idents.size === 4, c1AllLayout ? [...c1Idents].join(",") : "no full layout found");
+  // Comp1: AKE and PKC certify the same weight at every position there, but
+  // they're still kept as separate, explicit choices — a "full AKE" and a
+  // "full PKC" compartment layout must both be offered, never silently
+  // collapsed into one just because the numbers happened to match.
+  const c1Idents = ["11", "12", "13", "14"];
+  const c1FullAKE = (ULD.U.layouts[1] || []).some(l => c1Idents.every(base =>
+    l.positions.some(p => p.name === base + "L" && p.uld === "AKE")));
+  const c1FullPKC = (ULD.U.layouts[1] || []).some(l => c1Idents.every(base =>
+    l.positions.some(p => p.name === base + "L" && p.uld === "PKC")));
+  ok("B777 comp1: full-AKE and full-PKC compartment layouts are both offered",
+     c1FullAKE && c1FullPKC, "AKE:" + c1FullAKE + " PKC:" + c1FullPKC);
 
   // Comp4: PKC is derated below AKE at every position there — a genuinely
   // different number must still surface as its own option somewhere in the
