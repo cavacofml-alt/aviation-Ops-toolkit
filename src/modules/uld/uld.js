@@ -4,10 +4,11 @@
    State is mutated in place by input handlers (no re-render while typing, so
    the caret never jumps); render() runs only on structural changes.
    ============================================================================ */
-var ULD_TYPES = ["LD3","LD7/P88","LD7/P96","LD8","PLA","LD1","LD2","LD4","LD6","LD9","LD11"];
+var ULD_TYPES = ["LD3","L3P/PKC","LD7/P88","LD7/P96","LD8","PLA","LD1","LD2","LD4","LD6","LD9","LD11"];
 /* typical figures per type — used only as field hints */
 var ULD_TYPE_HINTS = {
-  "LD3":{iata:"AKE", mw:"1587", tare:"63"},   "LD7/P88":{iata:"PAG", mw:"4626", tare:"110"},
+  "LD3":{iata:"AKE", mw:"1587", tare:"63"},   "L3P/PKC":{iata:"PKC", mw:"1587", tare:"37"},
+  "LD7/P88":{iata:"PAG", mw:"4626", tare:"110"},
   "LD7/P96":{iata:"PMC", mw:"6033", tare:"120"}, "LD8":{iata:"DQF", mw:"2450", tare:"110"},
   "PLA":{iata:"PLA", mw:"3175", tare:"105"},  "LD1":{iata:"AMA", mw:"1588", tare:"77"},
   "LD2":{iata:"AKH", mw:"1225", tare:"57"},   "LD4":{iata:"ALP", mw:"2449", tare:"84"},
@@ -15,18 +16,21 @@ var ULD_TYPE_HINTS = {
   "LD11":{iata:"AQP", mw:"3175", tare:"100"}
 };
 /* one colour per ULD type, carried through group box, badge and buttons */
-var GROUP_COLORS = { "LD3":"var(--cyan)", "LD7/P88":"var(--green)", "LD7/P96":"var(--teal)",
+var GROUP_COLORS = { "LD3":"var(--cyan)", "L3P/PKC":"var(--cyan)", "LD7/P88":"var(--green)", "LD7/P96":"var(--teal)",
                      "LD8":"var(--amber)", "PLA":"var(--amber)" };
 function groupColor(t){ return GROUP_COLORS[t] || "var(--dim)"; }
 var ULD_TYPE_LABELS = {
-  "LD3":"LD3 (AKE / PKC)", "LD7/P88":"LD7/P88 (PAG)", "LD7/P96":"LD7/P96 (PMC)",
+  "LD3":"LD3 (AKE)", "L3P/PKC":"L3P/PKC (Pallet)", "LD7/P88":"LD7/P88 (PAG)", "LD7/P96":"LD7/P96 (PMC)",
   "LD8":"LD8", "PLA":"PLA", "LD1":"LD1 (AMA)", "LD2":"LD2 (AKH / DPE)",
   "LD4":"LD4 (ALP)", "LD6":"LD6 (ALF)", "LD9":"LD9 (AAP / P6P)", "LD11":"LD11 (AQP / DQF)"
 };
 /* intermixing (AIRIMP §3 "ULD Configurations" style manuals): within a K/L/P
    bay string, only these rigid-wall types may sit against a fwd/aft restraint
-   — a pallet or half-pallet at the end of a string has nothing holding it. */
-var ROBUST_STRING_TYPES = ["LD3","LD6","LD1","LD5","LD10","LD11"];
+   — a pallet or half-pallet at the end of a string has nothing holding it.
+   L3P/PKC is still an LD-3 by the manual's own numeric type code, just given
+   its own catalog entry so it can be identified separately (CSV, dropdown);
+   it stays robust. */
+var ROBUST_STRING_TYPES = ["LD3","L3P/PKC","LD6","LD1","LD5","LD10","LD11"];
 var STEP_LABELS = ["ULDs","Compartments & Zones","Layouts"];
 var uid = function(){
   if(typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID().slice(0,8);
@@ -671,10 +675,7 @@ function csvLines(compNum){
   var lines = [];
   (U.layouts[compNum]||[]).forEach(function(layout){
     layout.positions.forEach(function(pos){
-      // PKC is the pallet form of an LD3 — CSV type codes distinguish it from
-      // the AKE container as "L3P/PKC" rather than the bare "LD3".
-      var csvType = pos.uld==="PKC" ? "L3P/PKC" : pos.uldType;
-      lines.push([compNum, layout.name, pos.name, '"'+csvType+',LA"', pos.fwd, pos.aft,
+      lines.push([compNum, layout.name, pos.name, '"'+pos.uldType+',LA"', pos.fwd, pos.aft,
         (pos.left===""||pos.left==null)?0:pos.left,
         (pos.right===""||pos.right==null)?0:pos.right,
         pos.index, 0, pos.maxWeight].join(","));
