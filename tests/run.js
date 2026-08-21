@@ -177,7 +177,7 @@ if(inBuild("uld")) try {
   const uldAll = fileOf("src/modules/uld/templates.js") + fileOf("src/modules/uld/uld.js");
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
-       ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, ROBUST_STRING_TYPES, csvLines};");
+       ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines};");
   ok("all aircraft templates load", ULD.TEMPLATES.length === 3);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
@@ -213,22 +213,13 @@ if(inBuild("uld")) try {
   const b777counts = ULD.U.compartments.map(c => (ULD.U.layouts[c.number] || []).length);
   ok("B777 template generates layouts in every compartment", b777counts.every(n => n > 0), b777counts.join("/"));
 
-  const badEnds = [];
-  ULD.U.compartments.forEach(c => (ULD.U.layouts[c.number] || []).forEach(l => {
-    const slots = {};
-    l.positions.forEach(p => {
-      if(/P$/.test(p.name)) return;
-      const base = p.name.replace(/[LR]$/, "");
-      if(!(base in slots)) slots[base] = { fwd: parseFloat(p.fwd), uldType: p.uldType };
-    });
-    const ordered = Object.values(slots).sort((a, b) => a.fwd - b.fwd);
-    if(!ordered.length) return;
-    const ends = [ordered[0].uldType, ordered[ordered.length - 1].uldType];
-    if(ends.some(t => !ULD.ROBUST_STRING_TYPES.includes(t)))
-      badEnds.push('C' + c.number + ':"' + l.name + '" ends with ' + ends.join("/"));
-  }));
-  ok("B777 intermixing: no generated layout leaves a non-rigid type at a string end",
-     badEnds.length === 0, badEnds.slice(0, 3).join("; "));
+  // Intermixing (which types may sit at a string's end) is deliberately not
+  // enforced — the caller's downstream program controls that constraint, so
+  // generation must offer every physically non-overlapping combination,
+  // including a non-rigid type (PLA) at a string's fwd/aft end.
+  const c1PlaAtEnd = (ULD.U.layouts[1] || []).some(l =>
+    l.positions.some(p => p.name === "11" && p.uldType === "PLA"));
+  ok("B777: PLA at a string end (11) is generated, not filtered out", c1PlaAtEnd);
 
   // Comp1: AKE and PKC certify the same weight at every position there —
   // that's one slot with two certified ULDs, not two competing layouts, so
