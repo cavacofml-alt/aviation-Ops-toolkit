@@ -485,15 +485,29 @@ function generateLayouts(){
   var allLayouts = {};
   U.compartments.forEach(function(comp){
     var zoneOptionsMap = {};
+    // Two groups can offer numerically identical options at the same zone
+    // (e.g. AKE and PKC at a position where both are rated the same) — those
+    // are interchangeable and collapse to a single option instead of being
+    // enumerated as separate, look-alike layouts. Only a genuinely different
+    // number (a position where one ULD type is derated relative to another)
+    // creates a real second option, still mutually exclusive at that zone.
+    var zoneSignatures = {};
+    function addOption(base, sig, opt){
+      if(!zoneSignatures[base]) zoneSignatures[base] = {};
+      if(zoneSignatures[base][sig]) return;
+      zoneSignatures[base][sig] = true;
+      if(!zoneOptionsMap[base]) zoneOptionsMap[base]=[];
+      zoneOptionsMap[base].push(opt);
+    }
     comp.uldGroups.forEach(function(group){
       if(group.include === false) return;         // excluded from generation
       var cfgType = group.uldType==="LD3" ? "LR" : (group.uldType.indexOf("LD7")===0 ? "P" : "Simple");
-      var uldDefs = U.ulds.filter(function(u){ return u.uldType===group.uldType; });
-      var uniqueByWeight = [], seenW = {};
-      uldDefs.forEach(function(u){
-        var key = u.uldType+"_"+u.maxWeight;
-        if(!seenW[key]){ seenW[key]=1; uniqueByWeight.push(u); }
-      });
+      // Scoped to this group's own declared ULD (type + IATA code) — not just
+      // type — so a group never silently borrows another group's identity or
+      // weight tier when two ULDs of the same type are in the fleet catalog
+      // (e.g. AKE and PKC both being "LD3").
+      var uldDef = U.ulds.filter(function(u){ return u.uldType===group.uldType && u.iata===group.iata; })[0];
+      if(!uldDef) return;
       if(cfgType==="LR"){
         var Ls = group.positions.filter(function(p){ return /L$/.test(p.name); });
         var Rs = group.positions.filter(function(p){ return /R$/.test(p.name); });
@@ -502,35 +516,28 @@ function generateLayouts(){
           var posR = Rs.filter(function(p){ return p.name===base+"R"; })[0];
           if(!posR) return;
           var mw = Math.min(parseFloat(posL.maxWeight||0), parseFloat(posR.maxWeight||0));
-          var compat = uniqueByWeight.filter(function(u){ return u.maxWeight<=mw; });
-          if(!zoneOptionsMap[base]) zoneOptionsMap[base]=[];
-          compat.forEach(function(u){
-            zoneOptionsMap[base].push({ label:"2"+u.uldType.replace("/",""),
-              positions:[ Object.assign({},posL,{uld:u.iata,uldType:u.uldType}),
-                          Object.assign({},posR,{uld:u.iata,uldType:u.uldType}) ] });
-          });
+          var sig = posL.fwd+"|"+posL.aft+"|"+posL.index+"|"+mw;
+          // the IATA code rides in the label so two combos that differ only by
+          // which ULD filled a zone never collapse into one at the final
+          // name-based dedup below — that would silently discard whichever
+          // alternative sorted second, even though both are valid layouts.
+          addOption(base, sig, { label:"2"+group.uldType.replace("/","")+"("+uldDef.iata+")",
+            positions:[ Object.assign({},posL,{uld:uldDef.iata,uldType:group.uldType}),
+                        Object.assign({},posR,{uld:uldDef.iata,uldType:group.uldType}) ] });
         });
       } else if(cfgType==="P"){
         group.positions.forEach(function(pos){
           var base = pos.name.replace(/P$/,"");
-          var mw = parseFloat(pos.maxWeight||0);
-          var compat = uniqueByWeight.filter(function(u){ return u.maxWeight<=mw; });
-          if(!zoneOptionsMap[base]) zoneOptionsMap[base]=[];
-          compat.forEach(function(u){
-            zoneOptionsMap[base].push({ label:"1"+u.uldType.replace("/",""),
-              positions:[ Object.assign({},pos,{uld:u.iata,uldType:u.uldType}) ] });
-          });
+          var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
+          addOption(base, sig, { label:"1"+group.uldType.replace("/","")+"("+uldDef.iata+")",
+            positions:[ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ] });
         });
       } else {
         group.positions.forEach(function(pos){
           var base = pos.name;
-          var mw = parseFloat(pos.maxWeight||0);
-          var compat = uniqueByWeight.filter(function(u){ return u.maxWeight<=mw; });
-          if(!zoneOptionsMap[base]) zoneOptionsMap[base]=[];
-          compat.forEach(function(u){
-            zoneOptionsMap[base].push({ label:"1"+u.uldType,
-              positions:[ Object.assign({},pos,{uld:u.iata,uldType:u.uldType}) ] });
-          });
+          var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
+          addOption(base, sig, { label:"1"+group.uldType+"("+uldDef.iata+")",
+            positions:[ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ] });
         });
       }
     });

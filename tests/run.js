@@ -229,6 +229,25 @@ if(inBuild("uld")) try {
   }));
   ok("B777 intermixing: no generated layout leaves a non-rigid type at a string end",
      badEnds.length === 0, badEnds.slice(0, 3).join("; "));
+
+  // Comp1: AKE and PKC are both rated 1587 at every position — interchangeable,
+  // so they must collapse to one option per zone, not two look-alike ones.
+  const c1 = ULD.U.compartments.find(c => c.number === 1);
+  const c1AllLayout = (ULD.U.layouts[1] || []).find(l => l.positions.length >= 8);
+  const c1Idents = new Set((c1AllLayout ? c1AllLayout.positions : [])
+    .filter(p => !/P$/.test(p.name)).map(p => p.name.replace(/[LR]$/, "")));
+  ok("B777 comp1: AKE/PKC (identical everywhere) collapse to one option per zone",
+     !!c1AllLayout && c1Idents.size === 4, c1AllLayout ? [...c1Idents].join(",") : "no full layout found");
+
+  // Comp4: PKC is derated below AKE at every position there — a genuinely
+  // different number must still surface as its own option somewhere in the
+  // generated results, not get silently merged away.
+  const c4Weights41 = new Set();
+  (ULD.U.layouts[4] || []).forEach(l => l.positions.forEach(p => {
+    if(p.name === "41L") c4Weights41.add(p.uld + ":" + p.maxWeight);
+  }));
+  ok("B777 comp4: AKE(1587) and PKC(1478) at 41L both appear as separate generated options",
+     c4Weights41.has("AKE:1587") && c4Weights41.has("PKC:1478"), [...c4Weights41].join(", "));
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {
