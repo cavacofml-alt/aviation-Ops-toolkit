@@ -24,13 +24,6 @@ var ULD_TYPE_LABELS = {
   "LD8":"LD8", "PLA":"PLA", "LD1":"LD1 (AMA)", "LD2":"LD2 (AKH / DPE)",
   "LD4":"LD4 (ALP)", "LD6":"LD6 (ALF)", "LD9":"LD9 (AAP / P6P)", "LD11":"LD11 (AQP / DQF)"
 };
-/* intermixing (AIRIMP §3 "ULD Configurations" style manuals): within a K/L/P
-   bay string, only these rigid-wall types may sit against a fwd/aft restraint
-   — a pallet or half-pallet at the end of a string has nothing holding it.
-   L3P/PKC is still an LD-3 by the manual's own numeric type code, just given
-   its own catalog entry so it can be identified separately (CSV, dropdown);
-   it stays robust. */
-var ROBUST_STRING_TYPES = ["LD3","L3P/PKC","LD6","LD1","LD5","LD10","LD11"];
 var STEP_LABELS = ["ULDs","Compartments & Zones","Layouts"];
 var uid = function(){
   if(typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID().slice(0,8);
@@ -363,11 +356,7 @@ function viewStep3(){
 
   var head = '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'+
     '<button class="btn primary" data-act="generate"'+(blocked?" disabled":"")+'>&#9889; Generate all layouts</button>'+
-    (U.layouts && !blocked ? '<button class="btn" data-act="csv-all">&#8595; Export all</button>':'')+'</div>' + gate+
-    (U.layouts && !blocked ? '<div class="note" style="margin-bottom:14px">Intermixing rule applied: each bay '+
-      'string only keeps layouts where the two end positions are a rigid-wall type ('+ROBUST_STRING_TYPES.join(", ")+
-      ') and any LD2 sits next to another LD2 or LD3 — layouts that would leave a pallet unrestrained at either '+
-      'end are not generated.</div>' : '');
+    (U.layouts && !blocked ? '<button class="btn" data-act="csv-all">&#8595; Export all</button>':'')+'</div>' + gate;
 
   if(blocked) return head;
   if(!U.layouts) return head +
@@ -622,31 +611,10 @@ function generateLayouts(){
       });
     }
 
-    // ULD intermixing: the K/L/P bay row (positions not ending "P" — the P row
-    // is a separate longitudinal string) is only held at each end by the
-    // restraint net. A slot is one L/R pair or one simple bay; slots sharing a
-    // side-by-side pair share a station, so they collapse to one slot before
-    // checking string order.
-    allCombos = allCombos.filter(function(l){
-      var slotMap = {};
-      l.positions.forEach(function(p){
-        if(/P$/.test(p.name)) return;
-        var base = p.name.replace(/[LR]$/,"");
-        if(!slotMap[base]) slotMap[base] = { fwd: parseFloat(p.fwd), uldType: p.uldType };
-      });
-      var slots = Object.keys(slotMap).map(function(k){ return slotMap[k]; })
-        .sort(function(a,b){ return a.fwd - b.fwd; });
-      if(!slots.length) return true;
-      if(ROBUST_STRING_TYPES.indexOf(slots[0].uldType) < 0) return false;
-      if(ROBUST_STRING_TYPES.indexOf(slots[slots.length-1].uldType) < 0) return false;
-      return slots.every(function(s,i){
-        if(s.uldType !== "LD2") return true;
-        var prevOk = i>0 && (slots[i-1].uldType==="LD2" || slots[i-1].uldType==="LD3");
-        var nextOk = i<slots.length-1 && (slots[i+1].uldType==="LD2" || slots[i+1].uldType==="LD3");
-        return prevOk || nextOk;
-      });
-    });
-
+    // Intermixing (which types may sit at a string's end) is deliberately
+    // NOT enforced here — on request, generation returns every physically
+    // non-overlapping combination and leaves that constraint to whatever
+    // downstream program consumes the export.
     var rank = function(layout){
       var labels = layout.name.split("/");
       var hasLR = labels.some(function(l){ return l.charAt(0)==="2"; });
