@@ -501,7 +501,7 @@ function generateLayouts(){
     // A genuinely different signature (PKC derated below AKE) still creates
     // a separate, mutually exclusive option, as before.
     var zoneBySignature = {};
-    function addOption(base, sig, positions, label){
+    function addOption(base, sig, positions, labelPrefix){
       if(!zoneBySignature[base]) zoneBySignature[base] = {};
       var existing = zoneBySignature[base][sig];
       if(existing){
@@ -510,7 +510,11 @@ function generateLayouts(){
       }
       var certified = [{type:positions[0].uldType, iata:positions[0].uld}];
       positions.forEach(function(p){ p.certified = certified; });
-      var opt = { label:label, positions:positions, certified:certified };
+      // label is finalized below, once every group has had a chance to add
+      // to this signature's certified list — a merged slot's name must show
+      // every certified IATA ("2LD3(AKE/PKC)"), not just whichever group
+      // happened to reach it first.
+      var opt = { labelPrefix:labelPrefix, positions:positions, certified:certified };
       zoneBySignature[base][sig] = opt;
       if(!zoneOptionsMap[base]) zoneOptionsMap[base]=[];
       zoneOptionsMap[base].push(opt);
@@ -542,7 +546,7 @@ function generateLayouts(){
           addOption(base, sig,
             [ Object.assign({},posL,{uld:uldDef.iata,uldType:group.uldType}),
               Object.assign({},posR,{uld:uldDef.iata,uldType:group.uldType}) ],
-            "2"+group.uldType.replace("/","")+"("+uldDef.iata+")");
+            "2"+group.uldType.replace("/",""));
         });
       } else if(cfgType==="P"){
         group.positions.forEach(function(pos){
@@ -550,7 +554,7 @@ function generateLayouts(){
           var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
           addOption(base, sig,
             [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ],
-            "1"+group.uldType.replace("/","")+"("+uldDef.iata+")");
+            "1"+group.uldType.replace("/",""));
         });
       } else {
         group.positions.forEach(function(pos){
@@ -558,9 +562,15 @@ function generateLayouts(){
           var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
           addOption(base, sig,
             [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ],
-            "1"+group.uldType+"("+uldDef.iata+")");
+            "1"+group.uldType);
         });
       }
+    });
+    Object.keys(zoneOptionsMap).forEach(function(base){
+      zoneOptionsMap[base].forEach(function(opt){
+        var iatas = opt.certified.map(function(c){ return c.iata; });
+        opt.label = opt.labelPrefix+"("+iatas.join("/")+")";
+      });
     });
 
     var allOptions = [];
