@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.67</title>
+<title>Aviation Ops Toolkit v1.2.69</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.67</span>
+      <span class="build-ver">v1.2.69</span>
     </header>
 
     <main>
@@ -705,7 +705,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.67 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.69 — Luís Cavaco
     Built 2026-08-21 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -5473,6 +5473,14 @@ function crossCompartmentWarnings(){
 }
 
 /* ---------- CSV ---------- */
+// Header and field order match the operator's own upload template exactly
+// (YU_B777200ER_TEMPLATE.xlsx) — including ";" joining multiple certified
+// ULDs inside one quoted "Certified ULDs" field, confirmed against that
+// template's own row (12R: "LD3,LA;L3P/PKC,LA"). Do not swap the join
+// character for anything else without re-checking that template: the
+// upload system reads this format directly, and Excel merely mis-previewing
+// a raw .csv under certain regional settings is a separate, cosmetic
+// concern that must never drive a change to the actual exported format.
 var CSV_HEADER = "Compartment,Layout,Position,Certified ULDs,FWD Stat,AFT Stat,Left,Right,Index,Volume,Max weight";
 function csvLines(compNum){
   var lines = [];
