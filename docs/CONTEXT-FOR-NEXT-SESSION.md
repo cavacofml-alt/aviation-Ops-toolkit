@@ -201,21 +201,23 @@ warning, because it trains people to ignore the tool. When in doubt, warn.
   760px to 1100px on request) — its `viewBox` has a fixed aspect ratio, so
   letting it stretch to the wide panel's full width would make it enormous;
   the cap keeps it large but bounded.
-- **The active hold draws its full position grid inside the SVG rectangle**
-  — one row per ULD group (AKE, PKC, PLA, ALF, PAG, PMC…), each position its
-  own cell at its real station width, colour-coded by `groupColor(uldType)`,
-  with the group's IATA as a tiny row label. This replaced an earlier,
-  smaller attempt (zone-number ticks only) that didn't show which type went
-  where; on request it became the full grid, literally inside the plane's
-  hold box, not a separate panel. The box's height is computed from however
-  many groups that compartment actually has (`activeBoxH`), so a B777-200
-  compartment (6 groups) gets more room than a B787 one (4) — and the SVG's
-  overall `viewBox` height grows to fit whichever compartment is currently
-  active, `H = max(240, holdY + activeBoxH + 56)`. The fuselage's own path is
-  fixed at the H=240 baseline and does not rescale further; a tall active box
-  is allowed to extend past the drawn hull line as a callout, which reads as
-  "zoomed detail" rather than broken. The separate `zoneGrid()` panel below
-  the SVG still exists and covers the same ground in HTML/table form.
+- **The SVG hold box stays simple** (a coloured rectangle with the
+  compartment number and position count) — two attempts to draw position
+  detail *inside* it (zone-number ticks, then a full per-group grid) were
+  both tried and both reverted on request. Detail belongs in `zoneGrid()`,
+  the HTML panel below the SVG.
+- **`zoneGrid()` is generic over every ULD group**, not hardcoded to
+  LD3/LD7/LD8. It used to silently drop any group whose `uldType` wasn't
+  one of those three — B777-200's PKC, PLA and LD6/ALF groups never showed
+  up in the "zone view" panel at all. A group with L/R-suffixed positions
+  becomes two rows (labelled "IATA R" / "IATA L", e.g. "AKE R" / "PKC L")
+  so each column still holds exactly one cell; a P-suffixed group is one
+  "IATA P" row; a plain-named group (PLA, ALF) is one row under its IATA.
+  Colours and the legend come straight from `groupColor(uldType)` — added
+  LD6 as its own tone (magenta) so ALF doesn't collide with PLA's amber.
+  Cell/legend backgrounds use `color-mix()` instead of a fixed set of
+  `--tone-soft` CSS variables, so a future group's colour doesn't need a
+  matching soft variable declared in the theme to render correctly.
 
 ### Reconciliation
 
