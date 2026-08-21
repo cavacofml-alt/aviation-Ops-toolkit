@@ -248,6 +248,11 @@ if(inBuild("uld")) try {
   ok("B777 comp1: merged-zone layout names list every certified IATA", !!c1MergedName,
      (ULD.U.layouts[1]||[]).slice(0,3).map(l=>l.name).join(" | "));
 
+  // The "/" in a two-part type code (L3P/PKC) must survive into the layout
+  // name, not be stripped into an unreadable run-together "L3PPKC".
+  const c4PkcName = (ULD.U.layouts[4] || []).some(l => l.name.indexOf("2L3P/PKC(PKC)") >= 0);
+  ok("B777 comp4: L3P/PKC keeps its slash in the layout name", c4PkcName);
+
   // Comp4: PKC is derated below AKE at every position there — a genuinely
   // different number must still surface as its own option somewhere in the
   // generated results, not get silently merged away.

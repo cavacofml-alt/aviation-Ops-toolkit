@@ -546,7 +546,7 @@ function generateLayouts(){
           addOption(base, sig,
             [ Object.assign({},posL,{uld:uldDef.iata,uldType:group.uldType}),
               Object.assign({},posR,{uld:uldDef.iata,uldType:group.uldType}) ],
-            "2"+group.uldType.replace("/",""));
+            "2"+group.uldType);
         });
       } else if(cfgType==="P"){
         group.positions.forEach(function(pos){
@@ -554,7 +554,7 @@ function generateLayouts(){
           var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
           addOption(base, sig,
             [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ],
-            "1"+group.uldType.replace("/",""));
+            "1"+group.uldType);
         });
       } else {
         group.positions.forEach(function(pos){
