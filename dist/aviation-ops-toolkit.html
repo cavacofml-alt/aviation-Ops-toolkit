@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.72</title>
+<title>Aviation Ops Toolkit v1.2.73</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.72</span>
+      <span class="build-ver">v1.2.73</span>
     </header>
 
     <main>
@@ -649,8 +649,9 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
               <div class="field" style="margin-bottom:12px">
                 <label for="ahmUrl">Application address</label>
                 <input type="text" id="ahmUrl" list="ahmPorts" spellcheck="false"
-                  placeholder="http://&lt;server-address&gt;:5000/Account/Login">
+                  value="http://192.168.2.15:5000/Account/Login">
                 <datalist id="ahmPorts">
+                  <option value="http://192.168.2.15:5000/Account/Login"></option>
                   <option value="http://localhost:5000/Account/Login"></option>
                 </datalist>
               </div>
@@ -705,7 +706,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.72 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.73 — Luís Cavaco
     Built 2026-08-21 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
