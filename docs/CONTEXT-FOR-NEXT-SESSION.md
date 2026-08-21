@@ -148,14 +148,23 @@ warning, because it trains people to ignore the tool. When in doubt, warn.
   weight tier that belonged to a different IATA code entirely. Fixed by
   matching `uldType` **and** `iata` to the group's own declaration.
 - **Every ULD group stays its own option, even where two types certify the
-  same weight.** AKE and PKC are both "LD3" and match exactly at some B777-200
-  bays, but they're never merged into one generated option — the layout list
-  always offers a "full AKE" and a "full PKC" compartment layout as distinct,
-  explicit choices, each combining normally with the compartment's other ULD
-  types. An earlier version collapsed numerically-identical options into one
-  to avoid look-alike duplicates; reverted on request — since PKC diverges
-  from AKE at some bays anyway (comp3/comp4), keeping them always separate is
-  the more predictable rule than one that behaves differently per compartment.
+  same weight.** AKE and PKC match exactly at some B777-200 bays, but they're
+  never merged into one generated option — the layout list always offers a
+  "full AKE" and a "full PKC" compartment layout as distinct, explicit
+  choices, each combining normally with the compartment's other ULD types.
+  An earlier version collapsed numerically-identical options into one to
+  avoid look-alike duplicates; reverted on request — since PKC diverges from
+  AKE at some bays anyway (comp3/comp4), keeping them always separate is the
+  more predictable rule than one that behaves differently per compartment.
+- **PKC has its own catalog type, `L3P/PKC`, not `LD3`.** It's an LD-3 by the
+  manual's numeric type code (`ROBUST_STRING_TYPES` still treats it as
+  rigid-wall for the intermixing check), but the pallet form is a different
+  product from the AKE container, with its own CSV export code
+  (`L3P/PKC,LA`, not the bare `LD3,LA`) and its own entry in the ULD type
+  dropdown — it only shows as `L3P/PKC` where a group explicitly declares
+  `uldType:"L3P/PKC"`; anything still declared plain `"LD3"` (B787/A330's
+  merged AKE/PKC groups, which never needed the split — their weights never
+  diverge) is unaffected.
 - **Layout names now carry the IATA code** (e.g. `2LD3(AKE)` vs `2LD3(PKC)`),
   not just the type. Without it, two full-compartment combinations that used
   different containers at a divergent bay could still produce the exact same
