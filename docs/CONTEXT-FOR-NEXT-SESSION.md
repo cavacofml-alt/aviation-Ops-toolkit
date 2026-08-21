@@ -165,6 +165,16 @@ warning, because it trains people to ignore the tool. When in doubt, warn.
   `uldType:"L3P/PKC"`; anything still declared plain `"LD3"` (B787/A330's
   merged AKE/PKC groups, which never needed the split — their weights never
   diverge) is unaffected.
+- **A position can be certified for more than one ULD type at once.** When two
+  groups reach the exact same fwd/aft/index/max-weight at a zone (AKE and PKC
+  where they haven't diverged), that's one physical slot with two certified
+  ULDs, not two competing layouts — `generateLayouts()` keeps a single option
+  there and records every matching type in `position.certified` (an array of
+  `{type, iata}`). Genuinely different numbers (PKC derated below AKE at some
+  bays) still produce separate, mutually exclusive options, same as before.
+  The expanded layout view shows this both as a `deckStrip()` of tiles (each
+  with a native tooltip listing every certified ULD) and as a "Certified
+  ULDs" column in the position table.
 - **Layout names now carry the IATA code** (e.g. `2LD3(AKE)` vs `2LD3(PKC)`),
   not just the type. Without it, two full-compartment combinations that used
   different containers at a divergent bay could still produce the exact same
@@ -187,9 +197,10 @@ warning, because it trains people to ignore the tool. When in doubt, warn.
   Message Validator, Secure ZIP, ULD, and Home. **Not** applied to AHM Audit —
   its content is a single small centred card; going full-width just leaves
   empty space on both sides with no benefit.
-- The aircraft SVG in the ULD module has an explicit `max-width:760px` — its
-  `viewBox` has a fixed aspect ratio, so letting it stretch to a wide
-  container's full width made it enormous.
+- The aircraft SVG in the ULD module has an explicit `max-width` (bumped from
+  760px to 1100px on request) — its `viewBox` has a fixed aspect ratio, so
+  letting it stretch to the wide panel's full width would make it enormous;
+  the cap keeps it large but bounded.
 
 ### Reconciliation
 

@@ -230,17 +230,15 @@ if(inBuild("uld")) try {
   ok("B777 intermixing: no generated layout leaves a non-rigid type at a string end",
      badEnds.length === 0, badEnds.slice(0, 3).join("; "));
 
-  // Comp1: AKE and PKC certify the same weight at every position there, but
-  // they're still kept as separate, explicit choices — a "full AKE" and a
-  // "full PKC" compartment layout must both be offered, never silently
-  // collapsed into one just because the numbers happened to match.
-  const c1Idents = ["11", "12", "13", "14"];
-  const c1FullAKE = (ULD.U.layouts[1] || []).some(l => c1Idents.every(base =>
-    l.positions.some(p => p.name === base + "L" && p.uld === "AKE")));
-  const c1FullPKC = (ULD.U.layouts[1] || []).some(l => c1Idents.every(base =>
-    l.positions.some(p => p.name === base + "L" && p.uld === "PKC")));
-  ok("B777 comp1: full-AKE and full-PKC compartment layouts are both offered",
-     c1FullAKE && c1FullPKC, "AKE:" + c1FullAKE + " PKC:" + c1FullPKC);
+  // Comp1: AKE and PKC certify the same weight at every position there —
+  // that's one slot with two certified ULDs, not two competing layouts, so
+  // a position filled by AKE must list PKC as also-certified (and only one
+  // generated option should exist per zone, not a look-alike duplicate).
+  const c1_11L = (ULD.U.layouts[1] || [])
+    .map(l => l.positions.find(p => p.name === "11L")).find(Boolean);
+  const c1CertTypes = c1_11L ? c1_11L.certified.map(c => c.iata).sort() : [];
+  ok("B777 comp1: 11L lists both AKE and PKC as certified (identical there)",
+     c1CertTypes.join(",") === "AKE,PKC", c1CertTypes.join(","));
 
   // Comp4: PKC is derated below AKE at every position there — a genuinely
   // different number must still surface as its own option somewhere in the
@@ -263,7 +261,9 @@ if(inBuild("uld")) try {
   // CSV export distinguishes the PKC pallet from the AKE container with its
   // own type code ("L3P/PKC") instead of the bare "LD3" both would otherwise
   // share.
-  const csv = ULD.csvLines(1).join("\n");
+  // Comp4 is where PKC genuinely diverges from AKE, so it still surfaces as
+  // its own standalone position (comp1's are merged into AKE's certified list).
+  const csv = ULD.csvLines(4).join("\n");
   ok("B777 CSV export: PKC positions are coded L3P/PKC, not bare LD3",
      csv.includes('"L3P/PKC,LA"'));
   ok("B777 CSV export: AKE positions stay coded as plain LD3",

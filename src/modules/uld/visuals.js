@@ -61,7 +61,7 @@ function aircraftPanel(activeNum, mode){
   }).join("");
 
   var svg = '<div style="overflow-x:auto">'+
-    '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:760px;height:auto;display:block;margin:0 auto" role="img" '+
+    '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:1100px;height:auto;display:block;margin:0 auto" role="img" '+
       'aria-label="Side view of the aircraft with cargo compartments">'+
       '<path d="M '+noseX+' 100 C '+(noseX+30)+' 62, '+(noseX+120)+' 48, 300 48 '+
         'L 690 48 C 760 48, 800 56, '+(tailX-40)+' 66 L '+tailX+' 74 L '+(tailX-26)+' 92 '+
@@ -167,6 +167,32 @@ function zoneGrid(comp){
         'border:1px solid var(--'+l[0]+')"></i>'+esc(l[1])+'</span>';
     }).join("")+'</div>'+
   '</div>';
+}
+
+/* ============================================================================
+   DECKS — a visual strip of one generated layout's positions, ordered by
+   station. Each tile carries a native tooltip listing every ULD certified
+   for that exact slot (an L/R pair can be certified for more than one type
+   when two ULDs match the same fwd/aft/index/max-weight there).
+   ============================================================================ */
+function deckStrip(layout){
+  var positions = layout.positions.slice().sort(function(a,b){
+    return parseFloat(a.fwd)-parseFloat(b.fwd) || (a.name<b.name?-1:1);
+  });
+  var tiles = positions.map(function(p){
+    var col = groupColor(p.uldType);
+    var cert = (p.certified||[{type:p.uldType,iata:p.uld}])
+      .map(function(c){ return c.type+" ("+c.iata+")"; }).join(", ");
+    return '<div title="Certified ULDs: '+esc(cert)+'" style="min-width:56px;height:40px;'+
+      'border:1.5px solid '+col+';background:color-mix(in srgb, '+col+' 14%, transparent);'+
+      'border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;'+
+      'font-family:var(--mono);cursor:default">'+
+      '<span style="font-size:11px;color:'+col+'">'+esc(p.name)+'</span>'+
+      '<span style="font-size:9px;color:var(--dim)">'+esc(p.uld)+'</span>'+
+    '</div>';
+  }).join("");
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;padding:10px;background:var(--panel2);'+
+    'border-radius:3px;margin-top:8px">'+tiles+'</div>';
 }
 
 /* ============================================================================
