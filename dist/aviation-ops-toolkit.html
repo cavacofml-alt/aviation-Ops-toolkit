@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.80</title>
+<title>Aviation Ops Toolkit v1.2.81</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.80</span>
+      <span class="build-ver">v1.2.81</span>
     </header>
 
     <main>
@@ -706,7 +706,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.80 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.81 — Luís Cavaco
     Built 2026-08-24 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -5474,7 +5474,10 @@ function typeOptions(sel){
 
 /* ---------- STEP 1 : ULDs ---------- */
 function viewStep1(){
-  var rows = U.ulds.map(function(u,i){
+  var sortedUlds = U.ulds.slice().sort(function(a,b){
+    return a.uldType===b.uldType ? (a.iata<b.iata?-1:a.iata>b.iata?1:0) : (a.uldType<b.uldType?-1:1);
+  });
+  var rows = sortedUlds.map(function(u,i){
     var editing = U.editUld===u.id;
     var c = groupColor(u.uldType);
     var main = '<tr>'+
