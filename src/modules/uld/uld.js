@@ -125,7 +125,10 @@ function typeOptions(sel){
 
 /* ---------- STEP 1 : ULDs ---------- */
 function viewStep1(){
-  var rows = U.ulds.map(function(u,i){
+  var sortedUlds = U.ulds.slice().sort(function(a,b){
+    return a.uldType===b.uldType ? (a.iata<b.iata?-1:a.iata>b.iata?1:0) : (a.uldType<b.uldType?-1:1);
+  });
+  var rows = sortedUlds.map(function(u,i){
     var editing = U.editUld===u.id;
     var c = groupColor(u.uldType);
     var main = '<tr>'+
