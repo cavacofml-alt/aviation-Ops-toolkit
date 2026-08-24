@@ -10,13 +10,18 @@ function aircraftPanel(activeNum, mode){
   var comps = U.compartments.filter(function(c){
     return c.uldGroups && c.uldGroups.some(function(g){ return g.positions.length; });
   });
-  if(!comps.length) return "";
+  var bulkHolds = (U.bulk||[]).filter(function(h){ return h.positions && h.positions.length; });
+  if(!comps.length && !bulkHolds.length) return "";
 
   var all = [];
   comps.forEach(function(c){ c.uldGroups.forEach(function(g){ g.positions.forEach(function(p){
     var f = parseFloat(p.fwd), a = parseFloat(p.aft);
     if(!isNaN(f) && !isNaN(a)) all.push([f,a]);
   }); }); });
+  bulkHolds.forEach(function(h){ h.positions.forEach(function(p){
+    var f = parseFloat(p.fwd), a = parseFloat(p.aft);
+    if(!isNaN(f) && !isNaN(a)) all.push([f,a]);
+  }); });
   if(!all.length) return "";
   var minSt = Math.min.apply(null, all.map(function(x){return x[0];}));
   var maxSt = Math.max.apply(null, all.map(function(x){return x[1];}));
@@ -62,6 +67,27 @@ function aircraftPanel(activeNum, mode){
     '</g>';
   }).join("");
 
+  var bulkBlocks = bulkHolds.map(function(h){
+    var fs = [], as = [];
+    h.positions.forEach(function(p){
+      var f=parseFloat(p.fwd), a=parseFloat(p.aft);
+      if(!isNaN(f)) fs.push(f); if(!isNaN(a)) as.push(a);
+    });
+    if(!fs.length) return "";
+    var x1 = st2x(Math.min.apply(null,fs)), x2 = st2x(Math.max.apply(null,as));
+    var col = "var(--dim)";
+    return '<g class="hold">'+
+      '<title>Bulk hold '+h.number+' — loose cargo, '+h.positions.length+' compartments</title>'+
+      '<rect x="'+x1.toFixed(1)+'" y="'+holdY+'" width="'+Math.max(2,(x2-x1)).toFixed(1)+'" '+
+        'height="'+holdH+'" fill="'+col+'" fill-opacity="0.10" '+
+        'stroke="'+col+'" stroke-width="1.3" stroke-dasharray="3 2" rx="2"></rect>'+
+      '<text x="'+((x1+x2)/2).toFixed(1)+'" y="'+(holdY+holdH/2+4)+'" text-anchor="middle" '+
+        'style="fill:'+col+'" font-size="12" font-family="monospace">'+h.number+'</text>'+
+      '<text x="'+((x1+x2)/2).toFixed(1)+'" y="'+(holdY+holdH+18)+'" text-anchor="middle" '+
+        'style="fill:var(--faint)" font-size="9" font-family="monospace">bulk</text>'+
+    '</g>';
+  }).join("");
+
   var svg = '<div style="overflow-x:auto">'+
     '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:1100px;height:auto;display:block;margin:0 auto" role="img" '+
       'aria-label="Side view of the aircraft with cargo compartments">'+
@@ -73,7 +99,7 @@ function aircraftPanel(activeNum, mode){
       '<path d="M 430 158.4 L 520 158.4 L 588 211.2 L 520 211.2 Z" style="fill:var(--panel2);stroke:var(--line-2)" stroke-width="1.4"></path>'+
       '<line x1="150" y1="96" x2="690" y2="91.2" style="stroke:var(--line)" stroke-width="1"></line>'+
       '<line x1="90" y1="'+holdY+'" x2="'+(tailX-40)+'" y2="'+holdY+'" style="stroke:var(--line)" stroke-width="1"></line>'+
-      blocks +
+      blocks + bulkBlocks +
       (refX!==null
         ? '<line x1="'+refX.toFixed(1)+'" y1="48" x2="'+refX.toFixed(1)+'" y2="'+(holdY+holdH+16)+'" style="stroke:var(--magenta)" '+
           'stroke-width="1" stroke-dasharray="4 3"></line>'+
@@ -228,6 +254,7 @@ function openTemplates(){
       var t = TEMPLATES[+b.getAttribute("data-i")];
       U.ulds = JSON.parse(JSON.stringify(t.ulds||[]));
       U.compartments = JSON.parse(JSON.stringify(t.compartments||[]));
+      U.bulk = JSON.parse(JSON.stringify(t.bulk||[]));
       U.refStation = t.refStation||"";
       $("refStation").value = U.refStation;
       U.tplName = t.name||null;

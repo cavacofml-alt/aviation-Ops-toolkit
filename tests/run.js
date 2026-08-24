@@ -177,8 +177,8 @@ if(inBuild("uld")) try {
   const uldAll = fileOf("src/modules/uld/templates.js") + fileOf("src/modules/uld/uld.js");
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
-       ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines};");
-  ok("all aircraft templates load", ULD.TEMPLATES.length === 4);
+       ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines, csvAll};");
+  ok("all aircraft templates load", ULD.TEMPLATES.length === 5);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
   ok("a zero index asks for confirmation", ULD.validateIndex("0", "19", "36") !== null);
@@ -300,6 +300,46 @@ if(inBuild("uld")) try {
   c3.uldGroups.forEach(g => g.positions.forEach(p => c3ZoneBases.add(p.name.replace(/[LR]$/, ""))));
   ok("A330-200 comp3: only zones 33 and 32P exist, matching the source table",
      [...c3ZoneBases].sort().join(",") === "32P,33");
+
+  // B777-300: appended last in TEMPLATES, same reasoning as A330-200 above.
+  const b3 = ULD.TEMPLATES[4];
+  ULD.U.ulds = JSON.parse(JSON.stringify(b3.ulds));
+  ULD.U.compartments = JSON.parse(JSON.stringify(b3.compartments));
+  ULD.U.bulk = JSON.parse(JSON.stringify(b3.bulk));
+  ULD.U.refStation = b3.refStation;
+  ok("B777-300 template has all 4 compartments", ULD.U.compartments.length === 4,
+     ULD.U.compartments.length + '/4');
+  ok("B777-300 raises no blocking index issue", ULD.indexIssues().hard.length === 0);
+  ULD.generateLayouts();
+  const b3counts = ULD.U.compartments.map(c => (ULD.U.layouts[c.number] || []).length);
+  ok("B777-300 template generates layouts in every compartment", b3counts.every(n => n > 0), b3counts.join("/"));
+
+  // 25P/31P carry a position-specific max weight override for PAG/PMC per
+  // the manual's remarks (5102/6350 instead of the catalog default 4626/5102).
+  const c2 = ULD.U.compartments.find(c => c.number === 2);
+  const pag25P = c2.uldGroups.find(g => g.iata === "PAG").positions.find(p => p.name === "25P");
+  const pmc25P = c2.uldGroups.find(g => g.iata === "PMC").positions.find(p => p.name === "25P");
+  ok("B777-300 comp2: 25P carries the manual's restrictive PAG/PMC max weight",
+     pag25P.maxWeight === "5102" && pmc25P.maxWeight === "6350");
+
+  // PLA is coded as its own "PLA" type here (per the operator's own catalog
+  // table), not "LD8" like the other templates.
+  const c1 = ULD.U.compartments.find(c => c.number === 1);
+  ok("B777-300 comp1: PLA is coded as type PLA, not LD8",
+     c1.uldGroups.find(g => g.iata === "PLA").uldType === "PLA");
+
+  // Bulk holds (loose cargo) are not part of generateLayouts() — they're
+  // static rows appended straight into the combined export.
+  const bulkCsv = ULD.csvAll();
+  ok("B777-300 bulk holds appear in the combined export as static BULK rows",
+     bulkCsv.includes("5,BULK,51,") && bulkCsv.includes("5,BULK,52,"));
+
+  // AKE and PKC are both plain "LD3" here (unlike B777-200, where PKC is
+  // "L3P/PKC") — a merged slot must dedupe by type code, not list "LD3,LA"
+  // twice.
+  const b3csvC1 = ULD.csvLines(1).join("\n");
+  ok("B777-300 comp1: a merged AKE/PKC slot lists LD3,LA once, not twice",
+     b3csvC1.includes('"LD3,LA"') && !b3csvC1.includes('"LD3,LA;LD3,LA"'));
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {
