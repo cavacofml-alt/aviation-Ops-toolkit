@@ -1,10 +1,11 @@
         <!-- ============ MESSAGE VALIDATOR ============ -->
         <section id="panel-msgcheck">
-          <div class="msg-split">
-          <div class="msg-col">
-          <div class="sec">Input message</div>
-          <textarea id="msgInput" spellcheck="false" autocapitalize="off" autocomplete="off"
-            placeholder="Paste the message here (PNL, ADL, PSM, MVT, SSM…) — the type is detected automatically.&#10;&#10;LISKPTP AMSKLKL&#10;.FAORMTP 151420&#10;PNL&#10;TP1234/16JUL LIS PART1&#10;…"></textarea>
+          <textarea id="msgInput" style="display:none" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+          <div class="sec" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span>Input message — errors flagged character by character once validated</span>
+            <button class="btn small quiet" id="btnTelexCopy" style="margin-left:auto" hidden>&#128203; Copy message</button>
+          </div>
+          <div class="telex" id="telex"></div>
           <div class="controls">
             <button class="btn primary" id="btnValidate">Validate message</button>
             <span style="display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden">
@@ -19,19 +20,8 @@
             </span>
             <button class="btn" id="btnExampleBad">Example with errors</button>
             <button class="btn quiet" id="btnClear">Clear</button>
-            <span class="note" style="flex-basis:100%">The selector chooses which message type both example buttons load. Validation always detects the type on its own.
-              After the first run, edit directly in the telex printout — click any highlighted character to select the finding, then type the fix in place. The list refreshes as you type.</span>
-          </div>
-
-          </div>
-          <div class="msg-col">
-          <div class="sec" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span>Telex printout — errors flagged character by character</span>
-            <button class="btn small quiet" id="btnTelexCopy" style="margin-left:auto" hidden>&#128203; Copy message</button>
-          </div>
-          <div class="telex" id="telex"><div class="empty">The validated message is printed here, with a 64-column ruler and underlines on the exact problem characters.</div></div>
-
-          </div>
+            <span class="note" style="flex-basis:100%">Type or paste the message directly above (PNL, ADL, PSM, MVT, SSM… — the type is detected automatically),
+              then select <b>Validate</b>. After the first run, click any highlighted character to select the finding, then type the fix in place — the list refreshes as you type.</span>
           </div>
           <div class="sec mt" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <span>Validation result</span>

@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.81</title>
+<title>Aviation Ops Toolkit v1.2.82</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -313,7 +313,7 @@ thead th:last-child{text-align:right}
   color:var(--text); box-shadow:0 8px 24px rgba(0,0,0,.6); pointer-events:none;
 }
 .telex{background:var(--term-bg); border:1px solid var(--line); border-radius:var(--radius-sm); padding:14px 16px;
-  overflow-x:auto; overflow-y:auto; flex:1; font-family:var(--mono); font-size:13px; color:var(--term-fg); line-height:1.7}
+  overflow-x:auto; overflow-y:auto; flex:1; min-height:220px; font-family:var(--mono); font-size:13px; color:var(--term-fg); line-height:1.7}
 .telex .ruler{color:var(--faint); white-space:pre; line-height:1.2; margin-bottom:3px}
 .telex .ruler b{color:var(--cyan); font-weight:600}
 .telex .row{display:flex; gap:14px}
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.81</span>
+      <span class="build-ver">v1.2.82</span>
     </header>
 
     <main>
@@ -495,11 +495,12 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 
                 <!-- ============ MESSAGE VALIDATOR ============ -->
         <section id="panel-msgcheck">
-          <div class="msg-split">
-          <div class="msg-col">
-          <div class="sec">Input message</div>
-          <textarea id="msgInput" spellcheck="false" autocapitalize="off" autocomplete="off"
-            placeholder="Paste the message here (PNL, ADL, PSM, MVT, SSM…) — the type is detected automatically.&#10;&#10;LISKPTP AMSKLKL&#10;.FAORMTP 151420&#10;PNL&#10;TP1234/16JUL LIS PART1&#10;…"></textarea>
+          <textarea id="msgInput" style="display:none" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+          <div class="sec" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span>Input message — errors flagged character by character once validated</span>
+            <button class="btn small quiet" id="btnTelexCopy" style="margin-left:auto" hidden>&#128203; Copy message</button>
+          </div>
+          <div class="telex" id="telex"></div>
           <div class="controls">
             <button class="btn primary" id="btnValidate">Validate message</button>
             <span style="display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden">
@@ -514,19 +515,8 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
             </span>
             <button class="btn" id="btnExampleBad">Example with errors</button>
             <button class="btn quiet" id="btnClear">Clear</button>
-            <span class="note" style="flex-basis:100%">The selector chooses which message type both example buttons load. Validation always detects the type on its own.
-              After the first run, edit directly in the telex printout — click any highlighted character to select the finding, then type the fix in place. The list refreshes as you type.</span>
-          </div>
-
-          </div>
-          <div class="msg-col">
-          <div class="sec" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span>Telex printout — errors flagged character by character</span>
-            <button class="btn small quiet" id="btnTelexCopy" style="margin-left:auto" hidden>&#128203; Copy message</button>
-          </div>
-          <div class="telex" id="telex"><div class="empty">The validated message is printed here, with a 64-column ruler and underlines on the exact problem characters.</div></div>
-
-          </div>
+            <span class="note" style="flex-basis:100%">Type or paste the message directly above (PNL, ADL, PSM, MVT, SSM… — the type is detected automatically),
+              then select <b>Validate</b>. After the first run, click any highlighted character to select the finding, then type the fix in place — the list refreshes as you type.</span>
           </div>
           <div class="sec mt" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <span>Validation result</span>
@@ -706,7 +696,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.81 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.82 — Luís Cavaco
     Built 2026-08-24 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -4622,13 +4612,22 @@ var SEV_LABEL = { err:"ERROR", warn:"WARNING", info:"INFO" };
 var sevFilter = "all";
 var lastFindings = [];
 
+/* Renders the input box as plain, unmarked telex rows (no findings yet) —
+   used before the first Validate, so typing/pasting always lands in the
+   same box that later shows highlighted findings, instead of a separate
+   plain textarea handing off to a read-only printout. */
+function seedTelex(raw){
+  lastFindings = [];
+  renderTelex(raw || "");
+}
+
 var liveOn = false;         // starts after the first manual validation
 function runValidation(keepFilter){
   var raw = $("msgInput").value.replace(/\r/g,"");
   if(!raw.trim()){
     $("summary").hidden = true;
     $("findings").innerHTML = '<div class="empty">The message is empty.</div>';
-    $("telex").innerHTML = '<div class="empty">The validated message is printed here.</div>';
+    seedTelex("");
     lastFindings = []; return;
   }
   lastFindings = validate(raw);
@@ -5020,25 +5019,25 @@ $("btnValidate").addEventListener("click", function(){ runValidation(false); });
 $("btnExample").addEventListener("click", function(){
   $("msgInput").value = EX_BY_TYPE[$("msgtype").value] || EX_OK;
   if(liveOn){ runValidation(false); return; }
-  if(liveOn){ runValidation(false); return; }
   $("summary").hidden = true;
   $("findings").innerHTML = '<div class="empty">Paste a message and select <b>Validate</b>.</div>';
-  $("telex").innerHTML = '<div class="empty">The validated message is printed here.</div>';
+  seedTelex($("msgInput").value);
 });
 $("btnExampleBad").addEventListener("click", function(){
   var t = $("msgtype").value;
   $("msgInput").value = (typeof EX_BAD_BY_TYPE !== "undefined" && EX_BAD_BY_TYPE[t]) || EX_BAD;
   $("summary").hidden = true;
   $("findings").innerHTML = '<div class="empty">Paste a message and select <b>Validate</b>.</div>';
-  $("telex").innerHTML = '<div class="empty">The validated message is printed here.</div>';
+  seedTelex($("msgInput").value);
 });
 $("btnClear").addEventListener("click", function(){
   $("msgInput").value = ""; $("summary").hidden = true; lastFindings = []; sevFilter = "all";
   liveOn = false; $("liveFlag").textContent = "";
   $("findings").innerHTML = '<div class="empty">Paste a message and select <b>Validate</b>.</div>';
-  $("telex").innerHTML = '<div class="empty">The validated message is printed here.</div>';
+  seedTelex("");
   var tc = $("btnTelexCopy"); if(tc){ tc.hidden = true; }
 });
+seedTelex("");
 
 /* --- Copy message button (telex) --- */
 $("btnTelexCopy") && $("btnTelexCopy").addEventListener("click", function(){

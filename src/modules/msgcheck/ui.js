@@ -5,13 +5,22 @@ var SEV_LABEL = { err:"ERROR", warn:"WARNING", info:"INFO" };
 var sevFilter = "all";
 var lastFindings = [];
 
+/* Renders the input box as plain, unmarked telex rows (no findings yet) —
+   used before the first Validate, so typing/pasting always lands in the
+   same box that later shows highlighted findings, instead of a separate
+   plain textarea handing off to a read-only printout. */
+function seedTelex(raw){
+  lastFindings = [];
+  renderTelex(raw || "");
+}
+
 var liveOn = false;         // starts after the first manual validation
 function runValidation(keepFilter){
   var raw = $("msgInput").value.replace(/\r/g,"");
   if(!raw.trim()){
     $("summary").hidden = true;
     $("findings").innerHTML = '<div class="empty">The message is empty.</div>';
-    $("telex").innerHTML = '<div class="empty">The validated message is printed here.</div>';
+    seedTelex("");
     lastFindings = []; return;
   }
   lastFindings = validate(raw);
@@ -403,25 +412,25 @@ $("btnValidate").addEventListener("click", function(){ runValidation(false); });
 $("btnExample").addEventListener("click", function(){
   $("msgInput").value = EX_BY_TYPE[$("msgtype").value] || EX_OK;
   if(liveOn){ runValidation(false); return; }
-  if(liveOn){ runValidation(false); return; }
   $("summary").hidden = true;
   $("findings").innerHTML = '<div class="empty">Paste a message and select <b>Validate</b>.</div>';
-  $("telex").innerHTML = '<div class="empty">The validated message is printed here.</div>';
+  seedTelex($("msgInput").value);
 });
 $("btnExampleBad").addEventListener("click", function(){
   var t = $("msgtype").value;
   $("msgInput").value = (typeof EX_BAD_BY_TYPE !== "undefined" && EX_BAD_BY_TYPE[t]) || EX_BAD;
   $("summary").hidden = true;
   $("findings").innerHTML = '<div class="empty">Paste a message and select <b>Validate</b>.</div>';
-  $("telex").innerHTML = '<div class="empty">The validated message is printed here.</div>';
+  seedTelex($("msgInput").value);
 });
 $("btnClear").addEventListener("click", function(){
   $("msgInput").value = ""; $("summary").hidden = true; lastFindings = []; sevFilter = "all";
   liveOn = false; $("liveFlag").textContent = "";
   $("findings").innerHTML = '<div class="empty">Paste a message and select <b>Validate</b>.</div>';
-  $("telex").innerHTML = '<div class="empty">The validated message is printed here.</div>';
+  seedTelex("");
   var tc = $("btnTelexCopy"); if(tc){ tc.hidden = true; }
 });
+seedTelex("");
 
 /* --- Copy message button (telex) --- */
 $("btnTelexCopy") && $("btnTelexCopy").addEventListener("click", function(){
