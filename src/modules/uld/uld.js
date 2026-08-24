@@ -356,7 +356,8 @@ function viewStep3(){
 
   var head = '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'+
     '<button class="btn primary" data-act="generate"'+(blocked?" disabled":"")+'>&#9889; Generate all layouts</button>'+
-    (U.layouts && !blocked ? '<button class="btn" data-act="csv-all">&#8595; Export all</button>':'')+'</div>' + gate+
+    (U.layouts && !blocked ? '<button class="btn" data-act="xlsx-all">&#8595; Export all (Excel)</button>':'')+
+    (U.layouts && !blocked ? '<button class="btn small quiet" data-act="csv-all">CSV (all)</button>':'')+'</div>' + gate+
     (U.layouts && U.layoutsStale && !blocked ? '<div class="warnbox" style="margin-bottom:14px">'+
       '<b>&#9888; Data changed since these layouts were generated</b>'+
       '<div style="margin-top:4px;color:var(--dim)">A position was edited after the layouts below were computed — '+
@@ -392,7 +393,9 @@ function viewStep3(){
   var body = '<div style="border:1px solid var(--line);border-radius:2px;overflow:hidden">'+
     '<div style="padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
       '<b>Compartment '+n+' — '+list.length+' layouts</b>'+
-      '<button class="btn small" data-act="csv-one">&#8595; CSV compartment '+n+'</button></div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+      '<button class="btn small" data-act="xlsx-one">&#8595; Excel compartment '+n+'</button>'+
+      '<button class="btn small quiet" data-act="csv-one">CSV</button></div></div>'+
     (list.length? renderLayoutList(n, list) : '<div class="empty">No valid layouts for this compartment.</div>')+
     '</div>';
   return head + aircraftPanel(nums[U.activeLayoutComp], "layouts") + stats + warnHtml + tabs + body;
@@ -683,8 +686,11 @@ function crossCompartmentWarnings(){
 // a raw .csv under certain regional settings is a separate, cosmetic
 // concern that must never drive a change to the actual exported format.
 var CSV_HEADER = "Compartment,Layout,Position,Certified ULDs,FWD Stat,AFT Stat,Left,Right,Index,Volume,Max weight";
-function csvLines(compNum){
-  var lines = [];
+var EXPORT_HEADERS = CSV_HEADER.split(",");
+// Shared by the CSV and XLSX exports — one row per position, in the
+// operator's own upload-template column order.
+function layoutRows(compNum){
+  var rows = [];
   (U.layouts[compNum]||[]).forEach(function(layout){
     layout.positions.forEach(function(pos){
       // A merged slot (e.g. AKE and PKC certified identically there) lists
@@ -692,13 +698,23 @@ function csvLines(compNum){
       // be built with — pos.uldType/pos.uld alone would silently drop PKC.
       var certTypes = (pos.certified||[{type:pos.uldType}])
         .map(function(c){ return c.type+",LA"; }).join(";");
-      lines.push([compNum, layout.name, pos.name, '"'+certTypes+'"', pos.fwd, pos.aft,
-        (pos.left===""||pos.left==null)?0:pos.left,
-        (pos.right===""||pos.right==null)?0:pos.right,
-        pos.index, 0, pos.maxWeight].join(","));
+      rows.push([compNum, layout.name, pos.name, certTypes, +pos.fwd, +pos.aft,
+        (pos.left===""||pos.left==null)?0:+pos.left,
+        (pos.right===""||pos.right==null)?0:+pos.right,
+        +pos.index, 0, +pos.maxWeight]);
     });
   });
-  return lines;
+  return rows;
+}
+function allLayoutRows(){
+  var out = [];
+  U.compartments.forEach(function(c){ out = out.concat(layoutRows(c.number)); });
+  return out;
+}
+function csvLines(compNum){
+  return layoutRows(compNum).map(function(r){
+    return [r[0], r[1], r[2], '"'+r[3]+'"', r[4], r[5], r[6], r[7], r[8], r[9], r[10]].join(",");
+  });
 }
 function csvOne(n){ return [CSV_HEADER].concat(csvLines(n)).join("\n"); }
 function csvAll(){
@@ -947,6 +963,13 @@ function onUldClick(e){
     showTextModal("CSV — compartment "+n, csvOne(n), "compartment"+n+"_layouts.csv");
   }
   else if(act==="csv-all"){ showTextModal("CSV — all compartments", csvAll(), "all_layouts.csv"); }
+  else if(act==="xlsx-one"){
+    var n2 = U.compartments.map(function(c){return c.number;})[U.activeLayoutComp];
+    downloadXlsx("Layouts", EXPORT_HEADERS, layoutRows(n2), "compartment"+n2+"_layouts.xlsx");
+  }
+  else if(act==="xlsx-all"){
+    downloadXlsx("Layouts", EXPORT_HEADERS, allLayoutRows(), "all_layouts.xlsx");
+  }
 }
 
 $("btnPrev").addEventListener("click", function(){ if(U.step>0){U.step--; uldRender();} });

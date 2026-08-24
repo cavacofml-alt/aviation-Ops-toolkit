@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.73</title>
+<title>Aviation Ops Toolkit v1.2.76</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.73</span>
+      <span class="build-ver">v1.2.76</span>
     </header>
 
     <main>
@@ -706,8 +706,8 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.73 — Luís Cavaco
-    Built 2026-08-21 from the source tree; see build.manifest.json.
+/*! Aviation Ops Toolkit v1.2.76 — Luís Cavaco
+    Built 2026-08-24 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
 
@@ -3336,6 +3336,79 @@ function buildEncryptedZip(entries, password){
   return out;
 }
 
+/* ============================================================================
+   Plain (unencrypted, stored) ZIP writer — used to package .xlsx files,
+   which are themselves just a ZIP of XML parts. Shares crc32/utf8/dosDateTime
+   with the encrypted writer above.
+   entries: [{name, data:Uint8Array}]
+   ============================================================================ */
+function buildPlainZip(entries){
+  var chunks = [], central = [], offset = 0;
+  var now = dosDateTime(new Date());
+
+  entries.forEach(function(entry){
+    var nameBytes = utf8(entry.name);
+    var data = entry.data;
+    var crc = crc32(data);
+
+    var lh = new Uint8Array(30 + nameBytes.length);
+    var ldv = new DataView(lh.buffer);
+    ldv.setUint32(0, 0x04034b50, true);
+    ldv.setUint16(4, 20, true);
+    ldv.setUint16(6, 0x0800, true);    // UTF-8 names
+    ldv.setUint16(8, 0, true);         // stored, no compression
+    ldv.setUint16(10, now.time, true);
+    ldv.setUint16(12, now.date, true);
+    ldv.setUint32(14, crc, true);
+    ldv.setUint32(18, data.length, true);
+    ldv.setUint32(22, data.length, true);
+    ldv.setUint16(26, nameBytes.length, true);
+    ldv.setUint16(28, 0, true);
+    lh.set(nameBytes, 30);
+    chunks.push(lh, data);
+
+    var ch = new Uint8Array(46 + nameBytes.length);
+    var cdv = new DataView(ch.buffer);
+    cdv.setUint32(0, 0x02014b50, true);
+    cdv.setUint16(4, 20, true);
+    cdv.setUint16(6, 20, true);
+    cdv.setUint16(8, 0x0800, true);
+    cdv.setUint16(10, 0, true);
+    cdv.setUint16(12, now.time, true);
+    cdv.setUint16(14, now.date, true);
+    cdv.setUint32(16, crc, true);
+    cdv.setUint32(20, data.length, true);
+    cdv.setUint32(24, data.length, true);
+    cdv.setUint16(28, nameBytes.length, true);
+    cdv.setUint16(30, 0, true);
+    cdv.setUint16(32, 0, true);
+    cdv.setUint16(34, 0, true);
+    cdv.setUint16(36, 0, true);
+    cdv.setUint32(38, 0, true);
+    cdv.setUint32(42, offset, true);
+    ch.set(nameBytes, 46);
+    central.push(ch);
+
+    offset += lh.length + data.length;
+  });
+
+  var cdSize = central.reduce(function(s,c){ return s + c.length; }, 0);
+  var eocd = new Uint8Array(22);
+  var v = new DataView(eocd.buffer);
+  v.setUint32(0, 0x06054b50, true);
+  v.setUint16(8, entries.length, true);
+  v.setUint16(10, entries.length, true);
+  v.setUint32(12, cdSize, true);
+  v.setUint32(16, offset, true);
+
+  var total = chunks.reduce(function(s,c){ return s + c.length; }, 0) + cdSize + 22;
+  var out = new Uint8Array(total), p = 0;
+  chunks.forEach(function(c){ out.set(c, p); p += c.length; });
+  central.forEach(function(c){ out.set(c, p); p += c.length; });
+  out.set(eocd, p);
+  return out;
+}
+
 
 /*==== FILE: src/core/ui.js ====*/
 
@@ -3375,6 +3448,95 @@ function downloadText(text, filename){
     document.body.appendChild(a); a.click();
     setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
   } catch(e){ alert("Download not available here — select the text and copy it instead."); }
+}
+function downloadBytes(bytes, filename, mime){
+  try{
+    var blob = new Blob([bytes], {type: mime || "application/octet-stream"});
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  } catch(e){ alert("Download not available here."); }
+}
+
+/* ============================================================================
+   Minimal .xlsx writer — a real Excel workbook (typed cells, no delimiter
+   to guess) built from a header row + array-of-arrays, so opening it never
+   depends on the OS's regional list-separator the way a raw .csv does.
+   Numbers are written as numeric cells; everything else as inline strings.
+   ============================================================================ */
+function xlsxEsc(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function xlsxColLetter(n){
+  var s = "";
+  while(n > 0){ var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+  return s;
+}
+function xlsxCell(val, colIdx, rowIdx){
+  var ref = xlsxColLetter(colIdx + 1) + rowIdx;
+  if(typeof val === "number" && isFinite(val)) return '<c r="'+ref+'"><v>'+val+'</v></c>';
+  var s = val == null ? "" : String(val);
+  return '<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+xlsxEsc(s)+'</t></is></c>';
+}
+function xlsxSheetXml(headers, rows){
+  var xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
+  var r = 1;
+  xml += '<row r="'+r+'">' + headers.map(function(h,i){ return xlsxCell(h,i,r); }).join("") + '</row>';
+  rows.forEach(function(row){
+    r++;
+    xml += '<row r="'+r+'">' + row.map(function(v,i){ return xlsxCell(v,i,r); }).join("") + '</row>';
+  });
+  xml += '</sheetData></worksheet>';
+  return xml;
+}
+function buildXlsxFile(sheetName, headers, rows){
+  var contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
+    '<Default Extension="xml" ContentType="application/xml"/>'+
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+
+    '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'+
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+
+    '</Types>';
+  var rootRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'+
+    '</Relationships>';
+  var workbook = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '+
+    'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
+    '<sheets><sheet name="'+xlsxEsc(sheetName||"Sheet1")+'" sheetId="1" r:id="rId1"/></sheets></workbook>';
+  var workbookRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'+
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'+
+    '</Relationships>';
+  var styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+    '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'+
+    '<fills count="1"><fill><patternFill patternType="none"/></fill></fills>'+
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'+
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
+    '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>'+
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'+
+    '</styleSheet>';
+  var sheet = xlsxSheetXml(headers, rows);
+
+  var entries = [
+    { name:"[Content_Types].xml", data:utf8(contentTypes) },
+    { name:"_rels/.rels", data:utf8(rootRels) },
+    { name:"xl/workbook.xml", data:utf8(workbook) },
+    { name:"xl/_rels/workbook.xml.rels", data:utf8(workbookRels) },
+    { name:"xl/worksheets/sheet1.xml", data:utf8(sheet) },
+    { name:"xl/styles.xml", data:utf8(styles) }
+  ];
+  return buildPlainZip(entries);
+}
+function downloadXlsx(sheetName, headers, rows, filename){
+  downloadBytes(buildXlsxFile(sheetName, headers, rows), filename,
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 }
 
 
@@ -5283,7 +5445,8 @@ function viewStep3(){
 
   var head = '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'+
     '<button class="btn primary" data-act="generate"'+(blocked?" disabled":"")+'>&#9889; Generate all layouts</button>'+
-    (U.layouts && !blocked ? '<button class="btn" data-act="csv-all">&#8595; Export all</button>':'')+'</div>' + gate+
+    (U.layouts && !blocked ? '<button class="btn" data-act="xlsx-all">&#8595; Export all (Excel)</button>':'')+
+    (U.layouts && !blocked ? '<button class="btn small quiet" data-act="csv-all">CSV (all)</button>':'')+'</div>' + gate+
     (U.layouts && U.layoutsStale && !blocked ? '<div class="warnbox" style="margin-bottom:14px">'+
       '<b>&#9888; Data changed since these layouts were generated</b>'+
       '<div style="margin-top:4px;color:var(--dim)">A position was edited after the layouts below were computed — '+
@@ -5319,7 +5482,9 @@ function viewStep3(){
   var body = '<div style="border:1px solid var(--line);border-radius:2px;overflow:hidden">'+
     '<div style="padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
       '<b>Compartment '+n+' — '+list.length+' layouts</b>'+
-      '<button class="btn small" data-act="csv-one">&#8595; CSV compartment '+n+'</button></div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+      '<button class="btn small" data-act="xlsx-one">&#8595; Excel compartment '+n+'</button>'+
+      '<button class="btn small quiet" data-act="csv-one">CSV</button></div></div>'+
     (list.length? renderLayoutList(n, list) : '<div class="empty">No valid layouts for this compartment.</div>')+
     '</div>';
   return head + aircraftPanel(nums[U.activeLayoutComp], "layouts") + stats + warnHtml + tabs + body;
@@ -5610,8 +5775,11 @@ function crossCompartmentWarnings(){
 // a raw .csv under certain regional settings is a separate, cosmetic
 // concern that must never drive a change to the actual exported format.
 var CSV_HEADER = "Compartment,Layout,Position,Certified ULDs,FWD Stat,AFT Stat,Left,Right,Index,Volume,Max weight";
-function csvLines(compNum){
-  var lines = [];
+var EXPORT_HEADERS = CSV_HEADER.split(",");
+// Shared by the CSV and XLSX exports — one row per position, in the
+// operator's own upload-template column order.
+function layoutRows(compNum){
+  var rows = [];
   (U.layouts[compNum]||[]).forEach(function(layout){
     layout.positions.forEach(function(pos){
       // A merged slot (e.g. AKE and PKC certified identically there) lists
@@ -5619,13 +5787,23 @@ function csvLines(compNum){
       // be built with — pos.uldType/pos.uld alone would silently drop PKC.
       var certTypes = (pos.certified||[{type:pos.uldType}])
         .map(function(c){ return c.type+",LA"; }).join(";");
-      lines.push([compNum, layout.name, pos.name, '"'+certTypes+'"', pos.fwd, pos.aft,
-        (pos.left===""||pos.left==null)?0:pos.left,
-        (pos.right===""||pos.right==null)?0:pos.right,
-        pos.index, 0, pos.maxWeight].join(","));
+      rows.push([compNum, layout.name, pos.name, certTypes, +pos.fwd, +pos.aft,
+        (pos.left===""||pos.left==null)?0:+pos.left,
+        (pos.right===""||pos.right==null)?0:+pos.right,
+        +pos.index, 0, +pos.maxWeight]);
     });
   });
-  return lines;
+  return rows;
+}
+function allLayoutRows(){
+  var out = [];
+  U.compartments.forEach(function(c){ out = out.concat(layoutRows(c.number)); });
+  return out;
+}
+function csvLines(compNum){
+  return layoutRows(compNum).map(function(r){
+    return [r[0], r[1], r[2], '"'+r[3]+'"', r[4], r[5], r[6], r[7], r[8], r[9], r[10]].join(",");
+  });
 }
 function csvOne(n){ return [CSV_HEADER].concat(csvLines(n)).join("\n"); }
 function csvAll(){
@@ -5874,6 +6052,13 @@ function onUldClick(e){
     showTextModal("CSV — compartment "+n, csvOne(n), "compartment"+n+"_layouts.csv");
   }
   else if(act==="csv-all"){ showTextModal("CSV — all compartments", csvAll(), "all_layouts.csv"); }
+  else if(act==="xlsx-one"){
+    var n2 = U.compartments.map(function(c){return c.number;})[U.activeLayoutComp];
+    downloadXlsx("Layouts", EXPORT_HEADERS, layoutRows(n2), "compartment"+n2+"_layouts.xlsx");
+  }
+  else if(act==="xlsx-all"){
+    downloadXlsx("Layouts", EXPORT_HEADERS, allLayoutRows(), "all_layouts.xlsx");
+  }
 }
 
 $("btnPrev").addEventListener("click", function(){ if(U.step>0){U.step--; uldRender();} });

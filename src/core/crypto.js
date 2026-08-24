@@ -301,3 +301,76 @@ function buildEncryptedZip(entries, password){
   out.set(eocd, p);
   return out;
 }
+
+/* ============================================================================
+   Plain (unencrypted, stored) ZIP writer — used to package .xlsx files,
+   which are themselves just a ZIP of XML parts. Shares crc32/utf8/dosDateTime
+   with the encrypted writer above.
+   entries: [{name, data:Uint8Array}]
+   ============================================================================ */
+function buildPlainZip(entries){
+  var chunks = [], central = [], offset = 0;
+  var now = dosDateTime(new Date());
+
+  entries.forEach(function(entry){
+    var nameBytes = utf8(entry.name);
+    var data = entry.data;
+    var crc = crc32(data);
+
+    var lh = new Uint8Array(30 + nameBytes.length);
+    var ldv = new DataView(lh.buffer);
+    ldv.setUint32(0, 0x04034b50, true);
+    ldv.setUint16(4, 20, true);
+    ldv.setUint16(6, 0x0800, true);    // UTF-8 names
+    ldv.setUint16(8, 0, true);         // stored, no compression
+    ldv.setUint16(10, now.time, true);
+    ldv.setUint16(12, now.date, true);
+    ldv.setUint32(14, crc, true);
+    ldv.setUint32(18, data.length, true);
+    ldv.setUint32(22, data.length, true);
+    ldv.setUint16(26, nameBytes.length, true);
+    ldv.setUint16(28, 0, true);
+    lh.set(nameBytes, 30);
+    chunks.push(lh, data);
+
+    var ch = new Uint8Array(46 + nameBytes.length);
+    var cdv = new DataView(ch.buffer);
+    cdv.setUint32(0, 0x02014b50, true);
+    cdv.setUint16(4, 20, true);
+    cdv.setUint16(6, 20, true);
+    cdv.setUint16(8, 0x0800, true);
+    cdv.setUint16(10, 0, true);
+    cdv.setUint16(12, now.time, true);
+    cdv.setUint16(14, now.date, true);
+    cdv.setUint32(16, crc, true);
+    cdv.setUint32(20, data.length, true);
+    cdv.setUint32(24, data.length, true);
+    cdv.setUint16(28, nameBytes.length, true);
+    cdv.setUint16(30, 0, true);
+    cdv.setUint16(32, 0, true);
+    cdv.setUint16(34, 0, true);
+    cdv.setUint16(36, 0, true);
+    cdv.setUint32(38, 0, true);
+    cdv.setUint32(42, offset, true);
+    ch.set(nameBytes, 46);
+    central.push(ch);
+
+    offset += lh.length + data.length;
+  });
+
+  var cdSize = central.reduce(function(s,c){ return s + c.length; }, 0);
+  var eocd = new Uint8Array(22);
+  var v = new DataView(eocd.buffer);
+  v.setUint32(0, 0x06054b50, true);
+  v.setUint16(8, entries.length, true);
+  v.setUint16(10, entries.length, true);
+  v.setUint32(12, cdSize, true);
+  v.setUint32(16, offset, true);
+
+  var total = chunks.reduce(function(s,c){ return s + c.length; }, 0) + cdSize + 22;
+  var out = new Uint8Array(total), p = 0;
+  chunks.forEach(function(c){ out.set(c, p); p += c.length; });
+  central.forEach(function(c){ out.set(c, p); p += c.length; });
+  out.set(eocd, p);
+  return out;
+}
