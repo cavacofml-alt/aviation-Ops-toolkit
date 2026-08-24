@@ -567,17 +567,26 @@ var TPL_A330_200 = {
 var TPL_B777_300 = {
   name:"Boeing 777-300", refStation:"1258",
   ulds:[
-    {id:"u1",uldType:"LD3",    iata:"AKE",maxWeight:1587,tare:102},
-    {id:"u2",uldType:"LD3",    iata:"QKE",maxWeight:1587,tare:74},
-    {id:"u3",uldType:"LD3",    iata:"PKC",maxWeight:1587,tare:40},
-    {id:"u4",uldType:"LD7/P88",iata:"PAG",maxWeight:4626,tare:110},
-    {id:"u5",uldType:"LD7/P96",iata:"PMC",maxWeight:5102,tare:120},
-    {id:"u6",uldType:"LD8",    iata:"PLA",maxWeight:3174,tare:70},
-    {id:"u7",uldType:"LD3",    iata:"RKN",maxWeight:1587,tare:635},
-    {id:"u8",uldType:"LD7/P88",iata:"RAP",maxWeight:6033,tare:450},
+    {id:"u1", uldType:"LD3",    iata:"AKE",maxWeight:1587,tare:65},
+    {id:"u2", uldType:"LD3",    iata:"QKE",maxWeight:1587,tare:74},
+    {id:"u3", uldType:"LD3",    iata:"PKC",maxWeight:1587,tare:40},
+    {id:"u4", uldType:"LD7/P88",iata:"PAG",maxWeight:4626,tare:100},
+    {id:"u5", uldType:"LD7/P96",iata:"PMC",maxWeight:5102,tare:110},
+    {id:"u6", uldType:"PLA",    iata:"PLA",maxWeight:3174,tare:70},
+    {id:"u7", uldType:"LD3",    iata:"RKN",maxWeight:1587,tare:210},
+    {id:"u8", uldType:"LD7/P88",iata:"RAP",maxWeight:6033,tare:450},
+    {id:"u9", uldType:"LD3",    iata:"AKC",maxWeight:1587,tare:80},
+    {id:"u10",uldType:"LD2",    iata:"DPE",maxWeight:1224,tare:72},
+    {id:"u11",uldType:"LD7/P96",iata:"DQP",maxWeight:2449,tare:120},
+    {id:"u12",uldType:"LD7/P88",iata:"UAK",maxWeight:5102,tare:200},
+    {id:"u13",uldType:"LD7/P96",iata:"DQF",maxWeight:2449,tare:150},
+    {id:"u14",uldType:"LD7/P88",iata:"AAP",maxWeight:5102,tare:200},
+    {id:"u15",uldType:"PLA",    iata:"ALK",maxWeight:3175,tare:180},
+    {id:"u16",uldType:"PLA",    iata:"ALP",maxWeight:3175,tare:180},
+    {id:"u17",uldType:"LD7/P96",iata:"FQA",maxWeight:2449,tare:53},
   ],
-  // RKN/RAP (temperature-controlled containers) and QKE (fire-resistant AKE
-  // variant) are in the ULD catalog above but have no row in the position
+  // RKN/RAP/AKC/DPE/DQP/UAK/DQF/AAP/ALK/ALP/FQA (and QKE, a fire-resistant
+  // AKE variant) are in the ULD catalog above but have no row in the position
   // compatibility table (2.3) — only AKE/PKC/PLA/PAG/PMC are — so, per the
   // operator's confirmation, they exist for later manual use but are not
   // assigned to any position group here.
@@ -603,7 +612,7 @@ var TPL_B777_300 = {
       {name:"14L",fwd:"436.7",aft:"497.1",left:"0", right:"48",index:"-0.002637",maxWeight:"1587"},
       {name:"14R",fwd:"436.7",aft:"497.1",left:"48",right:"0", index:"-0.002637",maxWeight:"1587"},
     ]},
-    {id:"g3",uldType:"LD8",iata:"PLA",label:"LD8 — PLA",positions:[
+    {id:"g3",uldType:"PLA",iata:"PLA",label:"PLA — half pallet",positions:[
       {name:"11",fwd:"201.1",aft:"261.7",left:"0",right:"0",index:"-0.003422",maxWeight:"3174"},
       {name:"12",fwd:"299.1",aft:"360.1",left:"0",right:"0",index:"-0.003095",maxWeight:"3174"},
       {name:"13",fwd:"376.3",aft:"436.7",left:"0",right:"0",index:"-0.002838",maxWeight:"3174"},
@@ -657,7 +666,7 @@ var TPL_B777_300 = {
       {name:"28L",fwd:"920.7",aft:"981.4",left:"0", right:"48",index:"-0.001023",maxWeight:"1587"},
       {name:"28R",fwd:"920.7",aft:"981.4",left:"48",right:"0", index:"-0.001023",maxWeight:"1587"},
     ]},
-    {id:"g8",uldType:"LD8",iata:"PLA",label:"LD8 — PLA",positions:[
+    {id:"g8",uldType:"PLA",iata:"PLA",label:"PLA — half pallet",positions:[
       {name:"21",fwd:"497.1",aft:"557.5",left:"0",right:"0",index:"-0.002436",maxWeight:"3174"},
       {name:"22",fwd:"557.5",aft:"617.9",left:"0",right:"0",index:"-0.002234",maxWeight:"3174"},
       {name:"23",fwd:"617.9",aft:"678.3",left:"0",right:"0",index:"-0.002033",maxWeight:"3174"},
@@ -713,7 +722,7 @@ var TPL_B777_300 = {
       {name:"36L",fwd:"1753.0",aft:"1813.4",left:"0", right:"48",index:"0.001751",maxWeight:"1587"},
       {name:"36R",fwd:"1753.0",aft:"1813.4",left:"48",right:"0", index:"0.001751",maxWeight:"1587"},
     ]},
-    {id:"g13",uldType:"LD8",iata:"PLA",label:"LD8 — PLA",positions:[
+    {id:"g13",uldType:"PLA",iata:"PLA",label:"PLA — half pallet",positions:[
       {name:"31",fwd:"1449.9",aft:"1510.6",left:"0",right:"0",index:"0.000741",maxWeight:"3174"},
       {name:"32",fwd:"1510.6",aft:"1571.2",left:"0",right:"0",index:"0.000943",maxWeight:"3174"},
       {name:"33",fwd:"1571.2",aft:"1631.8",left:"0",right:"0",index:"0.001145",maxWeight:"3174"},
@@ -757,7 +766,7 @@ var TPL_B777_300 = {
       {name:"44L",fwd:"2008.3",aft:"2069.0",left:"0", right:"48",index:"0.002602",maxWeight:"1587"},
       {name:"44R",fwd:"2008.3",aft:"2069.0",left:"48",right:"0", index:"0.002602",maxWeight:"1587"},
     ]},
-    {id:"g18",uldType:"LD8",iata:"PLA",label:"LD8 — PLA",positions:[
+    {id:"g18",uldType:"PLA",iata:"PLA",label:"PLA — half pallet",positions:[
       {name:"41",fwd:"1813.4",aft:"1873.3",left:"0",right:"0",index:"0.001951",maxWeight:"3174"},
       {name:"42",fwd:"1875.1",aft:"1936.1",left:"0",right:"0",index:"0.002159",maxWeight:"3174"},
       {name:"43",fwd:"1947.7",aft:"2008.3",left:"0",right:"0",index:"0.002400",maxWeight:"3174"},

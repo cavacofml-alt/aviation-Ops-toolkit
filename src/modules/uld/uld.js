@@ -34,7 +34,7 @@ var uid = function(){
   return Math.random().toString(36).slice(2,10);
 };
 
-var U = { step:0, ulds:[], compartments:[], refStation:"", activeComp:0,
+var U = { step:0, ulds:[], compartments:[], bulk:[], refStation:"", activeComp:0,
           layouts:null, activeLayoutComp:0, editUld:null, pairForm:null, addType:"",
           collapsed:{}, openLayout:{}, layoutLimit:{}, signAck:false, tplName:null };
 
@@ -696,7 +696,11 @@ function layoutRows(compNum){
       // A merged slot (e.g. AKE and PKC certified identically there) lists
       // every certified type, not just whichever one the layout happened to
       // be built with — pos.uldType/pos.uld alone would silently drop PKC.
-      var certTypes = (pos.certified||[{type:pos.uldType}])
+      // Two certified IATAs can share the same type code (e.g. B777-300's
+      // AKE and PKC are both plain "LD3") — dedupe by type code so the
+      // field lists "LD3,LA" once instead of twice.
+      var seenTypes = {}, certTypes = (pos.certified||[{type:pos.uldType}])
+        .filter(function(c){ if(seenTypes[c.type]) return false; return seenTypes[c.type]=true; })
         .map(function(c){ return c.type+",LA"; }).join(";");
       rows.push([compNum, layout.name, pos.name, certTypes, +pos.fwd, +pos.aft,
         (pos.left===""||pos.left==null)?0:+pos.left,
@@ -706,20 +710,34 @@ function layoutRows(compNum){
   });
   return rows;
 }
+// Bulk holds carry loose cargo, not ULDs: one static row per sub-compartment
+// (no Certified ULDs/Left/Right), included in the combined export only —
+// there's no per-compartment tab for a bulk hold to hang a button off.
+function bulkRows(){
+  var out = [];
+  (U.bulk||[]).forEach(function(h){
+    (h.positions||[]).forEach(function(p){
+      out.push([h.number, "BULK", p.name, "", +p.fwd, +p.aft, "", "", +p.index, +p.volume, +p.maxWeight]);
+    });
+  });
+  return out;
+}
 function allLayoutRows(){
   var out = [];
   U.compartments.forEach(function(c){ out = out.concat(layoutRows(c.number)); });
-  return out;
+  return out.concat(bulkRows());
+}
+function rowToCsvLine(r){
+  return [r[0], r[1], r[2], '"'+r[3]+'"', r[4], r[5], r[6], r[7], r[8], r[9], r[10]].join(",");
 }
 function csvLines(compNum){
-  return layoutRows(compNum).map(function(r){
-    return [r[0], r[1], r[2], '"'+r[3]+'"', r[4], r[5], r[6], r[7], r[8], r[9], r[10]].join(",");
-  });
+  return layoutRows(compNum).map(rowToCsvLine);
 }
 function csvOne(n){ return [CSV_HEADER].concat(csvLines(n)).join("\n"); }
 function csvAll(){
   var out=[CSV_HEADER];
   U.compartments.forEach(function(c){ out = out.concat(csvLines(c.number)); });
+  out = out.concat(bulkRows().map(rowToCsvLine));
   return out.join("\n");
 }
 
@@ -984,7 +1002,7 @@ $("refStation").addEventListener("input", function(){
 $("btnSaveCfg").addEventListener("click", function(){
   if(typeof uldSaveNow === "function") uldSaveNow();
   showTextModal("Export configuration",
-    JSON.stringify({ulds:U.ulds, compartments:U.compartments, refStation:U.refStation}, null, 2),
+    JSON.stringify({ulds:U.ulds, compartments:U.compartments, bulk:U.bulk, refStation:U.refStation}, null, 2),
     "uld_config.json");
 });
 $("fileCfg").addEventListener("change", function(e){
@@ -995,6 +1013,7 @@ $("fileCfg").addEventListener("change", function(e){
       var d = JSON.parse(ev.target.result);
       if(d.ulds) U.ulds = d.ulds;
       if(d.compartments) U.compartments = d.compartments;
+      U.bulk = d.bulk || [];
       if(d.refStation!==undefined){ U.refStation = d.refStation; $("refStation").value = d.refStation; }
       U.tplName = null;
       U.step = 0; U.layouts = null; uldRender();
@@ -1008,7 +1027,7 @@ $("btnReset").addEventListener("click", function(){
   if(!U.ulds.length && !U.compartments.length){ return; }
   if(!confirm("Clear everything and start from scratch?\n\nThis removes all ULDs, compartments and generated layouts. "+
               "Use Export file first if you want to keep the current setup.")) return;
-  U.ulds = []; U.compartments = []; U.refStation = ""; U.layouts = null;
+  U.ulds = []; U.compartments = []; U.bulk = []; U.refStation = ""; U.layouts = null;
   U.tplName = null;
   U.step = 0; U.activeComp = 0; U.activeLayoutComp = 0; U.editUld = null; U.pairForm = null; U.addType = "";
   $("refStation").value = "";
