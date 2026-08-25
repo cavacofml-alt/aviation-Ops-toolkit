@@ -194,9 +194,19 @@ function parseXlsx(file){
         var letters = ref.match(/[A-Z]+/)[0];
         var col = 0; for(var i=0;i<letters.length;i++) col = col*26 + letters.charCodeAt(i)-64;
         col -= 1;
-        var vEl = c.querySelector("v");
-        var raw = vEl ? vEl.textContent : "";
-        arr[col] = c.getAttribute("t")==="s" ? (shared[+raw]||"") : raw;
+        var type = c.getAttribute("t");
+        if(type==="inlineStr"){
+          // openpyxl and some other writers (including this toolkit's own
+          // XLSX export) inline the text as <is><t>…</t></is> instead of
+          // pointing into sharedStrings.xml — real files use both.
+          var isEl = c.querySelector("is");
+          var tEls = isEl ? isEl.querySelectorAll("t") : [];
+          arr[col] = Array.prototype.map.call(tEls, function(t){ return t.textContent; }).join("");
+        } else {
+          var vEl = c.querySelector("v");
+          var raw = vEl ? vEl.textContent : "";
+          arr[col] = type==="s" ? (shared[+raw]||"") : raw;
+        }
       });
       grid.push(arr);
     });

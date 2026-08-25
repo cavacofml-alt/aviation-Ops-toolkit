@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.85</title>
+<title>Aviation Ops Toolkit v1.2.86</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.85</span>
+      <span class="build-ver">v1.2.86</span>
     </header>
 
     <main>
@@ -781,7 +781,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.85 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.86 — Luís Cavaco
     Built 2026-08-25 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -3816,9 +3816,19 @@ function parseXlsx(file){
         var letters = ref.match(/[A-Z]+/)[0];
         var col = 0; for(var i=0;i<letters.length;i++) col = col*26 + letters.charCodeAt(i)-64;
         col -= 1;
-        var vEl = c.querySelector("v");
-        var raw = vEl ? vEl.textContent : "";
-        arr[col] = c.getAttribute("t")==="s" ? (shared[+raw]||"") : raw;
+        var type = c.getAttribute("t");
+        if(type==="inlineStr"){
+          // openpyxl and some other writers (including this toolkit's own
+          // XLSX export) inline the text as <is><t>…</t></is> instead of
+          // pointing into sharedStrings.xml — real files use both.
+          var isEl = c.querySelector("is");
+          var tEls = isEl ? isEl.querySelectorAll("t") : [];
+          arr[col] = Array.prototype.map.call(tEls, function(t){ return t.textContent; }).join("");
+        } else {
+          var vEl = c.querySelector("v");
+          var raw = vEl ? vEl.textContent : "";
+          arr[col] = type==="s" ? (shared[+raw]||"") : raw;
+        }
       });
       grid.push(arr);
     });
