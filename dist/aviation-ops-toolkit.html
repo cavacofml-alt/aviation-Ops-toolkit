@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.88</title>
+<title>Aviation Ops Toolkit v1.2.91</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.88</span>
+      <span class="build-ver">v1.2.91</span>
     </header>
 
     <main>
@@ -781,7 +781,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.88 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.91 — Luís Cavaco
     Built 2026-08-25 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -3023,6 +3023,7 @@ function uldSnapshot(){
     savedAt: new Date().toISOString(),
     ulds: U.ulds,
     compartments: U.compartments,
+    bulk: U.bulk,
     refStation: U.refStation
   });
 }
@@ -3086,6 +3087,7 @@ function uldRestorePrompt(){
     document.getElementById("btnUldRestore").addEventListener("click", function(){
       U.ulds = data.ulds || [];
       U.compartments = data.compartments || [];
+      U.bulk = data.bulk || [];
       U.refStation = data.refStation || "";
       var rs = document.getElementById("refStation"); if(rs) rs.value = U.refStation;
       U.step = 0; U.layouts = null; U.activeComp = 0;
@@ -3890,7 +3892,11 @@ function buildPnl(rows, flightData){
 
   var passengers = new Map();
   rows.forEach(function(r){
-    var key = [r.Surname, r.GivenName, r.RecordLocator].join("|");
+    // DateOfBirth is in the key too, not just Surname/GivenName/RecordLocator —
+    // two different passengers who share a name and haven't been assigned a
+    // PNR yet (both RecordLocator blank) would otherwise collapse into one
+    // passenger and silently lose one of their passport lines.
+    var key = [r.Surname, r.GivenName, r.RecordLocator, r.DateOfBirth].join("|");
     if(!passengers.has(key)) passengers.set(key, { documents:[], bookingClass:"" });
     var p = passengers.get(key);
     p.documents.push(r);
@@ -3922,7 +3928,8 @@ function buildPnl(rows, flightData){
       var passport = docs.filter(function(d){ return amClean(d.DocumentType).toUpperCase()==="P"; })[0];
       if(passport){
         lines.push(".R/DOCS HK1/P/"+(AM_ISO2[passport.Nationality]||passport.Nationality)+"/"+
-          passport.DocumentNumber+"/"+passport.DocumentIssueCountry+"/"+pnlDate(passport.DateOfBirth)+"/"+
+          passport.DocumentNumber+"/"+(AM_ISO2[passport.DocumentIssueCountry]||passport.DocumentIssueCountry)+"/"+
+          pnlDate(passport.DateOfBirth)+"/"+
           passport.Gender+"/"+pnlDate(passport.DocumentExpiryDate)+"/"+passport.Surname);
         lines.push(".RN//"+passport.GivenName+"/-"+name);
       }
@@ -5553,9 +5560,13 @@ $("telex").addEventListener("paste", function(e){
   lines.splice.apply(lines, [lineN-1, 1].concat(newLines));
   $("msgInput").value = lines.join("\n");
   telexEditRow = lineN + pasteLines.length - 1;
-  telexEditOffset = (before + pasteLines[0]).length +
-    (pasteLines.length > 1 ? pasteLines.slice(1, -1).reduce(function(s,l){ return s+l.length; }, 0) +
-    pasteLines[pasteLines.length-1].length : 0);
+  // Caret goes right after the pasted text, on whichever row it ends up on —
+  // for a single-line paste that's after `before`; for a multi-line paste
+  // the earlier rows are untouched by `before`, so it's just the last
+  // pasted line's own length.
+  telexEditOffset = pasteLines.length > 1
+    ? pasteLines[pasteLines.length-1].length
+    : before.length + pasteLines[0].length;
   clearTimeout(telexLiveTimer);
   runValidation(true); restoreTelexCaret();
 });
@@ -6682,11 +6693,13 @@ function bindStep(){
       if(U.layouts) U.layoutsStale = true;   // generated results no longer describe this data
       if(typeof uldTouch === "function") uldTouch();
       if(k==="index" || k==="fwd" || k==="aft"){ U.signAck = false; }
-      // auto-mirror L -> R for LD3 pairs (fwd/aft/index/max weight shared, left/right swapped)
-      if(group.uldType==="LD3" && /L$/.test(pos.name||"")){
+      // auto-mirror LD3 L/R pairs both ways (fwd/aft/index/max weight shared,
+      // left/right swapped) — editing either side keeps the other in sync.
+      if(group.uldType==="LD3" && /[LR]$/.test(pos.name||"")){
+        var side = pos.name.slice(-1), otherSide = side==="L" ? "R" : "L";
         var base = pos.name.slice(0,-1);
         var ri = -1;
-        group.positions.forEach(function(q,qi){ if(q.name===base+"R") ri = qi; });
+        group.positions.forEach(function(q,qi){ if(q.name===base+otherSide) ri = qi; });
         if(ri>=0){
           var r = group.positions[ri];
           if(k==="fwd"||k==="aft"||k==="index"||k==="maxWeight"){ r[k] = inp.value; mirrorDom(g,ri,k,inp.value); }

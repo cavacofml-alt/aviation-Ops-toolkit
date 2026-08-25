@@ -789,11 +789,13 @@ function bindStep(){
       if(U.layouts) U.layoutsStale = true;   // generated results no longer describe this data
       if(typeof uldTouch === "function") uldTouch();
       if(k==="index" || k==="fwd" || k==="aft"){ U.signAck = false; }
-      // auto-mirror L -> R for LD3 pairs (fwd/aft/index/max weight shared, left/right swapped)
-      if(group.uldType==="LD3" && /L$/.test(pos.name||"")){
+      // auto-mirror LD3 L/R pairs both ways (fwd/aft/index/max weight shared,
+      // left/right swapped) — editing either side keeps the other in sync.
+      if(group.uldType==="LD3" && /[LR]$/.test(pos.name||"")){
+        var side = pos.name.slice(-1), otherSide = side==="L" ? "R" : "L";
         var base = pos.name.slice(0,-1);
         var ri = -1;
-        group.positions.forEach(function(q,qi){ if(q.name===base+"R") ri = qi; });
+        group.positions.forEach(function(q,qi){ if(q.name===base+otherSide) ri = qi; });
         if(ri>=0){
           var r = group.positions[ri];
           if(k==="fwd"||k==="aft"||k==="index"||k==="maxWeight"){ r[k] = inp.value; mirrorDom(g,ri,k,inp.value); }

@@ -401,9 +401,13 @@ $("telex").addEventListener("paste", function(e){
   lines.splice.apply(lines, [lineN-1, 1].concat(newLines));
   $("msgInput").value = lines.join("\n");
   telexEditRow = lineN + pasteLines.length - 1;
-  telexEditOffset = (before + pasteLines[0]).length +
-    (pasteLines.length > 1 ? pasteLines.slice(1, -1).reduce(function(s,l){ return s+l.length; }, 0) +
-    pasteLines[pasteLines.length-1].length : 0);
+  // Caret goes right after the pasted text, on whichever row it ends up on —
+  // for a single-line paste that's after `before`; for a multi-line paste
+  // the earlier rows are untouched by `before`, so it's just the last
+  // pasted line's own length.
+  telexEditOffset = pasteLines.length > 1
+    ? pasteLines[pasteLines.length-1].length
+    : before.length + pasteLines[0].length;
   clearTimeout(telexLiveTimer);
   runValidation(true); restoreTelexCaret();
 });

@@ -268,7 +268,11 @@ function buildPnl(rows, flightData){
 
   var passengers = new Map();
   rows.forEach(function(r){
-    var key = [r.Surname, r.GivenName, r.RecordLocator].join("|");
+    // DateOfBirth is in the key too, not just Surname/GivenName/RecordLocator —
+    // two different passengers who share a name and haven't been assigned a
+    // PNR yet (both RecordLocator blank) would otherwise collapse into one
+    // passenger and silently lose one of their passport lines.
+    var key = [r.Surname, r.GivenName, r.RecordLocator, r.DateOfBirth].join("|");
     if(!passengers.has(key)) passengers.set(key, { documents:[], bookingClass:"" });
     var p = passengers.get(key);
     p.documents.push(r);
@@ -300,7 +304,8 @@ function buildPnl(rows, flightData){
       var passport = docs.filter(function(d){ return amClean(d.DocumentType).toUpperCase()==="P"; })[0];
       if(passport){
         lines.push(".R/DOCS HK1/P/"+(AM_ISO2[passport.Nationality]||passport.Nationality)+"/"+
-          passport.DocumentNumber+"/"+passport.DocumentIssueCountry+"/"+pnlDate(passport.DateOfBirth)+"/"+
+          passport.DocumentNumber+"/"+(AM_ISO2[passport.DocumentIssueCountry]||passport.DocumentIssueCountry)+"/"+
+          pnlDate(passport.DateOfBirth)+"/"+
           passport.Gender+"/"+pnlDate(passport.DocumentExpiryDate)+"/"+passport.Surname);
         lines.push(".RN//"+passport.GivenName+"/-"+name);
       }
