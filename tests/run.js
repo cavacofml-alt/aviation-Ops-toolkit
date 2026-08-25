@@ -201,6 +201,15 @@ if(inBuild("airmsg")) try {
      pnl.passengers === 1 && pnl.documents === 1, pnl.text);
   ok("buildPnl rejects a passenger list missing required columns",
      (() => { try{ AM_LIB.validatePnlRows([{Surname:"X"}]); return false; } catch(e){ return true; } })());
+
+  // A blank RecordLocator (or Seat/BCN) must drop the whole optional field,
+  // not print a trailing qualifier with nothing after it (".L/" alone).
+  const bareRow = { Surname:"AMERICA", GivenName:"CAPTAIN", Gender:"", DateOfBirth:"", Nationality:"",
+    RecordLocator:"", Seat:"", DocumentType:"", DocumentNumber:"", DocumentIssueCountry:"",
+    DocumentIssueDate:"", DocumentExpiryDate:"", BCN:"" };
+  const barePnl = AM_LIB.buildPnl([bareRow], {airline:"XA", flight:"878", date:"2026-08-25", origin:"QYI", destination:"AMS", defaultClass:"C"});
+  ok("buildPnl omits .L/ entirely when RecordLocator is blank",
+     barePnl.text.includes("1AMERICA/CAPTAINMR") && !barePnl.text.includes(".L/"), barePnl.text);
 } catch(e){ ok("Airline Message Toolkit module loads", false, e.message); }
 
 if(inBuild("securezip")) try {
