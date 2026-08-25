@@ -210,6 +210,23 @@ if(inBuild("airmsg")) try {
   const barePnl = AM_LIB.buildPnl([bareRow], {airline:"XA", flight:"878", date:"2026-08-25", origin:"QYI", destination:"AMS", defaultClass:"C"});
   ok("buildPnl omits .L/ entirely when RecordLocator is blank",
      barePnl.text.includes("1AMERICA/CAPTAINMR") && !barePnl.text.includes(".L/"), barePnl.text);
+
+  ok("buildPnl converts DocumentIssueCountry to ISO-2, same as Nationality",
+     pnl.text.includes(".R/DOCS HK1/P/PT/123456789/PT/"), pnl.text);
+
+  // Two different passengers sharing a name with no PNR assigned yet (both
+  // RecordLocator blank) must not collapse into one passenger and lose a
+  // passport line — DateOfBirth in the dedupe key tells them apart.
+  const twinA = { Surname:"SILVA", GivenName:"JOAO", Gender:"M", DateOfBirth:"1990-01-01",
+    Nationality:"PRT", RecordLocator:"", Seat:"1A", DocumentType:"P", DocumentNumber:"111111111",
+    DocumentIssueCountry:"PRT", DocumentIssueDate:"2020-01-01", DocumentExpiryDate:"2030-01-01", BCN:"" };
+  const twinB = { Surname:"SILVA", GivenName:"JOAO", Gender:"M", DateOfBirth:"1985-05-05",
+    Nationality:"PRT", RecordLocator:"", Seat:"2B", DocumentType:"P", DocumentNumber:"222222222",
+    DocumentIssueCountry:"PRT", DocumentIssueDate:"2020-01-01", DocumentExpiryDate:"2030-01-01", BCN:"" };
+  const twinsPnl = AM_LIB.buildPnl([twinA, twinB], {airline:"XC", flight:"7", date:"2026-08-25", origin:"LIS", destination:"OPO", defaultClass:"Y"});
+  ok("buildPnl keeps two same-named passengers (blank PNR) as separate entries",
+     twinsPnl.passengers === 2 && twinsPnl.text.includes("111111111") && twinsPnl.text.includes("222222222"),
+     twinsPnl.text);
 } catch(e){ ok("Airline Message Toolkit module loads", false, e.message); }
 
 if(inBuild("securezip")) try {

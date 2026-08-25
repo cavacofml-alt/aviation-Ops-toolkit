@@ -54,6 +54,7 @@ function uldSnapshot(){
     savedAt: new Date().toISOString(),
     ulds: U.ulds,
     compartments: U.compartments,
+    bulk: U.bulk,
     refStation: U.refStation
   });
 }
@@ -117,6 +118,7 @@ function uldRestorePrompt(){
     document.getElementById("btnUldRestore").addEventListener("click", function(){
       U.ulds = data.ulds || [];
       U.compartments = data.compartments || [];
+      U.bulk = data.bulk || [];
       U.refStation = data.refStation || "";
       var rs = document.getElementById("refStation"); if(rs) rs.value = U.refStation;
       U.step = 0; U.layouts = null; U.activeComp = 0;
