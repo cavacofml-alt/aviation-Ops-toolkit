@@ -156,6 +156,53 @@ global.$ = () => ({ value: "", querySelector: () => null, querySelectorAll: () =
 
 
 
+if(inBuild("airmsg")) try {
+  eval(fileOf("src/modules/airmsg/airmsg.js") +
+       ";AM_LIB = {parsePRL, prlHeaders, parsePAX, paxHeaders, parseDelimited, normalizeFlightNumber, " +
+       "pnlDate, flightDateDDMMM, buildPnl, validatePnlRows, makeCsv};");
+
+  const prlMsg = [
+    "1SILVA/JOAOMR .L/ABC123",
+    ".R/SEAT HK1 12A",
+    ".R/DOCS HK1/P/PRT/123456789/PRT/01JAN90/M/01JAN30/SILVA"
+  ].join("\n");
+  const prlRows = AM_LIB.parsePRL(prlMsg);
+  ok("PRL parser reads a passenger with one document",
+     prlRows.length === 1 && prlRows[0].RecordLocator === "ABC123" && prlRows[0].DocumentNumber === "123456789",
+     JSON.stringify(prlRows));
+
+  const paxMsg = [
+    "UNH*1*PAXLST", "NAD*FL*1*1*SILVA:JOAO", "ATT*2**M", "DTM*329:900101",
+    "NAT*2*PRT", "RFF*AVF:ABC123", "RFF*SEA:12A",
+    "DOC*P*123456789", "DTM*182:200101", "DTM*36:300101", "LOC*91*PRT"
+  ].join("'");
+  const paxRows = AM_LIB.parsePAX(paxMsg);
+  ok("PAXLST parser reads a passenger with one document",
+     paxRows.length === 1 && paxRows[0].Surname === "SILVA" && paxRows[0].RecordLocator === "ABC123" &&
+     paxRows[0].DocumentType === "P", JSON.stringify(paxRows));
+
+  ok("parseDelimited auto-detects the ; separator",
+     JSON.stringify(AM_LIB.parseDelimited("A;B\n1;2")) === JSON.stringify([{A:"1",B:"2"}]));
+  ok("parseDelimited auto-detects the , separator",
+     JSON.stringify(AM_LIB.parseDelimited("A,B\n1,2")) === JSON.stringify([{A:"1",B:"2"}]));
+
+  ok("normalizeFlightNumber pads short numeric flight numbers",
+     AM_LIB.normalizeFlightNumber("7") === "007");
+  ok("normalizeFlightNumber keeps a trailing letter suffix",
+     AM_LIB.normalizeFlightNumber("123A") === "123A");
+  ok("pnlDate formats an ISO date as DDMMMYY", AM_LIB.pnlDate("2026-08-25") === "25AUG26");
+
+  const pnlRow = { Surname:"SILVA", GivenName:"JOAO", Gender:"M", DateOfBirth:"1990-01-01",
+    Nationality:"PRT", RecordLocator:"ABC123", Seat:"12A", DocumentType:"P", DocumentNumber:"123456789",
+    DocumentIssueCountry:"PRT", DocumentIssueDate:"2020-01-01", DocumentExpiryDate:"2030-01-01", BCN:"" };
+  const pnl = AM_LIB.buildPnl([pnlRow], {airline:"XC", flight:"7", date:"2026-08-25", origin:"LIS", destination:"OPO", defaultClass:"Y"});
+  ok("buildPnl produces a well-formed PNL for one passenger",
+     pnl.text.startsWith("PNL\r\nXC007/25AUG LIS PART1") && pnl.text.trim().endsWith("ENDPNL") &&
+     pnl.passengers === 1 && pnl.documents === 1, pnl.text);
+  ok("buildPnl rejects a passenger list missing required columns",
+     (() => { try{ AM_LIB.validatePnlRows([{Surname:"X"}]); return false; } catch(e){ return true; } })());
+} catch(e){ ok("Airline Message Toolkit module loads", false, e.message); }
+
 if(inBuild("securezip")) try {
   global.crypto = require("crypto").webcrypto;
   eval(fileOf("src/core/crypto.js") + ";CRY = {sha1, hmacSha1, pbkdf2Sha1, aesExpandKey, aesEncryptBlock, crc32, buildEncryptedZip};");
