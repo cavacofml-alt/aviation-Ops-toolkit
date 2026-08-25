@@ -294,7 +294,7 @@ function buildPnl(rows, flightData){
       var r = docs[0];
       var title = amClean(r.Gender).toUpperCase()==="F" ? "MRS" : "MR";
       var name = "1"+r.Surname+"/"+r.GivenName+title;
-      lines.push(name+" .L/"+r.RecordLocator);
+      lines.push(amClean(r.RecordLocator) ? name+" .L/"+r.RecordLocator : name);
       if(r.Seat) lines.push(".R/SEAT HK1 "+r.Seat+"-"+name);
       if(r.BCN) lines.push(".R/CHKD HK1 "+r.BCN);
       var passport = docs.filter(function(d){ return amClean(d.DocumentType).toUpperCase()==="P"; })[0];
