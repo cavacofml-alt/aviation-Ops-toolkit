@@ -1,0 +1,84 @@
+        <!-- ============ AIRLINE MESSAGE TOOLKIT ============ -->
+        <section id="panel-airmsg" class="panel-hidden">
+          <div class="note" style="margin-bottom:14px">PRL parser &middot; APIS PAXLST parser &middot; PSCRM PNL builder — local processing only, nothing leaves the browser.</div>
+          <div class="comp-tabs">
+            <button class="comp-tab" data-act="am-tab" data-t="prl">PRL Parser</button>
+            <button class="comp-tab" data-act="am-tab" data-t="pax">APIS PAXLST Parser</button>
+            <button class="comp-tab" data-act="am-tab" data-t="pnl">PNL Builder</button>
+          </div>
+
+          <!-- ---- PRL ---- -->
+          <div id="amPrl" class="am-panel">
+            <div class="sec">1. PRL input</div>
+            <textarea id="amPrlInput" spellcheck="false" autocapitalize="off" autocomplete="off"
+              style="width:100%;min-height:220px;resize:vertical;padding:12px;border-radius:var(--radius-sm);
+                     border:1px solid var(--line);background:var(--input-bg);color:var(--text);
+                     font-family:var(--mono);font-size:12.5px;line-height:1.6;outline:none"
+              placeholder="Paste the PRL message here…"></textarea>
+            <div class="controls">
+              <button class="btn primary" id="amPrlParse">Parse PRL</button>
+              <label class="btn quiet" style="display:inline-flex;align-items:center">
+                &#128206; Load TXT file<input type="file" id="amPrlFile" accept=".txt,text/plain" style="display:none">
+              </label>
+              <button class="btn quiet" id="amPrlClear">Clear</button>
+              <button class="btn" id="amPrlDownload" disabled>&#8595; Download CSV</button>
+            </div>
+            <div class="sec mt">2. PRL result</div>
+            <div id="amPrlResult"><div class="empty">No result yet.</div></div>
+          </div>
+
+          <!-- ---- PAX ---- -->
+          <div id="amPax" class="am-panel" hidden>
+            <div class="sec">1. APIS PAXLST input</div>
+            <textarea id="amPaxInput" spellcheck="false" autocapitalize="off" autocomplete="off"
+              style="width:100%;min-height:220px;resize:vertical;padding:12px;border-radius:var(--radius-sm);
+                     border:1px solid var(--line);background:var(--input-bg);color:var(--text);
+                     font-family:var(--mono);font-size:12.5px;line-height:1.6;outline:none"
+              placeholder="Paste the APIS PAXLST message here — single or multipart…"></textarea>
+            <div class="controls">
+              <button class="btn primary" id="amPaxParse">Parse PAXLST</button>
+              <label class="btn quiet" style="display:inline-flex;align-items:center">
+                &#128206; Load TXT file<input type="file" id="amPaxFile" accept=".txt,text/plain" style="display:none">
+              </label>
+              <button class="btn quiet" id="amPaxClear">Clear</button>
+              <button class="btn" id="amPaxDownload" disabled>&#8595; Download CSV</button>
+              <span class="note" style="flex-basis:100%">CR, LF, apostrophe and $ segment terminators are all accepted.</span>
+            </div>
+            <div class="sec mt">2. Passenger documents</div>
+            <div id="amPaxResult"><div class="empty">No result yet.</div></div>
+          </div>
+
+          <!-- ---- PNL ---- -->
+          <div id="amPnl" class="am-panel" hidden>
+            <div class="sec">1. Flight and passenger data</div>
+            <div class="grid-form" style="grid-template-columns:repeat(3,1fr)">
+              <div class="field"><label for="amAirline">Airline *</label><input id="amAirline" maxlength="3" placeholder="XC" style="text-transform:uppercase"></div>
+              <div class="field"><label for="amFlight">Flight number *</label><input id="amFlight" maxlength="4" placeholder="7, 1234 or 123A" style="text-transform:uppercase"></div>
+              <div class="field"><label for="amFlightDate">Flight date *</label><input id="amFlightDate" type="date"></div>
+              <div class="field"><label for="amOrigin">Origin *</label><input id="amOrigin" maxlength="3" placeholder="AYT" style="text-transform:uppercase"></div>
+              <div class="field"><label for="amDestination">Destination *</label><input id="amDestination" maxlength="3" placeholder="DUS" style="text-transform:uppercase"></div>
+              <div class="field"><label for="amDefaultClass">Default booking class *</label><input id="amDefaultClass" maxlength="1" value="Y" style="text-transform:uppercase"></div>
+            </div>
+            <div class="note" style="margin:-6px 0 12px">Flight number: 3 to 4 characters output, short numeric parts get leading zeros, only the final character may be a letter. Default booking class is used only when a row's Class/BookingClass/RBD column is blank.</div>
+            <div class="controls">
+              <label class="btn quiet" style="display:inline-flex;align-items:center">
+                &#128206; Load passenger list (CSV/XLSX)<input type="file" id="amPnlFile" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">
+              </label>
+              <button class="btn primary" id="amPnlBuild">Build PNL</button>
+              <button class="btn quiet" id="amPnlClear">Clear</button>
+              <span class="note" style="flex-basis:100%">Required columns: Surname, GivenName, Gender, DateOfBirth, Nationality, RecordLocator, Seat, DocumentType, DocumentNumber, DocumentIssueCountry, DocumentIssueDate, DocumentExpiryDate, BCN. Booking class from BookingClass/Class/RBD, or the default above.</span>
+            </div>
+            <div id="amPnlStatus" class="note"></div>
+            <div class="sec mt">2. PSCRM PNL output</div>
+            <div id="amPnlMetrics" class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr))"></div>
+            <textarea id="amPnlOutput" readonly spellcheck="false"
+              style="width:100%;min-height:260px;resize:vertical;padding:12px;border-radius:var(--radius-sm);
+                     border:1px solid var(--line);background:var(--input-bg);color:var(--text);
+                     font-family:var(--mono);font-size:12.5px;line-height:1.6;outline:none"
+              placeholder="Generated PNL will appear here…"></textarea>
+            <div class="controls">
+              <button class="btn quiet" id="amPnlCopy" disabled>&#128203; Copy</button>
+              <button class="btn" id="amPnlDownload" disabled>&#8595; Download PNL.txt</button>
+            </div>
+          </div>
+        </section>

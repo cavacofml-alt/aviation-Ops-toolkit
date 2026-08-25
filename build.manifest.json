@@ -1,6 +1,6 @@
 {
   "name": "Aviation Ops Toolkit",
-  "version": "1.2.82",
+  "version": "1.2.85",
   "author": "Lu\u00eds Cavaco",
   "output": "dist/aviation-ops-toolkit.html",
   "_how_to_add_a_module": [
@@ -32,6 +32,17 @@
     "src/core/ui.js"
   ],
   "modules": [
+    {
+      "id": "airmsg",
+      "name": "Airline Message Toolkit",
+      "panel": "src/modules/airmsg/panel.html",
+      "logic": [
+        "src/modules/airmsg/airmsg.js"
+      ],
+      "ui": [
+        "src/modules/airmsg/ui.js"
+      ]
+    },
     {
       "id": "msgcheck",
       "name": "Message Validator",
