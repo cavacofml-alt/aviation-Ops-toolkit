@@ -60,6 +60,18 @@
               <div class="field"><label for="amDefaultClass">Default booking class *</label><input id="amDefaultClass" maxlength="1" value="Y" style="text-transform:uppercase"></div>
             </div>
             <div class="note" style="margin:-6px 0 12px">Flight number: 3 to 4 characters output, short numeric parts get leading zeros, only the final character may be a letter. Default booking class is used only when a row's Class/BookingClass/RBD column is blank.</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+                        margin-bottom:16px;padding:12px 16px;border:1px solid var(--cyan);border-radius:var(--radius-sm);
+                        background:var(--cyan-soft)">
+              <div>
+                <b style="color:var(--cyan)">Passenger-list template</b>
+                <div class="note" style="margin-top:2px">Download the worked example before preparing your own CSV or Excel list — shows a passenger with two documents (passport + a second one).</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn small" id="amPnlTemplateCsv">&#8595; Template CSV</button>
+                <button class="btn small" id="amPnlTemplateXlsx">&#8595; Template Excel</button>
+              </div>
+            </div>
             <div class="controls">
               <label class="btn quiet" style="display:inline-flex;align-items:center">
                 &#128206; Load passenger list (CSV/XLSX)<input type="file" id="amPnlFile" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">

@@ -72,6 +72,14 @@ $("amPaxFile").addEventListener("change", function(e){
 });
 
 /* ---------- PNL ---------- */
+$("amPnlTemplateCsv").addEventListener("click", function(){
+  downloadText("﻿"+PNL_TEMPLATE_CSV.replace(/\n/g,"\r\n")+"\r\n", "PNL_Builder_Template.csv");
+});
+$("amPnlTemplateXlsx").addEventListener("click", function(){
+  var rows = pnlTemplateRows();
+  var headers = Object.keys(rows[0]||{});
+  downloadXlsx("PNL Template", headers, rows.map(function(r){ return headers.map(function(h){ return r[h]; }); }), "PNL_Builder_Template.xlsx");
+});
 function amLoadPnlFile(file){
   var status = $("amPnlStatus");
   if(!file){ status.textContent = "No passenger file selected."; status.style.color = "var(--red)"; return; }
