@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.92</title>
+<title>Aviation Ops Toolkit v1.2.93</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.92</span>
+      <span class="build-ver">v1.2.93</span>
     </header>
 
     <main>
@@ -555,6 +555,18 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
               <div class="field"><label for="amDefaultClass">Default booking class *</label><input id="amDefaultClass" maxlength="1" value="Y" style="text-transform:uppercase"></div>
             </div>
             <div class="note" style="margin:-6px 0 12px">Flight number: 3 to 4 characters output, short numeric parts get leading zeros, only the final character may be a letter. Default booking class is used only when a row's Class/BookingClass/RBD column is blank.</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+                        margin-bottom:16px;padding:12px 16px;border:1px solid var(--cyan);border-radius:var(--radius-sm);
+                        background:var(--cyan-soft)">
+              <div>
+                <b style="color:var(--cyan)">Passenger-list template</b>
+                <div class="note" style="margin-top:2px">Download the worked example before preparing your own CSV or Excel list — shows a passenger with two documents (passport + a second one).</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn small" id="amPnlTemplateCsv">&#8595; Template CSV</button>
+                <button class="btn small" id="amPnlTemplateXlsx">&#8595; Template Excel</button>
+              </div>
+            </div>
             <div class="controls">
               <label class="btn quiet" style="display:inline-flex;align-items:center">
                 &#128206; Load passenger list (CSV/XLSX)<input type="file" id="amPnlFile" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">
@@ -781,7 +793,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.92 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.93 — Luís Cavaco
     Built 2026-08-26 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -3643,6 +3655,22 @@ function makeCsv(headers, rows){
     .map(function(r){ return r.map(csvCell).join(";"); }).join("\r\n");
 }
 
+/* ---------- PNL passenger-list template ----------
+   A worked example covering the two document rows a real passenger list
+   needs: one passport ("P") plus a second, non-passport document ("V") for
+   the same person, sharing the same RecordLocator/Seat/BCN — so anyone
+   building their own list can see the shape before they start. */
+var PNL_TEMPLATE_CSV =
+  "Surname;GivenName;Gender;DateOfBirth;Nationality;RecordLocator;Seat;DocumentType;DocumentNumber;DocumentIssueCountry;DocumentIssueDate;DocumentExpiryDate;BCN;BookingClass\n"+
+  "AMERICA;CAPTAIN;M;1982-03-28;USA;WJ939H;15B;P;8888888888;USA;;2030-12-02;102;C\n"+
+  "AMERICA;CAPTAIN;M;1982-03-28;USA;WJ939H;15B;V;VI1234567;DEU;01/01/2026;2026-10-20;102;C\n"+
+  "LIGHTYEAR;BUZZ;M;1940-11-01;USA;SLZW9B;12A;P;1111111111;USA;;2030-11-01;;Y\n"+
+  "SIMPSON;HOMER;M;1935-05-13;USA;TEQRHG;15C;P;9999999999;USA;;2030-05-13;104;Y\n"+
+  "SIMPSON;HOMER;M;1935-05-13;USA;TEQRHG;15C;V;VI1111111;DEU;;2030-12-30;104;Y\n"+
+  "TEST;JIM;F;1945-12-01;USA;MA7LBX;12F;P;2323232323;USA;;2030-12-30;106;\n"+
+  "TEST;JIM;F;1945-12-01;USA;MA7LBX;12F;V;VI222222;DEU;06/06/2025;2030-12-30;106;";
+function pnlTemplateRows(){ return parseDelimited(PNL_TEMPLATE_CSV); }
+
 /* ---------- PRL parser ----------
    Reads a PSCRM PRL message: one passenger header line ending in ".L/<PNR>",
    followed by .R/SEAT, .R/DOCO and one or more .R/DOCS lines (each DOCS
@@ -5093,6 +5121,14 @@ $("amPaxFile").addEventListener("change", function(e){
 });
 
 /* ---------- PNL ---------- */
+$("amPnlTemplateCsv").addEventListener("click", function(){
+  downloadText("﻿"+PNL_TEMPLATE_CSV.replace(/\n/g,"\r\n")+"\r\n", "PNL_Builder_Template.csv");
+});
+$("amPnlTemplateXlsx").addEventListener("click", function(){
+  var rows = pnlTemplateRows();
+  var headers = Object.keys(rows[0]||{});
+  downloadXlsx("PNL Template", headers, rows.map(function(r){ return headers.map(function(h){ return r[h]; }); }), "PNL_Builder_Template.xlsx");
+});
 function amLoadPnlFile(file){
   var status = $("amPnlStatus");
   if(!file){ status.textContent = "No passenger file selected."; status.style.color = "var(--red)"; return; }

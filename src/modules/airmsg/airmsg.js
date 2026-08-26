@@ -19,6 +19,22 @@ function makeCsv(headers, rows){
     .map(function(r){ return r.map(csvCell).join(";"); }).join("\r\n");
 }
 
+/* ---------- PNL passenger-list template ----------
+   A worked example covering the two document rows a real passenger list
+   needs: one passport ("P") plus a second, non-passport document ("V") for
+   the same person, sharing the same RecordLocator/Seat/BCN — so anyone
+   building their own list can see the shape before they start. */
+var PNL_TEMPLATE_CSV =
+  "Surname;GivenName;Gender;DateOfBirth;Nationality;RecordLocator;Seat;DocumentType;DocumentNumber;DocumentIssueCountry;DocumentIssueDate;DocumentExpiryDate;BCN;BookingClass\n"+
+  "AMERICA;CAPTAIN;M;1982-03-28;USA;WJ939H;15B;P;8888888888;USA;;2030-12-02;102;C\n"+
+  "AMERICA;CAPTAIN;M;1982-03-28;USA;WJ939H;15B;V;VI1234567;DEU;01/01/2026;2026-10-20;102;C\n"+
+  "LIGHTYEAR;BUZZ;M;1940-11-01;USA;SLZW9B;12A;P;1111111111;USA;;2030-11-01;;Y\n"+
+  "SIMPSON;HOMER;M;1935-05-13;USA;TEQRHG;15C;P;9999999999;USA;;2030-05-13;104;Y\n"+
+  "SIMPSON;HOMER;M;1935-05-13;USA;TEQRHG;15C;V;VI1111111;DEU;;2030-12-30;104;Y\n"+
+  "TEST;JIM;F;1945-12-01;USA;MA7LBX;12F;P;2323232323;USA;;2030-12-30;106;\n"+
+  "TEST;JIM;F;1945-12-01;USA;MA7LBX;12F;V;VI222222;DEU;06/06/2025;2030-12-30;106;";
+function pnlTemplateRows(){ return parseDelimited(PNL_TEMPLATE_CSV); }
+
 /* ---------- PRL parser ----------
    Reads a PSCRM PRL message: one passenger header line ending in ".L/<PNR>",
    followed by .R/SEAT, .R/DOCO and one or more .R/DOCS lines (each DOCS
