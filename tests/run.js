@@ -247,10 +247,12 @@ if(inBuild("securezip")) try {
 } catch(e){ ok("crypto module loads", false, e.message); }
 
 if(inBuild("uld")) try {
-  const uldAll = fileOf("src/modules/uld/templates.js") + fileOf("src/modules/uld/uld.js");
+  const uldAll = fileOf("src/core/crypto.js") + fileOf("src/core/ui.js") +
+    fileOf("src/modules/uld/templates.js") + fileOf("src/modules/uld/uld.js");
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
-       ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines, csvAll};");
+       ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines, csvAll, " +
+       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS};");
   ok("all aircraft templates load", ULD.TEMPLATES.length === 5);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
@@ -263,6 +265,28 @@ if(inBuild("uld")) try {
   ULD.generateLayouts();
   const counts = ULD.U.compartments.map(c => (ULD.U.layouts[c.number] || []).length);
   ok("A330 template generates layouts in every compartment", counts.every(n => n > 0), counts.join("/"));
+
+  // The operator's own upload system expects a fixed "D3" sheet name on any
+  // .xlsx it accepts, for any aircraft (confirmed against
+  // 6H_A330243_TEMPLATE.xlsx) — not related to compartment numbering. Read
+  // it back out of the raw ZIP bytes (everything here is stored, method 0,
+  // so no deflate support is needed to check it).
+  function readStoredZipEntry(bytes, name){
+    const nameBytes = Buffer.from(name, "utf8");
+    for(let pos=0; pos+30<bytes.length; ){
+      if(!(bytes[pos]===0x50&&bytes[pos+1]===0x4b&&bytes[pos+2]===0x03&&bytes[pos+3]===0x04)){ pos++; continue; }
+      const size = bytes.readUInt32LE(pos+18), nameLen = bytes.readUInt16LE(pos+26), extraLen = bytes.readUInt16LE(pos+28);
+      const nameStart = pos+30, dataStart = nameStart+nameLen+extraLen;
+      if(bytes.slice(nameStart, nameStart+nameLen).equals(nameBytes))
+        return bytes.slice(dataStart, dataStart+size).toString("utf8");
+      pos = dataStart+size;
+    }
+    return null;
+  }
+  const xlsxBytes = Buffer.from(ULD.buildXlsxFile("D3", ULD.EXPORT_HEADERS, ULD.allLayoutRows()));
+  const workbookXml = readStoredZipEntry(xlsxBytes, "xl/workbook.xml");
+  ok("ULD XLSX export uses the upload system's required sheet name D3",
+     !!workbookXml && workbookXml.includes('name="D3"'), workbookXml);
 
   const b = ULD.TEMPLATES[0];
   ULD.U.ulds = JSON.parse(JSON.stringify(b.ulds));

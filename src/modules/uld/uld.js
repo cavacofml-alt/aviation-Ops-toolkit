@@ -987,11 +987,14 @@ function onUldClick(e){
   }
   else if(act==="csv-all"){ showTextModal("CSV — all compartments", csvAll(), "all_layouts.csv"); }
   else if(act==="xlsx-one"){
+    // "D3" is a fixed sheet name the operator's own upload system expects on
+    // every .xlsx it accepts, for any aircraft — confirmed against
+    // 6H_A330243_TEMPLATE.xlsx. Not related to compartment numbering.
     var n2 = U.compartments.map(function(c){return c.number;})[U.activeLayoutComp];
-    downloadXlsx("Layouts", EXPORT_HEADERS, layoutRows(n2), "compartment"+n2+"_layouts.xlsx");
+    downloadXlsx("D3", EXPORT_HEADERS, layoutRows(n2), "compartment"+n2+"_layouts.xlsx");
   }
   else if(act==="xlsx-all"){
-    downloadXlsx("Layouts", EXPORT_HEADERS, allLayoutRows(), "all_layouts.xlsx");
+    downloadXlsx("D3", EXPORT_HEADERS, allLayoutRows(), "all_layouts.xlsx");
   }
 }
 
