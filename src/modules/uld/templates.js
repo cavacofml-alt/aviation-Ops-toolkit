@@ -577,13 +577,13 @@ var TPL_B777_300 = {
     {id:"u8", uldType:"LD7/P88",iata:"RAP",maxWeight:6033,tare:450},
     {id:"u9", uldType:"LD3",    iata:"AKC",maxWeight:1587,tare:80},
     {id:"u10",uldType:"LD2",    iata:"DPE",maxWeight:1224,tare:72},
-    {id:"u11",uldType:"LD7/P96",iata:"DQP",maxWeight:2449,tare:120},
+    {id:"u11",uldType:"LD11",   iata:"DQP",maxWeight:2449,tare:120},
     {id:"u12",uldType:"LD7/P88",iata:"UAK",maxWeight:5102,tare:200},
-    {id:"u13",uldType:"LD7/P96",iata:"DQF",maxWeight:2449,tare:150},
+    {id:"u13",uldType:"LD11",   iata:"DQF",maxWeight:2449,tare:150},
     {id:"u14",uldType:"LD7/P88",iata:"AAP",maxWeight:5102,tare:200},
     {id:"u15",uldType:"PLA",    iata:"ALK",maxWeight:3175,tare:180},
     {id:"u16",uldType:"PLA",    iata:"ALP",maxWeight:3175,tare:180},
-    {id:"u17",uldType:"LD7/P96",iata:"FQA",maxWeight:2449,tare:53},
+    {id:"u17",uldType:"LD11",   iata:"FQA",maxWeight:2449,tare:53},
   ],
   // RKN/RAP/AKC/DPE/DQP/UAK/DQF/AAP/ALK/ALP/FQA (and QKE, a fire-resistant
   // AKE variant) are in the ULD catalog above but have no row in the position

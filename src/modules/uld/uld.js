@@ -545,8 +545,13 @@ function generateLayouts(){
       // pairable the same way LD3 is, or a bare L/R suffix conflict check
       // would treat the two sides as mutually exclusive instead of side by
       // side, and only ever offer one side at a time.
+      // …and so is the P bay: an LD11 loaded at 11P sits in the same bay as
+      // the PAG and PMC that are also certified there, so it has to key off
+      // the same base ("11"). Reading it off the type instead — LD7 only —
+      // filed the LD11 under a base of its own, where it could never be
+      // recognised as the same slot.
       var cfgType = group.positions.some(function(p){ return /[LR]$/.test(p.name); }) ? "LR"
-        : (group.uldType.indexOf("LD7")===0 ? "P" : "Simple");
+        : (group.positions.some(function(p){ return /P$/.test(p.name); }) ? "P" : "Simple");
       // Scoped to this group's own declared ULD (type + IATA code) — not just
       // type — so a group never silently borrows another group's identity or
       // weight tier when two ULDs of the same type are in the fleet catalog
