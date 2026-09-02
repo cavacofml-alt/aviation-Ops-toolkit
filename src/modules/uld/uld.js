@@ -237,8 +237,12 @@ function viewStep2(){
 function groupBox(comp,g,gi){
   var isLD3 = isPairType(g.uldType);
   var baseEx = String(comp.number)+"1";
+  // the max-weight hint is this group's own ULD, not a guess from the type:
+  // an LD2 group hinting 1587 (an LD3's weight) invites the wrong number
+  var def = U.ulds.filter(function(u){ return u.uldType===g.uldType && u.iata===g.iata; })[0];
   var ph = isLD3 ? {pos:baseEx, mw:"1587"}
         : (g.uldType.indexOf("LD7")===0 ? {pos:baseEx+"P", mw:"4626"} : {pos:baseEx, mw:"3174"});
+  if(def && def.maxWeight) ph.mw = String(def.maxWeight);
 
   var allValid = g.positions.every(function(p){
     return p.name && p.fwd && p.aft && p.index && p.maxWeight &&
@@ -706,10 +710,9 @@ function crossCompartmentWarnings(){
    itself in. Max weight is a property of the ULD, not the bay, so it is not
    part of this. Returns null when the position already carries values (never
    overwrite), when the name is not a whole-bay name, or when no pair exists. */
-function pairSourceFor(comp, pos){
-  var name = (pos.name||"").trim().toUpperCase();
-  if(!name || /[LRP]$/.test(name)) return null;
-  if(pos.fwd || pos.aft || pos.index) return null;
+function pairAtBase(comp, base){
+  var name = String(base==null?"":base).trim().toUpperCase();
+  if(!name) return null;
   var src = null;
   (comp.uldGroups||[]).forEach(function(q){
     (q.positions||[]).forEach(function(o){
@@ -717,6 +720,26 @@ function pairSourceFor(comp, pos){
     });
   });
   return src;
+}
+function pairSourceFor(comp, pos){
+  var name = (pos.name||"").trim().toUpperCase();
+  if(!name || /[LRP]$/.test(name)) return null;
+  if(pos.fwd || pos.aft || pos.index) return null;
+  return pairAtBase(comp, name);
+}
+/* The L/R offset is carried on whichever side we found: an L position holds
+   it on the right, an R position on the left. */
+function pairOffsetOf(pos){ return /L$/.test(pos.name||"") ? pos.right : pos.left; }
+
+/* Index precision. The manuals go to 6 decimals; the operator's system takes
+   5 (the export rounds there). Without a cap the number field happily takes
+   -0.00271155555555555555, which is neither. */
+var MAX_INDEX_DECIMALS = 6;
+function clampDecimals(v, max){
+  var s = String(v==null?"":v);
+  var m = s.match(/^(-?\d*\.)(\d+)$/);
+  if(!m) return s;
+  return m[2].length > max ? m[1]+m[2].slice(0, max) : s;
 }
 
 /* The operator's system carries index values to 5 decimal places (…-0.00803,
@@ -836,6 +859,10 @@ function bindStep(){
       var comp = U.compartments[U.activeComp];
       if(!comp || !comp.uldGroups[g] || !comp.uldGroups[g].positions[p]) return;
       var group = comp.uldGroups[g], pos = group.positions[p];
+      if(k === "index"){
+        var capped = clampDecimals(inp.value, MAX_INDEX_DECIMALS);
+        if(capped !== inp.value) inp.value = capped;
+      }
       pos[k] = inp.value;
       refreshWarn(g, p);
       if(U.layouts) U.layoutsStale = true;   // generated results no longer describe this data
@@ -869,7 +896,14 @@ function bindStep(){
   });
   // live preview of the L/R pair being created
   Array.prototype.forEach.call(host.querySelectorAll('input[data-pair]'), function(inp){
-    inp.addEventListener("input", updatePairPreview);
+    inp.addEventListener("input", function(){
+      if(inp.id === "pf_base") fillPairFormFromBase();
+      if(inp.id === "pf_index"){
+        var capped = clampDecimals(inp.value, MAX_INDEX_DECIMALS);
+        if(capped !== inp.value) inp.value = capped;
+      }
+      updatePairPreview();
+    });
   });
   updatePairPreview();
   host.addEventListener("click", onUldClick);
@@ -903,6 +937,20 @@ function mirrorDom(g,p,k,val){
   var sel = 'input[data-pos][data-g="'+g+'"][data-p="'+p+'"][data-k="'+k+'"]';
   var el = $("uldStep").querySelector(sel);
   if(el) el.value = val;
+}
+/* Typing a base whose L/R pair already exists elsewhere in the compartment
+   fills the rest of the form from it — the same bay, so the same station and
+   index. Blanks only, so anything already typed stands. */
+function fillPairFormFromBase(){
+  var comp = U.compartments[U.activeComp];
+  if(!comp) return;
+  var src = pairAtBase(comp, ($("pf_base")||{}).value);
+  if(!src) return;
+  [["pf_fwd", src.fwd], ["pf_aft", src.aft], ["pf_index", src.index],
+   ["pf_off", pairOffsetOf(src)]].forEach(function(pair){
+    var el = $(pair[0]);
+    if(el && !el.value && pair[1] !== "" && pair[1] != null) el.value = pair[1];
+  });
 }
 function updatePairPreview(){
   var box = $("uldStep").querySelector("#pairPreview");
@@ -1002,7 +1050,7 @@ function onUldClick(e){
     var base = (($("pf_base")||{}).value||"").toUpperCase().trim();
     var fwd  = ($("pf_fwd")||{}).value, aft = ($("pf_aft")||{}).value;
     var off  = ($("pf_off")||{}).value || "0";
-    var ix   = ($("pf_index")||{}).value, mw = ($("pf_mw")||{}).value;
+    var ix   = clampDecimals(($("pf_index")||{}).value, MAX_INDEX_DECIMALS), mw = ($("pf_mw")||{}).value;
     if(!base || !fwd || !aft || !ix || !mw){ alert("Fill base, FWD, AFT, index and max weight."); return; }
     if(validateIndex(ix, fwd, U.refStation)){ alert(validateIndex(ix, fwd, U.refStation)); return; }
     g2.positions.push({name:base+"L", fwd:fwd, aft:aft, left:"0", right:off, index:ix, maxWeight:mw});

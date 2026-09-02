@@ -291,7 +291,7 @@ if(inBuild("uld")) try {
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
        ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines, csvAll, " +
-       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, exportIndex, uldBase};");
+       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, pairAtBase, pairOffsetOf, clampDecimals, exportIndex, uldBase};");
   ok("all aircraft templates load", ULD.TEMPLATES.length === 5);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
@@ -564,6 +564,28 @@ if(inBuild("uld")) try {
      ULD.U.layouts[1].map(l => l.name).join(" | "));
   ok("types sharing a base still name just the one",
      ULD.uldBase("L3P/PKC") === ULD.uldBase("LD3") && ULD.uldBase("LD2") !== ULD.uldBase("LD3"));
+
+  // The "+ L/R pair" form (the only way LD2/LD3 positions are added) fills
+  // itself from an existing pair of the same bay, offset included — an L
+  // position carries it on the right, an R position on the left.
+  const pairSrc = ULD.pairAtBase(ULD.U.compartments[0], "11");
+  ok("the L/R pair form finds an existing pair by its base",
+     !!pairSrc && pairSrc.fwd === "201.1" && pairSrc.aft === "261.7" && pairSrc.index === "-0.00342",
+     JSON.stringify(pairSrc));
+  ok("the offset comes off whichever side was found",
+     ULD.pairOffsetOf({name:"11L", left:"0", right:"48"}) === "48" &&
+     ULD.pairOffsetOf({name:"11R", left:"48", right:"0"}) === "48");
+  ok("an unknown base fills nothing", ULD.pairAtBase(ULD.U.compartments[0], "99") === null);
+
+  // The index field took anything a number input allowed, including
+  // -0.00271155555555555555. Capped at what the manuals actually print.
+  ok("the index is capped at 6 decimals",
+     ULD.clampDecimals("-0.00271155555555555555", 6) === "-0.002711" &&
+     ULD.clampDecimals("-0.003422", 6) === "-0.003422" &&
+     ULD.clampDecimals("-0.00803", 6) === "-0.00803");
+  ok("capping leaves whole numbers and half-typed values alone",
+     ULD.clampDecimals("1587", 6) === "1587" && ULD.clampDecimals("-0.", 6) === "-0." &&
+     ULD.clampDecimals("", 6) === "");
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {
