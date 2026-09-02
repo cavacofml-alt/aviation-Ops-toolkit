@@ -252,7 +252,7 @@ if(inBuild("uld")) try {
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
        ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines, csvAll, " +
-       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, exportIndex};");
+       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, exportIndex, uldBase};");
   ok("all aircraft templates load", ULD.TEMPLATES.length === 5);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
@@ -515,6 +515,16 @@ if(inBuild("uld")) try {
      ULD.U.layouts[1].every(l => l.positions.some(p => p.name === "11L") &&
                                  l.positions.some(p => p.name === "12L")),
      ULD.U.layouts[1].map(l => l.name).join(" | "));
+
+  // A slot shared by two different bases names both type codes — calling it
+  // "2LD3(AKE/DPE)" would read as if the DPE were an LD3 too. Types that
+  // share a base (LD3 and the operator's L3P/PKC coding) still name one,
+  // which is what keeps the B777-200's "2LD3(AKE/PKC)" above unchanged.
+  ok("a slot shared by two bases names both types",
+     ULD.U.layouts[1].every(l => l.name.indexOf("2LD3/LD2(AKE/DPE)") === 0),
+     ULD.U.layouts[1].map(l => l.name).join(" | "));
+  ok("types sharing a base still name just the one",
+     ULD.uldBase("L3P/PKC") === ULD.uldBase("LD3") && ULD.uldBase("LD2") !== ULD.uldBase("LD3"));
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {
