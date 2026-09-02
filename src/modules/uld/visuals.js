@@ -3,6 +3,7 @@
    AIRCRAFT DIAGRAM — side view with the compartments drawn in place,
    positioned along the fuselage by their real FWD/AFT stations.
    ============================================================================ */
+var AIRCRAFT_VIEW = null;
 function aircraftPanel(activeNum, mode){
   // mode "edit"    → clicking a hold selects it and its zone grid is shown below
   // mode "layouts" → clicking a hold switches the layout tab
@@ -117,7 +118,12 @@ function aircraftPanel(activeNum, mode){
   var active = U.compartments.filter(function(c){ return c.number===activeNum; })[0];
   var zone = (mode !== "layouts" && active) ? zoneGrid(active) : "";
 
-  return '<div class="card" style="padding:14px 16px">'+
+  // remembered so the reference-station field can redraw just this panel
+  // (its REF marker moves with every keystroke) without re-rendering the
+  // whole step and pulling the caret out of the input
+  AIRCRAFT_VIEW = { num: activeNum, mode: mode };
+
+  return '<div class="card" id="uldAircraft" style="padding:14px 16px">'+
     '<div class="sec" style="margin-bottom:8px">Aircraft — compartment layout'+
       '<span class="note" style="margin-left:10px;text-transform:none;letter-spacing:0">'+
       'select a hold to work on it</span></div>'+
