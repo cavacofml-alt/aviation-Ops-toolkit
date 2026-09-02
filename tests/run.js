@@ -505,6 +505,20 @@ if(inBuild("uld")) try {
      ULD.pairSourceFor(b3c1, {name:"12L", fwd:"", aft:"", index:""}) === null &&
      ULD.pairSourceFor(b3c1, {name:"12P", fwd:"", aft:"", index:""}) === null);
 
+  // LD11 (DQF/DQP/FQA) sit in the P bays alongside the pallets, on the
+  // PMC's stations and index, but capped at their own 2449 certification
+  // rather than the bay ceiling the PMC is given.
+  const b3c1pmc = b3c1.uldGroups.find(g => g.iata === "PMC").positions.find(p => p.name === "11P");
+  const b3c1ld11 = b3c1.uldGroups.find(g => g.uldType === "LD11").positions.find(p => p.name === "11P");
+  ok("B777-300 LD11 takes the PMC's station and index at the same P bay",
+     !!b3c1ld11 && b3c1ld11.fwd === b3c1pmc.fwd && b3c1ld11.aft === b3c1pmc.aft &&
+     b3c1ld11.index === b3c1pmc.index, JSON.stringify(b3c1ld11));
+  ok("B777-300 LD11 keeps its own 2449 max weight, not the bay's",
+     b3c1ld11.maxWeight === "2449" && b3c1pmc.maxWeight === "5102");
+  ok("B777-300 LD11 is offered at the P bays of every compartment",
+     ULD.U.compartments.every(c => c.uldGroups.some(g => g.uldType === "LD11" && g.positions.length)),
+     ULD.U.compartments.map(c => (c.uldGroups.find(g => g.uldType === "LD11")||{positions:[]}).positions.length).join("/"));
+
   // The operator's system carries 5 decimal places; the manuals print 6. The
   // editor keeps the manual's value, the export rounds it on the way out.
   ok("export rounds the index to 5 decimals",
