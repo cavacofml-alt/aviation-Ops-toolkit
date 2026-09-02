@@ -19,6 +19,13 @@ var ULD_TYPE_HINTS = {
 var GROUP_COLORS = { "LD3":"var(--cyan)", "L3P/PKC":"var(--cyan)", "LD7/P88":"var(--green)", "LD7/P96":"var(--teal)",
                      "LD8":"var(--amber)", "PLA":"var(--amber)", "LD6":"var(--magenta)" };
 function groupColor(t){ return GROUP_COLORS[t] || "var(--dim)"; }
+/* Types that sit as a left/right half-bay pair, so they get the "+ L/R pair"
+   form and the L<->R auto-mirror: the LD3 family (AKE, PKC, QKE, AKC, RKN…),
+   PKC when the operator codes it as its own L3P/PKC type, and LD2 (AKH, DPE).
+   Everything else (LD7 pallets, LD8/PLA/LD6 half pallets) occupies a whole
+   bay and takes single positions. */
+var LR_PAIR_TYPES = { "LD3":1, "L3P/PKC":1, "LD2":1 };
+function isPairType(t){ return !!LR_PAIR_TYPES[t]; }
 var ULD_TYPE_LABELS = {
   "LD3":"LD3 (AKE)", "L3P/PKC":"L3P/PKC (Pallet)", "LD7/P88":"LD7/P88 (PAG)", "LD7/P96":"LD7/P96 (PMC)",
   "LD8":"LD8", "PLA":"PLA", "LD1":"LD1 (AMA)", "LD2":"LD2 (AKH / DPE)",
@@ -220,7 +227,7 @@ function viewStep2(){
 
 /* group box — header, column titles, position rows, L/R pair form */
 function groupBox(comp,g,gi){
-  var isLD3 = g.uldType==="LD3";
+  var isLD3 = isPairType(g.uldType);
   var baseEx = String(comp.number)+"1";
   var ph = isLD3 ? {pos:baseEx, mw:"1587"}
         : (g.uldType.indexOf("LD7")===0 ? {pos:baseEx+"P", mw:"4626"} : {pos:baseEx, mw:"3174"});
@@ -679,6 +686,25 @@ function crossCompartmentWarnings(){
   return warnings;
 }
 
+/* A whole-bay position (11, 12, 21…) sits at the same station as the L/R
+   pair of the same zone, so its FWD/AFT/index are the same numbers. Finds
+   that pair anywhere in the compartment, so naming a new position can fill
+   itself in. Max weight is a property of the ULD, not the bay, so it is not
+   part of this. Returns null when the position already carries values (never
+   overwrite), when the name is not a whole-bay name, or when no pair exists. */
+function pairSourceFor(comp, pos){
+  var name = (pos.name||"").trim().toUpperCase();
+  if(!name || /[LRP]$/.test(name)) return null;
+  if(pos.fwd || pos.aft || pos.index) return null;
+  var src = null;
+  (comp.uldGroups||[]).forEach(function(q){
+    (q.positions||[]).forEach(function(o){
+      if(!src && (o.name===name+"L" || o.name===name+"R") && o.fwd && o.aft && o.index) src = o;
+    });
+  });
+  return src;
+}
+
 /* ---------- CSV ---------- */
 // Header and field order match the operator's own upload template exactly
 // (YU_B777200ER_TEMPLATE.xlsx) — including ";" joining multiple certified
@@ -789,9 +815,18 @@ function bindStep(){
       if(U.layouts) U.layoutsStale = true;   // generated results no longer describe this data
       if(typeof uldTouch === "function") uldTouch();
       if(k==="index" || k==="fwd" || k==="aft"){ U.signAck = false; }
-      // auto-mirror LD3 L/R pairs both ways (fwd/aft/index/max weight shared,
+      // Naming a whole-bay position picks up FWD/AFT/index from the L/R pair
+      // of the same zone, if that pair is already defined in this compartment.
+      if(k==="name"){
+        var src = pairSourceFor(comp, pos);
+        if(src){
+          ["fwd","aft","index"].forEach(function(f){ pos[f] = src[f]; mirrorDom(g, p, f, src[f]); });
+          refreshWarn(g, p);
+        }
+      }
+      // auto-mirror L/R pairs both ways (fwd/aft/index/max weight shared,
       // left/right swapped) — editing either side keeps the other in sync.
-      if(group.uldType==="LD3" && /[LR]$/.test(pos.name||"")){
+      if(isPairType(group.uldType) && /[LR]$/.test(pos.name||"")){
         var side = pos.name.slice(-1), otherSide = side==="L" ? "R" : "L";
         var base = pos.name.slice(0,-1);
         var ri = -1;
@@ -1006,6 +1041,10 @@ $("refStation").addEventListener("input", function(){
   // every index warning is measured against the reference station
   var comp = U.compartments[U.activeComp];
   if(comp) comp.uldGroups.forEach(function(g,gi){ g.positions.forEach(function(p,pi){ refreshWarn(gi,pi); }); });
+  // the aircraft diagram draws the REF marker, so redraw just that panel —
+  // a full uldRender() here would take the caret out of this input
+  var panel = $("uldAircraft");
+  if(panel && AIRCRAFT_VIEW) panel.outerHTML = aircraftPanel(AIRCRAFT_VIEW.num, AIRCRAFT_VIEW.mode);
 });
 $("btnSaveCfg").addEventListener("click", function(){
   if(typeof uldSaveNow === "function") uldSaveNow();

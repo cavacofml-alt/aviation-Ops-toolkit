@@ -592,17 +592,7 @@ var TPL_B777_300 = {
   // assigned to any position group here.
   compartments:[
   {id:"c1",number:1,uldGroups:[
-    {id:"g1",uldType:"LD3",iata:"AKE",label:"LD3 — AKE",positions:[
-      {name:"11L",fwd:"201.1",aft:"261.7",left:"0", right:"48",index:"-0.003422",maxWeight:"1587"},
-      {name:"11R",fwd:"201.1",aft:"261.7",left:"48",right:"0", index:"-0.003422",maxWeight:"1587"},
-      {name:"12L",fwd:"299.1",aft:"360.1",left:"0", right:"48",index:"-0.003095",maxWeight:"1587"},
-      {name:"12R",fwd:"299.1",aft:"360.1",left:"48",right:"0", index:"-0.003095",maxWeight:"1587"},
-      {name:"13L",fwd:"376.3",aft:"436.7",left:"0", right:"48",index:"-0.002838",maxWeight:"1587"},
-      {name:"13R",fwd:"376.3",aft:"436.7",left:"48",right:"0", index:"-0.002838",maxWeight:"1587"},
-      {name:"14L",fwd:"436.7",aft:"497.1",left:"0", right:"48",index:"-0.002637",maxWeight:"1587"},
-      {name:"14R",fwd:"436.7",aft:"497.1",left:"48",right:"0", index:"-0.002637",maxWeight:"1587"},
-    ]},
-    {id:"g2",uldType:"LD3",iata:"PKC",label:"LD3 — PKC",positions:[
+    {id:"g1",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
       {name:"11L",fwd:"201.1",aft:"261.7",left:"0", right:"48",index:"-0.003422",maxWeight:"1587"},
       {name:"11R",fwd:"201.1",aft:"261.7",left:"48",right:"0", index:"-0.003422",maxWeight:"1587"},
       {name:"12L",fwd:"299.1",aft:"360.1",left:"0", right:"48",index:"-0.003095",maxWeight:"1587"},
@@ -630,25 +620,7 @@ var TPL_B777_300 = {
     ]},
   ]},
   {id:"c2",number:2,uldGroups:[
-    {id:"g6",uldType:"LD3",iata:"AKE",label:"LD3 — AKE",positions:[
-      {name:"21L",fwd:"497.1",aft:"557.5",left:"0", right:"48",index:"-0.002436",maxWeight:"1587"},
-      {name:"21R",fwd:"497.1",aft:"557.5",left:"48",right:"0", index:"-0.002436",maxWeight:"1587"},
-      {name:"22L",fwd:"557.5",aft:"617.9",left:"0", right:"48",index:"-0.002234",maxWeight:"1587"},
-      {name:"22R",fwd:"557.5",aft:"617.9",left:"48",right:"0", index:"-0.002234",maxWeight:"1587"},
-      {name:"23L",fwd:"617.9",aft:"678.3",left:"0", right:"48",index:"-0.002033",maxWeight:"1587"},
-      {name:"23R",fwd:"617.9",aft:"678.3",left:"48",right:"0", index:"-0.002033",maxWeight:"1587"},
-      {name:"24L",fwd:"678.3",aft:"738.9",left:"0", right:"48",index:"-0.001831",maxWeight:"1587"},
-      {name:"24R",fwd:"678.3",aft:"738.9",left:"48",right:"0", index:"-0.001831",maxWeight:"1587"},
-      {name:"25L",fwd:"738.9",aft:"799.5",left:"0", right:"48",index:"-0.001629",maxWeight:"1587"},
-      {name:"25R",fwd:"738.9",aft:"799.5",left:"48",right:"0", index:"-0.001629",maxWeight:"1587"},
-      {name:"26L",fwd:"799.5",aft:"860.1",left:"0", right:"48",index:"-0.001427",maxWeight:"1587"},
-      {name:"26R",fwd:"799.5",aft:"860.1",left:"48",right:"0", index:"-0.001427",maxWeight:"1587"},
-      {name:"27L",fwd:"860.1",aft:"920.7",left:"0", right:"48",index:"-0.001225",maxWeight:"1587"},
-      {name:"27R",fwd:"860.1",aft:"920.7",left:"48",right:"0", index:"-0.001225",maxWeight:"1587"},
-      {name:"28L",fwd:"920.7",aft:"981.4",left:"0", right:"48",index:"-0.001023",maxWeight:"1587"},
-      {name:"28R",fwd:"920.7",aft:"981.4",left:"48",right:"0", index:"-0.001023",maxWeight:"1587"},
-    ]},
-    {id:"g7",uldType:"LD3",iata:"PKC",label:"LD3 — PKC",positions:[
+    {id:"g6",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
       {name:"21L",fwd:"497.1",aft:"557.5",left:"0", right:"48",index:"-0.002436",maxWeight:"1587"},
       {name:"21R",fwd:"497.1",aft:"557.5",left:"48",right:"0", index:"-0.002436",maxWeight:"1587"},
       {name:"22L",fwd:"557.5",aft:"617.9",left:"0", right:"48",index:"-0.002234",maxWeight:"1587"},
@@ -694,21 +666,7 @@ var TPL_B777_300 = {
     ]},
   ]},
   {id:"c3",number:3,uldGroups:[
-    {id:"g11",uldType:"LD3",iata:"AKE",label:"LD3 — AKE",positions:[
-      {name:"31L",fwd:"1449.9",aft:"1510.6",left:"0", right:"48",index:"0.000741",maxWeight:"1587"},
-      {name:"31R",fwd:"1449.9",aft:"1510.6",left:"48",right:"0", index:"0.000741",maxWeight:"1587"},
-      {name:"32L",fwd:"1510.6",aft:"1571.2",left:"0", right:"48",index:"0.000943",maxWeight:"1587"},
-      {name:"32R",fwd:"1510.6",aft:"1571.2",left:"48",right:"0", index:"0.000943",maxWeight:"1587"},
-      {name:"33L",fwd:"1571.2",aft:"1631.8",left:"0", right:"48",index:"0.001145",maxWeight:"1587"},
-      {name:"33R",fwd:"1571.2",aft:"1631.8",left:"48",right:"0", index:"0.001145",maxWeight:"1587"},
-      {name:"34L",fwd:"1631.8",aft:"1692.4",left:"0", right:"48",index:"0.001347",maxWeight:"1587"},
-      {name:"34R",fwd:"1631.8",aft:"1692.4",left:"48",right:"0", index:"0.001347",maxWeight:"1587"},
-      {name:"35L",fwd:"1692.4",aft:"1753.0",left:"0", right:"48",index:"0.001549",maxWeight:"1587"},
-      {name:"35R",fwd:"1692.4",aft:"1753.0",left:"48",right:"0", index:"0.001549",maxWeight:"1587"},
-      {name:"36L",fwd:"1753.0",aft:"1813.4",left:"0", right:"48",index:"0.001751",maxWeight:"1587"},
-      {name:"36R",fwd:"1753.0",aft:"1813.4",left:"48",right:"0", index:"0.001751",maxWeight:"1587"},
-    ]},
-    {id:"g12",uldType:"LD3",iata:"PKC",label:"LD3 — PKC",positions:[
+    {id:"g11",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
       {name:"31L",fwd:"1449.9",aft:"1510.6",left:"0", right:"48",index:"0.000741",maxWeight:"1587"},
       {name:"31R",fwd:"1449.9",aft:"1510.6",left:"48",right:"0", index:"0.000741",maxWeight:"1587"},
       {name:"32L",fwd:"1510.6",aft:"1571.2",left:"0", right:"48",index:"0.000943",maxWeight:"1587"},
@@ -746,17 +704,7 @@ var TPL_B777_300 = {
     ]},
   ]},
   {id:"c4",number:4,uldGroups:[
-    {id:"g16",uldType:"LD3",iata:"AKE",label:"LD3 — AKE",positions:[
-      {name:"41L",fwd:"1813.4",aft:"1873.3",left:"0", right:"48",index:"0.001951",maxWeight:"1587"},
-      {name:"41R",fwd:"1813.4",aft:"1873.3",left:"48",right:"0", index:"0.001951",maxWeight:"1587"},
-      {name:"42L",fwd:"1875.1",aft:"1936.1",left:"0", right:"48",index:"0.002159",maxWeight:"1587"},
-      {name:"42R",fwd:"1875.1",aft:"1936.1",left:"48",right:"0", index:"0.002159",maxWeight:"1587"},
-      {name:"43L",fwd:"1947.7",aft:"2008.3",left:"0", right:"48",index:"0.002400",maxWeight:"1587"},
-      {name:"43R",fwd:"1947.7",aft:"2008.3",left:"48",right:"0", index:"0.002400",maxWeight:"1587"},
-      {name:"44L",fwd:"2008.3",aft:"2069.0",left:"0", right:"48",index:"0.002602",maxWeight:"1587"},
-      {name:"44R",fwd:"2008.3",aft:"2069.0",left:"48",right:"0", index:"0.002602",maxWeight:"1587"},
-    ]},
-    {id:"g17",uldType:"LD3",iata:"PKC",label:"LD3 — PKC",positions:[
+    {id:"g16",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
       {name:"41L",fwd:"1813.4",aft:"1873.3",left:"0", right:"48",index:"0.001951",maxWeight:"1587"},
       {name:"41R",fwd:"1813.4",aft:"1873.3",left:"48",right:"0", index:"0.001951",maxWeight:"1587"},
       {name:"42L",fwd:"1875.1",aft:"1936.1",left:"0", right:"48",index:"0.002159",maxWeight:"1587"},

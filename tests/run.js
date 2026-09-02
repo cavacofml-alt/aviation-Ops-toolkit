@@ -252,7 +252,7 @@ if(inBuild("uld")) try {
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
        ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines, csvAll, " +
-       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS};");
+       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor};");
   ok("all aircraft templates load", ULD.TEMPLATES.length === 5);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
@@ -437,6 +437,34 @@ if(inBuild("uld")) try {
   const b3csvC1 = ULD.csvLines(1).join("\n");
   ok("B777-300 comp1: a merged AKE/PKC slot lists LD3,LA once, not twice",
      b3csvC1.includes('"LD3,LA"') && !b3csvC1.includes('"LD3,LA;LD3,LA"'));
+
+  // AKE and PKC are certified identically at every position on this aircraft
+  // and share the same type code, so the template carries one LD3 group, not
+  // two byte-identical ones. The export is unchanged either way.
+  const b3ld3Groups = ULD.U.compartments.reduce(function(n,c){
+    return n + c.uldGroups.filter(function(g){ return g.uldType === "LD3"; }).length; }, 0);
+  ok("B777-300 has one LD3 group per compartment, not an AKE/PKC duplicate",
+     b3ld3Groups === 4, b3ld3Groups + " LD3 groups");
+
+  // L/R bays: LD3 (AKE/PKC/QKE…), the operator's own L3P/PKC coding, and LD2
+  // (AKH/DPE) all sit as left/right halves and get the pair form + mirroring.
+  // Pallets and half pallets take the whole bay and stay single positions.
+  ok("L/R pair handling covers LD3, L3P/PKC and LD2 — not the pallet types",
+     ULD.isPairType("LD3") && ULD.isPairType("L3P/PKC") && ULD.isPairType("LD2") &&
+     !ULD.isPairType("LD7/P88") && !ULD.isPairType("PLA") && !ULD.isPairType("LD8"));
+
+  // Naming a whole-bay position picks up the station and index of the L/R
+  // pair of the same zone — same bay, same numbers.
+  const b3c1 = ULD.U.compartments.find(c => c.number === 1);
+  const inherited = ULD.pairSourceFor(b3c1, {name:"12", fwd:"", aft:"", index:""});
+  ok("a new whole-bay position inherits FWD/AFT/index from its L/R pair",
+     !!inherited && inherited.fwd === "299.1" && inherited.aft === "360.1" && inherited.index === "-0.003095",
+     JSON.stringify(inherited));
+  ok("inheriting never overwrites values already entered",
+     ULD.pairSourceFor(b3c1, {name:"12", fwd:"1", aft:"2", index:"-0.001"}) === null);
+  ok("inheriting only applies to whole-bay names, not L/R or P positions",
+     ULD.pairSourceFor(b3c1, {name:"12L", fwd:"", aft:"", index:""}) === null &&
+     ULD.pairSourceFor(b3c1, {name:"12P", fwd:"", aft:"", index:""}) === null);
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {
