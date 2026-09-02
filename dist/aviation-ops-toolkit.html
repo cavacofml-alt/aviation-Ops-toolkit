@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.106</title>
+<title>Aviation Ops Toolkit v1.2.108</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.106</span>
+      <span class="build-ver">v1.2.108</span>
     </header>
 
     <main>
@@ -812,7 +812,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.106 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.108 — Luís Cavaco
     Built 2026-09-02 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -4695,13 +4695,13 @@ var TPL_B777_300 = {
     {id:"u8", uldType:"LD7/P88",iata:"RAP",maxWeight:6033,tare:450},
     {id:"u9", uldType:"LD3",    iata:"AKC",maxWeight:1587,tare:80},
     {id:"u10",uldType:"LD2",    iata:"DPE",maxWeight:1224,tare:72},
-    {id:"u11",uldType:"LD7/P96",iata:"DQP",maxWeight:2449,tare:120},
+    {id:"u11",uldType:"LD11",   iata:"DQP",maxWeight:2449,tare:120},
     {id:"u12",uldType:"LD7/P88",iata:"UAK",maxWeight:5102,tare:200},
-    {id:"u13",uldType:"LD7/P96",iata:"DQF",maxWeight:2449,tare:150},
+    {id:"u13",uldType:"LD11",   iata:"DQF",maxWeight:2449,tare:150},
     {id:"u14",uldType:"LD7/P88",iata:"AAP",maxWeight:5102,tare:200},
     {id:"u15",uldType:"PLA",    iata:"ALK",maxWeight:3175,tare:180},
     {id:"u16",uldType:"PLA",    iata:"ALP",maxWeight:3175,tare:180},
-    {id:"u17",uldType:"LD7/P96",iata:"FQA",maxWeight:2449,tare:53},
+    {id:"u17",uldType:"LD11",   iata:"FQA",maxWeight:2449,tare:53},
   ],
   // RKN/RAP/AKC/DPE/DQP/UAK/DQF/AAP/ALK/ALP/FQA (and QKE, a fire-resistant
   // AKE variant) are in the ULD catalog above but have no row in the position
@@ -6599,8 +6599,13 @@ function generateLayouts(){
       // pairable the same way LD3 is, or a bare L/R suffix conflict check
       // would treat the two sides as mutually exclusive instead of side by
       // side, and only ever offer one side at a time.
+      // …and so is the P bay: an LD11 loaded at 11P sits in the same bay as
+      // the PAG and PMC that are also certified there, so it has to key off
+      // the same base ("11"). Reading it off the type instead — LD7 only —
+      // filed the LD11 under a base of its own, where it could never be
+      // recognised as the same slot.
       var cfgType = group.positions.some(function(p){ return /[LR]$/.test(p.name); }) ? "LR"
-        : (group.uldType.indexOf("LD7")===0 ? "P" : "Simple");
+        : (group.positions.some(function(p){ return /P$/.test(p.name); }) ? "P" : "Simple");
       // Scoped to this group's own declared ULD (type + IATA code) — not just
       // type — so a group never silently borrows another group's identity or
       // weight tier when two ULDs of the same type are in the fleet catalog

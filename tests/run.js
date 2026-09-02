@@ -586,6 +586,29 @@ if(inBuild("uld")) try {
   ok("capping leaves whole numbers and half-typed values alone",
      ULD.clampDecimals("1587", 6) === "1587" && ULD.clampDecimals("-0.", 6) === "-0." &&
      ULD.clampDecimals("", 6) === "");
+
+  /* A P bay is a bay, whatever is certified for it: an LD11 (DQF/DQP/FQA)
+     at 11P sits where the PMC sits. Keying that off the type — LD7 only —
+     filed the LD11 under a base of its own, so it could never merge with,
+     or be recognised as the same slot as, the pallet next to it. */
+  ULD.U.ulds = [{id:"u1",uldType:"LD7/P96",iata:"PMC",maxWeight:5102,tare:110},
+                {id:"u2",uldType:"LD11",iata:"DQF",maxWeight:2449,tare:150},
+                {id:"u3",uldType:"LD11",iata:"DQP",maxWeight:2449,tare:120}];
+  ULD.U.bulk = []; ULD.U.refStation = "1258";
+  ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
+    {id:"g1",uldType:"LD7/P96",iata:"PMC",label:"LD7/P96 — PMC",positions:[
+      mkPos("11P","201.1","297.3","0","0","-0.003363","5102")]},
+    {id:"g2",uldType:"LD11",iata:"DQF",label:"LD11 — DQF",positions:[
+      mkPos("11P","201.1","297.3","0","0","-0.003363","2449")]},
+    {id:"g3",uldType:"LD11",iata:"DQP",label:"LD11 — DQP",positions:[
+      mkPos("11P","201.1","297.3","0","0","-0.003363","2449")]}
+  ]}];
+  ULD.generateLayouts();
+  const pNames = ULD.U.layouts[1].map(l => l.name).sort();
+  ok("an LD11 in a P bay is one option against the pallet, not a bay of its own",
+     pNames.length === 2 && pNames.indexOf("1LD7/P96(PMC)") >= 0, pNames.join(" | "));
+  ok("two LD11s certified alike at that bay merge into one option",
+     pNames.indexOf("1LD11(DQF/DQP)") >= 0, pNames.join(" | "));
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {
