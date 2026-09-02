@@ -291,7 +291,7 @@ if(inBuild("uld")) try {
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
        ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines, csvAll, " +
-       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, pairAtBase, pairOffsetOf, clampDecimals, exportIndex, uldBase};");
+       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, pairAtBase, pairOffsetOf, clampDecimals, exportIndex, uldBase, groupLabel, maxWeightIssue};");
   ok("all aircraft templates load", ULD.TEMPLATES.length === 5);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
@@ -518,6 +518,63 @@ if(inBuild("uld")) try {
   ok("B777-300 LD11 is offered at the P bays of every compartment",
      ULD.U.compartments.every(c => c.uldGroups.some(g => g.uldType === "LD11" && g.positions.length)),
      ULD.U.compartments.map(c => (c.uldGroups.find(g => g.uldType === "LD11")||{positions:[]}).positions.length).join("/"));
+
+  /* A group's label names every ULD of its type in the catalog — they share
+     a base, so they are loaded in the same positions. Derived, so adding a
+     ULD to the catalog updates groups that already exist. */
+  ok("a group is labelled with every ULD of its type",
+     ULD.groupLabel({uldType:"LD3", iata:"AKE"}) === "LD3 — AKE/QKE/PKC/RKN/AKC" &&
+     ULD.groupLabel({uldType:"LD11", iata:"DQF"}) === "LD11 — DQP/DQF/FQA",
+     ULD.groupLabel({uldType:"LD3", iata:"AKE"}));
+
+  /* A position cannot be certified for more than the ULD itself carries. It
+     is a warning, not a block: the manuals do it — the B777-300's own 25P
+     certifies 6350 kg of PMC against a 5102 kg catalog rating. */
+  const pmcGroup = {uldType:"LD7/P96", iata:"PMC"};
+  ok("a position above the ULD's own rating is flagged",
+     /above the PMC's own 5102 kg/.test(ULD.maxWeightIssue(pmcGroup, {maxWeight:"6350"})||""),
+     ULD.maxWeightIssue(pmcGroup, {maxWeight:"6350"}));
+  ok("a position at or below the ULD's rating is not flagged",
+     ULD.maxWeightIssue(pmcGroup, {maxWeight:"5102"}) === null &&
+     ULD.maxWeightIssue(pmcGroup, {maxWeight:"2449"}) === null);
+
+  /* Gross errors: a bay with no length or no weight cannot be used at all;
+     a decimal point in the wrong place still can, so it is only flagged. */
+  const gp = (n,f,a,i,mw) => ({name:n,fwd:f,aft:a,left:"0",right:"48",index:i,maxWeight:mw});
+  ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
+    {id:"g1",uldType:"LD3",iata:"AKE",label:"x",positions:[
+      gp("11L","300","200","-0.003","1587"),   // aft ahead of fwd
+      gp("12L","300","360","-0.003","0"),      // no weight
+      gp("13L","300","360","-0.5","1587"),     // index off by 100x
+      gp("14L","300","360","-0.003","50000")   // weight off
+    ]}
+  ]}];
+  const gross = ULD.indexIssues();
+  const reasons = gross.hard.concat(gross.warn).map(x => x.name + ": " + x.reason);
+  ok("a bay with no length blocks generation",
+     gross.hard.some(x => x.name === "11L" && /no length/.test(x.reason)), reasons.join(" | "));
+  ok("a position with no usable weight blocks generation",
+     gross.hard.some(x => x.name === "12L" && /max weight/.test(x.reason)), reasons.join(" | "));
+  ok("an index off by orders of magnitude is flagged, not blocked",
+     gross.warn.some(x => x.name === "13L" && /decimal point/.test(x.reason)) &&
+     !gross.hard.some(x => x.name === "13L"), reasons.join(" | "));
+  ok("a weight heavier than any ULD is flagged, not blocked",
+     gross.warn.some(x => x.name === "14L" && /heavier than any ULD/.test(x.reason)), reasons.join(" | "));
+
+  // Overlapping positions inside one group are normal in these manuals (the
+  // A330-300's 32P and 33P overlap by 18 cm) — flagging them was a false
+  // positive on the operator's own data.
+  const tplIssues = ULD.TEMPLATES.map(t => {
+    ULD.U.ulds = JSON.parse(JSON.stringify(t.ulds));
+    ULD.U.compartments = JSON.parse(JSON.stringify(t.compartments));
+    ULD.U.refStation = t.refStation;
+    const i = ULD.indexIssues();
+    return { name:t.name, hard:i.hard.length, warn:i.warn.length };
+  });
+  ok("no shipped template is blocked by the gate",
+     tplIssues.every(t => t.hard === 0), JSON.stringify(tplIssues));
+  ok("the templates only warn where the manual really does exceed the ULD",
+     tplIssues.every(t => t.warn === 0 || /787|777-300/.test(t.name)), JSON.stringify(tplIssues));
 
   // The operator's system carries 5 decimal places; the manuals print 6. The
   // editor keeps the manual's value, the export rounds it on the way out.

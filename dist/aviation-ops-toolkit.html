@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.110</title>
+<title>Aviation Ops Toolkit v1.2.116</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.110</span>
+      <span class="build-ver">v1.2.116</span>
     </header>
 
     <main>
@@ -812,7 +812,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.110 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.116 — Luís Cavaco
     Built 2026-09-02 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -5090,7 +5090,7 @@ function zoneGrid(comp){
       var sSet = g.positions.map(function(p){ return p.name; });
       rows += row(iata, color, nums.map(function(n){ return cell(color, n, sSet.indexOf(n)>=0); }).join(""));
     }
-    legend.push([color, g.label || (g.uldType+" ("+iata+")")]);
+    legend.push([color, groupLabel(g)]);
   });
 
   return '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">'+
@@ -6126,6 +6126,22 @@ function isPairType(t){ return !!LR_PAIR_TYPES[t]; }
    say — name both type codes instead of borrowing the first one's. */
 var ULD_BASE = { "L3P/PKC":"LD3" };
 function uldBase(t){ return ULD_BASE[t] || t; }
+
+/* The ULD a group was declared with, and every ULD in the catalog that shares
+   its type — they have the same base, so they are loaded in the same
+   positions, and the group's label names all of them. Derived rather than
+   stored, so adding a ULD to the catalog updates the groups already built. */
+function uldDefFor(g){
+  return U.ulds.filter(function(u){ return u.uldType===g.uldType && u.iata===g.iata; })[0];
+}
+function iatasOfType(type){
+  return U.ulds.filter(function(u){ return u.uldType===type; })
+    .map(function(u){ return u.iata; });
+}
+function groupLabel(g){
+  var iatas = iatasOfType(g.uldType);
+  return iatas.length ? g.uldType+" — "+iatas.join("/") : (g.label || g.uldType);
+}
 var ULD_TYPE_LABELS = {
   "LD3":"LD3 (AKE)", "L3P/PKC":"L3P/PKC (Pallet)", "LD7/P88":"LD7/P88 (PAG)", "LD7/P96":"LD7/P96 (PMC)",
   "LD8":"LD8", "PLA":"PLA", "LD1":"LD1 (AMA)", "LD2":"LD2 (AKH / DPE)",
@@ -6348,7 +6364,7 @@ function groupBox(comp,g,gi){
     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
       '<span class="chev" data-open="'+(open?1:0)+'">&#9656;</span>'+
       '<span class="badge" style="color:var(--cyan)">'+esc(g.uldType)+'</span>'+
-      '<span class="gt" style="color:var(--cyan)">'+esc(g.label||g.uldType)+'</span>'+
+      '<span class="gt" style="color:var(--cyan)">'+esc(groupLabel(g))+'</span>'+
       '<span class="note">'+g.positions.length+' position'+(g.positions.length!==1?"s":"")+'</span>'+
       (g.include===false
         ? '<span class="badge" style="color:var(--dim)">excluded</span>'
@@ -6369,6 +6385,7 @@ function groupBox(comp,g,gi){
 
   var rows = g.positions.map(function(p,pi){
     var warn = p.index ? validateIndex(p.index, p.fwd, U.refStation) : null;
+    var mwWarn = maxWeightIssue(g, p);
     return '<div class="posrow" style="grid-template-columns:1.1fr .9fr .9fr .7fr .7fr 1.2fr 1fr auto">'+
       posInp(gi,pi,"name",p.name,"text",ph.pos)+
       posInp(gi,pi,"fwd",p.fwd,"number","FWD")+
@@ -6376,7 +6393,7 @@ function groupBox(comp,g,gi){
       posInp(gi,pi,"left",p.left,"number","0")+
       posInp(gi,pi,"right",p.right,"number","0")+
       posInp(gi,pi,"index",p.index,"number","-0.00500",warn)+
-      posInp(gi,pi,"maxWeight",p.maxWeight,"number",ph.mw)+
+      posInp(gi,pi,"maxWeight",p.maxWeight,"number",ph.mw,mwWarn)+
       '<button class="btn small danger" data-act="del-pos" data-g="'+gi+'" data-p="'+pi+'" '+
         'style="align-self:start;margin-top:1px">&times;</button>'+
     '</div>';
@@ -6436,7 +6453,7 @@ function posInp(gi,pi,key,val,type,ph,err){
   return '<div class="field"><input type="'+type+'" value="'+esc(val)+'" '+
     (err?'class="bad" ':'')+
     'placeholder="'+esc(ph||"")+'" data-pos="1" data-g="'+gi+'" data-p="'+pi+'" data-k="'+key+'">'+
-    '<span class="fielderr" data-warn="'+gi+'-'+pi+'"'+(err?'':' style="display:none"')+'>'+
+    '<span class="fielderr" data-warn="'+gi+'-'+pi+'-'+key+'"'+(err?'':' style="display:none"')+'>'+
       (err? esc(err) : '')+'</span></div>';
 }
 
@@ -6465,6 +6482,17 @@ function viewStep3(){
         '<input type="checkbox" id="signAck"'+(U.signAck?" checked":"")+'>'+
         '<span style="font-size:13px">I have checked these against the aircraft index convention — generate anyway</span>'+
       '</label>'+
+    '</div>';
+  }
+  // shown alongside whatever the gate says, and never blocking: these are
+  // figures worth a second look, not data the generator cannot use
+  if(iss.warn.length){
+    gate += '<div class="warnbox" style="margin-top:'+(gate?"12px":"0")+'">'+
+      '<b>&#9888; '+iss.warn.length+' position'+(iss.warn.length!==1?"s":"")+' worth checking</b>'+
+      '<div style="margin-top:6px;color:var(--dim)">These generate fine, but the numbers look off — a position '+
+      'certified for more than the ULD itself carries, or a decimal point out of place. Manuals do carry '+
+      'surprising figures, so nothing is blocked here.</div>'+
+      issueList(iss.warn, "amber")+
     '</div>';
   }
 
@@ -6515,15 +6543,57 @@ function viewStep3(){
   return head + aircraftPanel(nums[U.activeLayoutComp], "layouts") + stats + warnHtml + tabs + body;
 }
 
+/* A position cannot be certified for more than the ULD itself carries: the
+   bay's ceiling and the ULD's own rating both apply, and the lower one wins.
+   Returned as a message rather than thrown, so it can sit under the field. */
+function maxWeightIssue(g, p){
+  var def = uldDefFor(g);
+  if(!def || p.maxWeight === "" || p.maxWeight == null) return null;
+  var pos = parseFloat(p.maxWeight), uld = parseFloat(def.maxWeight);
+  if(isNaN(pos) || isNaN(uld) || pos <= uld) return null;
+  return "above the "+def.iata+"'s own "+def.maxWeight+" kg";
+}
+
+/* Sanity limits for the gross-error alerts. Nothing here is a real ULD or a
+   real index: they catch a decimal point in the wrong place, or a weight in
+   pounds, before those numbers reach a loadsheet. */
+var GROSS_MAX_WEIGHT = 20000;   // kg — heavier than any single ULD
+/* The index scale is the operator's, not ours: it falls out of their own C
+   constant, so no fixed ceiling holds across fleets. A misplaced decimal
+   point shows up against the compartment's own numbers instead — every
+   position in a hold shares an order of magnitude. */
+var GROSS_INDEX_FACTOR = 50;
+var GROSS_INDEX_MIN_SAMPLE = 4;
+function grossIndexLimit(comp){
+  var mags = [];
+  (comp.uldGroups||[]).forEach(function(g){
+    (g.positions||[]).forEach(function(p){
+      var n = Math.abs(parseFloat(p.index));
+      if(!isNaN(n) && n > 0) mags.push(n);
+    });
+  });
+  if(mags.length < GROSS_INDEX_MIN_SAMPLE) return null;
+  mags.sort(function(a,b){ return a-b; });
+  var median = mags[Math.floor(mags.length/2)];
+  return median > 0 ? median * GROSS_INDEX_FACTOR : null;
+}
+
 /* Safety gate before generating layouts.
-   Two classes of problem, deliberately treated differently:
-     hard  — the value cannot be used at all (missing, or not a number). Blocks.
+   Three classes of problem, deliberately treated differently:
+     hard  — the value cannot be used at all (missing, not a number, or a bay
+             with no length). Blocks.
      sign  — the index sign disagrees with the reference-station convention.
              Index sign conventions differ between operators and aircraft, so this
-             cannot be a hard block; it requires an explicit acknowledgement. */
+             cannot be a hard block; it requires an explicit acknowledgement.
+     warn  — the data is usable but looks wrong: a position certified for more
+             than the ULD carries, or a number orders of magnitude off.
+             Shown, never blocks —
+             the manuals do carry surprising figures, and this tool is not the
+             authority on them. */
 function indexIssues(){
-  var hard = [], sign = [];
+  var hard = [], sign = [], warn = [];
   U.compartments.forEach(function(c, ci){
+    var idxLimit = grossIndexLimit(c);
     (c.uldGroups||[]).forEach(function(g){
       (g.positions||[]).forEach(function(p){
         var where = { comp:c.number, ci:ci, gid:g.id, name:p.name||"(unnamed)", type:g.uldType };
@@ -6537,12 +6607,31 @@ function indexIssues(){
         if(isNaN(parseFloat(p.fwd)) || isNaN(parseFloat(p.aft))){
           hard.push(Object.assign({reason:"FWD/AFT station is not a number"}, where)); return;
         }
+        var fwd = parseFloat(p.fwd), aft = parseFloat(p.aft), mw = parseFloat(p.maxWeight);
+        if(aft <= fwd){
+          hard.push(Object.assign({reason:"AFT station is not behind FWD — the bay has no length"}, where)); return;
+        }
+        if(isNaN(mw) || mw <= 0){
+          hard.push(Object.assign({reason:"max weight is not a usable number"}, where)); return;
+        }
         var w = validateIndex(p.index, p.fwd, U.refStation);
         if(w) sign.push(Object.assign({reason:w}, where));
+
+        var mwIssue = maxWeightIssue(g, p);
+        if(mwIssue) warn.push(Object.assign({reason:p.maxWeight+" kg is "+mwIssue}, where));
+        if(mw > GROSS_MAX_WEIGHT)
+          warn.push(Object.assign({reason:"max weight of "+p.maxWeight+" kg — heavier than any ULD"}, where));
+        if(idxLimit && Math.abs(parseFloat(p.index)) > idxLimit)
+          warn.push(Object.assign({reason:"index of "+p.index+" — far outside the range of this compartment, "+
+            "check the decimal point"}, where));
       });
+      // No overlap check between positions of one group: P bays legitimately
+      // share space in these manuals (the A330-300's 32P and 33P overlap by
+      // 18 cm, the B787's 42 and 43 by a tenth of an inch), and the
+      // generator already treats overlapping options as mutually exclusive.
     });
   });
-  return { hard:hard, sign:sign };
+  return { hard:hard, sign:sign, warn:warn };
 }
 
 function issueList(items, tone){
@@ -7013,14 +7102,19 @@ function refreshWarn(gi, pi){
   var group = comp.uldGroups[gi], pos = group.positions[pi];
   var host = $("uldStep");
   if(pos){
-    var w = pos.index ? validateIndex(pos.index, pos.fwd, U.refStation) : null;
-    var el = host.querySelector('.fielderr[data-warn="'+gi+'-'+pi+'"]');
-    if(el){
-      el.textContent = w || "";
-      el.style.display = w ? "" : "none";
-    }
-    var inp2 = host.querySelector('input[data-pos][data-g="'+gi+'"][data-p="'+pi+'"][data-k="index"]');
-    if(inp2){ if(w) inp2.classList.add("bad"); else inp2.classList.remove("bad"); }
+    // index against the reference station, and max weight against the ULD's
+    // own rating — both shown under their own field
+    [["index", pos.index ? validateIndex(pos.index, pos.fwd, U.refStation) : null],
+     ["maxWeight", maxWeightIssue(group, pos)]].forEach(function(pair){
+      var key = pair[0], w = pair[1];
+      var el = host.querySelector('.fielderr[data-warn="'+gi+'-'+pi+'-'+key+'"]');
+      if(el){
+        el.textContent = w || "";
+        el.style.display = w ? "" : "none";
+      }
+      var inp2 = host.querySelector('input[data-pos][data-g="'+gi+'"][data-p="'+pi+'"][data-k="'+key+'"]');
+      if(inp2){ if(w) inp2.classList.add("bad"); else inp2.classList.remove("bad"); }
+    });
   }
   // group-level indicator
   var allValid = group.positions.every(function(p){

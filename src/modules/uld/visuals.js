@@ -182,7 +182,7 @@ function zoneGrid(comp){
       var sSet = g.positions.map(function(p){ return p.name; });
       rows += row(iata, color, nums.map(function(n){ return cell(color, n, sSet.indexOf(n)>=0); }).join(""));
     }
-    legend.push([color, g.label || (g.uldType+" ("+iata+")")]);
+    legend.push([color, groupLabel(g)]);
   });
 
   return '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">'+
