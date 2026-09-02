@@ -26,6 +26,14 @@ function groupColor(t){ return GROUP_COLORS[t] || "var(--dim)"; }
    bay and takes single positions. */
 var LR_PAIR_TYPES = { "LD3":1, "L3P/PKC":1, "LD2":1 };
 function isPairType(t){ return !!LR_PAIR_TYPES[t]; }
+/* Type codes that name the same physical base. Only pairs the operator's own
+   manuals put at identical positions with identical values belong here:
+   L3P/PKC is their coding for a PKC pallet in an LD3 bay (the B777-300 book
+   types that same PKC as plain "LD3"). Anything not listed is its own base,
+   which is what makes a merged slot of two different bases — LD3 and LD2,
+   say — name both type codes instead of borrowing the first one's. */
+var ULD_BASE = { "L3P/PKC":"LD3" };
+function uldBase(t){ return ULD_BASE[t] || t; }
 var ULD_TYPE_LABELS = {
   "LD3":"LD3 (AKE)", "L3P/PKC":"L3P/PKC (Pallet)", "LD7/P88":"LD7/P88 (PAG)", "LD7/P96":"LD7/P96 (PMC)",
   "LD8":"LD8", "PLA":"PLA", "LD1":"LD1 (AMA)", "LD2":"LD2 (AKH / DPE)",
@@ -508,7 +516,7 @@ function generateLayouts(){
     // A genuinely different signature (PKC derated below AKE) still creates
     // a separate, mutually exclusive option, as before.
     var zoneBySignature = {};
-    function addOption(base, sig, positions, labelPrefix){
+    function addOption(base, sig, positions){
       if(!zoneBySignature[base]) zoneBySignature[base] = {};
       var existing = zoneBySignature[base][sig];
       if(existing){
@@ -521,7 +529,7 @@ function generateLayouts(){
       // to this signature's certified list — a merged slot's name must show
       // every certified IATA ("2LD3(AKE/PKC)"), not just whichever group
       // happened to reach it first.
-      var opt = { labelPrefix:labelPrefix, positions:positions, certified:certified };
+      var opt = { positions:positions, certified:certified };
       zoneBySignature[base][sig] = opt;
       if(!zoneOptionsMap[base]) zoneOptionsMap[base]=[];
       zoneOptionsMap[base].push(opt);
@@ -552,31 +560,37 @@ function generateLayouts(){
           var sig = posL.fwd+"|"+posL.aft+"|"+posL.index+"|"+mw;
           addOption(base, sig,
             [ Object.assign({},posL,{uld:uldDef.iata,uldType:group.uldType}),
-              Object.assign({},posR,{uld:uldDef.iata,uldType:group.uldType}) ],
-            "2"+group.uldType);
+              Object.assign({},posR,{uld:uldDef.iata,uldType:group.uldType}) ]);
         });
       } else if(cfgType==="P"){
         group.positions.forEach(function(pos){
           var base = pos.name.replace(/P$/,"");
           var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
           addOption(base, sig,
-            [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ],
-            "1"+group.uldType);
+            [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ]);
         });
       } else {
         group.positions.forEach(function(pos){
           var base = pos.name;
           var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
           addOption(base, sig,
-            [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ],
-            "1"+group.uldType);
+            [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ]);
         });
       }
     });
     Object.keys(zoneOptionsMap).forEach(function(base){
       zoneOptionsMap[base].forEach(function(opt){
-        var iatas = opt.certified.map(function(c){ return c.iata; });
-        opt.label = opt.labelPrefix+"("+iatas.join("/")+")";
+        var iatas = [], types = [], bases = [];
+        opt.certified.forEach(function(c){
+          iatas.push(c.iata);
+          if(types.indexOf(c.type) < 0) types.push(c.type);
+          if(bases.indexOf(uldBase(c.type)) < 0) bases.push(uldBase(c.type));
+        });
+        // One base — the shared type code says it all: 2LD3(AKE/PKC).
+        // Different bases in the same slot — name both, or the second ULD
+        // reads as if it were the first one's type: 2LD3/LD2(AKE/DPE).
+        var typePart = bases.length > 1 ? types.join("/") : types[0];
+        opt.label = opt.positions.length + typePart + "(" + iatas.join("/") + ")";
       });
     });
 
