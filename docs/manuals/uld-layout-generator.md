@@ -66,6 +66,30 @@ Só avanças para o passo seguinte quando todos os grupos tiverem pelo menos 1 p
 
 Se editares qualquer posição depois de já teres gerado os layouts, aparece um aviso amarelo a dizer que os dados mudaram. Basta clicar outra vez em **Generate all layouts** para atualizar tudo.
 
+## Desfazer
+
+O botão **↶ Undo** (na barra do topo, ao lado do Reset) desfaz a última ação
+destrutiva: remover um grupo, um compartimento, uma posição ou um ULD, carregar
+um template por cima do que tinhas, ou o Reset. Passa o rato por cima para ver
+o que vai desfazer. Guarda as últimas 12 ações, e só enquanto a página estiver
+aberta.
+
+## Guardar os teus próprios aviões
+
+Em **✈ Templates**, por baixo da lista dos aviões que vêm com a ferramenta, há a
+secção **Your aircraft**:
+
+1. Monta o avião (ULDs, compartimentos, posições).
+2. Abre **✈ Templates**, escreve um nome em "Save the current setup as" e clica
+   em **↓ Save aircraft**.
+3. Fica ali para carregares sempre que precisares, com o botão **LOAD** — e o
+   **×** apaga.
+
+Guardar com um nome que já existe substitui o anterior.
+
+⚠️ Ficam guardados **neste browser**, neste computador. Para levar um avião para
+outra máquina continua a ser o `↓ Export file` / `↑ Import`.
+
 ## Guardar o teu trabalho
 
 - O que preenches fica guardado automaticamente neste browser (indicador **"Saved HH:MM"** no topo) — mas só neste computador/browser.

@@ -45,6 +45,73 @@ var Store = (function(){
   };
 })();
 
+/* ---------- undo for the destructive actions ----------
+   Removing a group takes a dozen hand-typed positions with it, and the
+   autosave then faithfully stores the version without them. Each of those
+   actions parks a snapshot here first. Kept in memory only: this is for
+   taking back the click you just made, not a history across sessions. */
+var UNDO_LIMIT = 12;
+function undoSnapshot(){
+  return JSON.stringify({ ulds:U.ulds, compartments:U.compartments, bulk:U.bulk, refStation:U.refStation });
+}
+function pushUndo(label){
+  U.undo = U.undo || [];
+  U.undo.push({ label:label, state:undoSnapshot() });
+  if(U.undo.length > UNDO_LIMIT) U.undo.shift();
+}
+function undoLast(){
+  if(!U.undo || !U.undo.length) return null;
+  var entry = U.undo.pop();
+  var s;
+  try { s = JSON.parse(entry.state); } catch(e){ return null; }
+  U.ulds = s.ulds || [];
+  U.compartments = s.compartments || [];
+  U.bulk = s.bulk || [];
+  U.refStation = s.refStation || "";
+  U.layouts = null;          // generated results described the newer data
+  U.activeComp = Math.min(U.activeComp, Math.max(0, U.compartments.length-1));
+  var rs = document.getElementById("refStation"); if(rs) rs.value = U.refStation;
+  return entry.label;
+}
+
+/* ---------- the operator's own saved templates ----------
+   The built-in TEMPLATES ship in the code; these are whatever the user
+   builds, kept in this browser so a new aircraft does not need a code
+   change. Same shape, so both lists load through the same path. */
+var MY_TPL_KEY = "uld_my_templates";
+function myTemplatesLoad(){
+  if(!Store.available){ U.myTemplates = []; return Promise.resolve([]); }
+  return Store.get(MY_TPL_KEY).then(function(raw){
+    try { U.myTemplates = raw ? JSON.parse(raw) : []; } catch(e){ U.myTemplates = []; }
+    return U.myTemplates;
+  });
+}
+function myTemplatesPersist(){
+  if(!Store.available) return Promise.resolve();
+  return Store.set(MY_TPL_KEY, JSON.stringify(U.myTemplates||[]));
+}
+function myTemplateSave(name){
+  U.myTemplates = U.myTemplates || [];
+  var entry = {
+    id: "my_"+Date.now().toString(36),
+    name: String(name||"").trim() || "Untitled aircraft",
+    savedAt: new Date().toISOString(),
+    refStation: U.refStation,
+    ulds: JSON.parse(JSON.stringify(U.ulds||[])),
+    compartments: JSON.parse(JSON.stringify(U.compartments||[])),
+    bulk: JSON.parse(JSON.stringify(U.bulk||[]))
+  };
+  // saving twice under the same name replaces, rather than piling up
+  U.myTemplates = U.myTemplates.filter(function(t){ return t.name !== entry.name; });
+  U.myTemplates.push(entry);
+  myTemplatesPersist();
+  return entry;
+}
+function myTemplateDelete(id){
+  U.myTemplates = (U.myTemplates||[]).filter(function(t){ return t.id !== id; });
+  myTemplatesPersist();
+}
+
 var ULD_KEY = "uld_workspace";
 var uldDirty = false, uldSaveTimer = null, uldLastSaved = null;
 

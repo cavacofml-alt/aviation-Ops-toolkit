@@ -232,40 +232,96 @@ function deckStrip(layout){
 /* ============================================================================
    TEMPLATES modal
    ============================================================================ */
+function tplSummary(t){
+  var pos = (t.compartments||[]).reduce(function(s,c){
+    return s + (c.uldGroups||[]).reduce(function(k,g){ return k+g.positions.length; },0); },0);
+  return (t.ulds||[]).length+' ULDs · '+(t.compartments||[]).length+
+    ' compartments · '+pos+' positions · ref. '+esc(t.refStation||"—");
+}
 function openTemplates(){
   var host = $("modalHost");
   var cards = TEMPLATES.map(function(t,i){
-    var pos = (t.compartments||[]).reduce(function(s,c){
-      return s + (c.uldGroups||[]).reduce(function(k,g){ return k+g.positions.length; },0); },0);
     return '<div class="preset-card">'+
       '<div><b style="color:var(--cyan)">'+esc(t.name)+'</b>'+
-      '<div class="note">'+(t.ulds||[]).length+' ULDs · '+(t.compartments||[]).length+
-        ' compartments · '+pos+' positions · ref. '+esc(t.refStation||"—")+'</div></div>'+
+      '<div class="note">'+tplSummary(t)+'</div></div>'+
       '<button class="btn small" data-act="load-tpl" data-i="'+i+'">Load</button></div>';
   }).join("");
+
+  // the operator's own aircraft, saved in this browser
+  var mine = (U.myTemplates||[]).map(function(t){
+    var when = t.savedAt ? new Date(t.savedAt) : null;
+    return '<div class="preset-card">'+
+      '<div><b style="color:var(--amber)">'+esc(t.name)+'</b>'+
+      '<div class="note">'+tplSummary(t)+
+        (when ? ' · saved '+esc(when.toLocaleDateString()) : '')+'</div></div>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button class="btn small" data-act="load-my" data-id="'+esc(t.id)+'">Load</button>'+
+        '<button class="btn small danger" data-act="del-my" data-id="'+esc(t.id)+'">&times;</button>'+
+      '</div></div>';
+  }).join("");
+  var hasWork = (U.ulds||[]).length || (U.compartments||[]).length;
 
   host.innerHTML = '<div class="modal-back"><div class="modal">'+
     '<div class="mh"><b>Aircraft templates</b>'+
       '<button class="btn small quiet" data-act="close">Close</button></div>'+
     '<div class="mb">'+ cards +
+      '<div class="sec mt" style="margin-bottom:10px">Your aircraft</div>'+
+      (mine || '<div class="note" style="margin-bottom:10px">Nothing saved yet — build an aircraft and save it '+
+        'here to load it again later, on this browser.</div>')+
+      '<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:12px;'+
+        'border-top:1px solid var(--line);padding-top:14px">'+
+        '<div class="field" style="flex:1;min-width:200px">'+
+          '<label for="tplName">Save the current setup as</label>'+
+          '<input id="tplName" type="text" placeholder="'+esc(U.tplName||"Boeing 777-300 (ours)")+'"'+
+            (hasWork?'':' disabled')+'>'+
+        '</div>'+
+        '<button class="btn small primary" data-act="save-my"'+(hasWork?'':' disabled')+'>&#8595; Save aircraft</button>'+
+      '</div>'+
       '<p class="note" style="margin-top:12px">Loading a template <b>replaces</b> the ULDs, compartments and '+
-      'reference station you have now. To keep the current setup, close this and use <b>Export file</b> first — '+
-      'it downloads everything to a file you can bring back later with <b>Load</b>.</p>'+
+      'reference station you have now — <b>&#8630; Undo</b> brings them back. Saved aircraft live in this browser '+
+      'only; <b>Export file</b> is what takes a setup to another machine.</p>'+
     '</div></div></div>';
 
   host.querySelector('[data-act="close"]').addEventListener("click", function(){ host.innerHTML=""; });
   host.querySelector(".modal-back").addEventListener("click", function(e){ if(e.target===this) host.innerHTML=""; });
+  function loadTemplate(t){
+    if((U.ulds||[]).length || (U.compartments||[]).length) pushUndo("loaded the "+(t.name||"template"));
+    U.ulds = JSON.parse(JSON.stringify(t.ulds||[]));
+    U.compartments = JSON.parse(JSON.stringify(t.compartments||[]));
+    U.bulk = JSON.parse(JSON.stringify(t.bulk||[]));
+    U.refStation = t.refStation||"";
+    $("refStation").value = U.refStation;
+    U.tplName = t.name||null;
+    U.step = 0; U.layouts = null; U.activeComp = 0; U.editUld = null;
+    host.innerHTML = ""; uldRender();
+  }
   Array.prototype.forEach.call(host.querySelectorAll('[data-act="load-tpl"]'), function(b){
+    b.addEventListener("click", function(){ loadTemplate(TEMPLATES[+b.getAttribute("data-i")]); });
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-act="load-my"]'), function(b){
     b.addEventListener("click", function(){
-      var t = TEMPLATES[+b.getAttribute("data-i")];
-      U.ulds = JSON.parse(JSON.stringify(t.ulds||[]));
-      U.compartments = JSON.parse(JSON.stringify(t.compartments||[]));
-      U.bulk = JSON.parse(JSON.stringify(t.bulk||[]));
-      U.refStation = t.refStation||"";
-      $("refStation").value = U.refStation;
-      U.tplName = t.name||null;
-      U.step = 0; U.layouts = null; U.activeComp = 0; U.editUld = null;
-      host.innerHTML = ""; uldRender();
+      var t = (U.myTemplates||[]).filter(function(x){ return x.id === b.getAttribute("data-id"); })[0];
+      if(t) loadTemplate(t);
     });
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-act="del-my"]'), function(b){
+    b.addEventListener("click", function(){
+      var t = (U.myTemplates||[]).filter(function(x){ return x.id === b.getAttribute("data-id"); })[0];
+      if(!t || !confirm("Delete the saved aircraft \""+t.name+"\"?\n\nThe setup you have open now is not affected.")) return;
+      myTemplateDelete(t.id);
+      openTemplates();          // redraw the list in place
+    });
+  });
+  var saveBtn = host.querySelector('[data-act="save-my"]');
+  if(saveBtn) saveBtn.addEventListener("click", function(){
+    var field = host.querySelector("#tplName");
+    var name = (field && field.value.trim()) || U.tplName || "";
+    if(!name){ field && field.focus(); return; }
+    var existing = (U.myTemplates||[]).some(function(t){ return t.name === name; });
+    if(existing && !confirm("\""+name+"\" is already saved. Replace it?")) return;
+    myTemplateSave(name);
+    U.tplName = name;
+    openTemplates();
+    uldRender();
   });
 }
