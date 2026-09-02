@@ -483,6 +483,38 @@ if(inBuild("uld")) try {
   ok("rounding on export leaves the editor's own values alone",
      b3c1.uldGroups[0].positions[0].index === "-0.003422",
      b3c1.uldGroups[0].positions[0].index);
+
+  /* LD2 (AKH/DPE) and LD3 (AKE/PKC…) have different bases but are loaded in
+     the same bays. The rule is about the numbers, not the type: same index
+     and max weight at a zone means one slot certified for both; a different
+     index or max weight means two mutually exclusive options for that bay,
+     each free to combine with whatever sits in the other zones. */
+  const mkPos = (n,f,a,l,r,i,mw) => ({name:n,fwd:f,aft:a,left:l,right:r,index:i,maxWeight:mw});
+  ULD.U.ulds = [{id:"u1",uldType:"LD3",iata:"AKE",maxWeight:1587,tare:63},
+                {id:"u2",uldType:"LD2",iata:"DPE",maxWeight:1224,tare:72}];
+  ULD.U.bulk = []; ULD.U.refStation = "1258";
+  ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
+    {id:"g1",uldType:"LD3",iata:"AKE",label:"LD3 — AKE",positions:[
+      mkPos("11L","201.1","261.7","0","48","-0.00342","1587"), mkPos("11R","201.1","261.7","48","0","-0.00342","1587"),
+      mkPos("12L","299.1","360.1","0","48","-0.00310","1587"), mkPos("12R","299.1","360.1","48","0","-0.00310","1587")]},
+    {id:"g2",uldType:"LD2",iata:"DPE",label:"LD2 — DPE",positions:[
+      mkPos("11L","201.1","261.7","0","48","-0.00342","1587"), mkPos("11R","201.1","261.7","48","0","-0.00342","1587"),
+      mkPos("12L","299.1","360.1","0","48","-0.00310","1224"), mkPos("12R","299.1","360.1","48","0","-0.00310","1224")]}
+  ]}];
+  ULD.generateLayouts();
+  const mixCsv = ULD.csvLines(1);
+  const z11 = mixCsv.filter(l => l.indexOf(",11L,") >= 0);
+  const z12 = mixCsv.filter(l => l.indexOf(",12L,") >= 0);
+  ok("LD2 and LD3 share one slot when index and max weight match",
+     z11.length > 0 && z11.every(l => l.indexOf('"LD3,LA;LD2,LA"') >= 0), z11[0]);
+  ok("LD2 and LD3 split into separate options when the max weight differs",
+     z12.some(l => l.indexOf('"LD3,LA"') >= 0) && z12.some(l => l.indexOf('"LD2,LA"') >= 0),
+     z12.join(" | "));
+  ok("the split options still combine with the other zones",
+     ULD.U.layouts[1].length === 2 &&
+     ULD.U.layouts[1].every(l => l.positions.some(p => p.name === "11L") &&
+                                 l.positions.some(p => p.name === "12L")),
+     ULD.U.layouts[1].map(l => l.name).join(" | "));
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {
