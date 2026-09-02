@@ -252,7 +252,7 @@ if(inBuild("uld")) try {
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
        ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines, csvAll, " +
-       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor};");
+       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, exportIndex};");
   ok("all aircraft templates load", ULD.TEMPLATES.length === 5);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
@@ -465,6 +465,24 @@ if(inBuild("uld")) try {
   ok("inheriting only applies to whole-bay names, not L/R or P positions",
      ULD.pairSourceFor(b3c1, {name:"12L", fwd:"", aft:"", index:""}) === null &&
      ULD.pairSourceFor(b3c1, {name:"12P", fwd:"", aft:"", index:""}) === null);
+
+  // The operator's system carries 5 decimal places; the manuals print 6. The
+  // editor keeps the manual's value, the export rounds it on the way out.
+  ok("export rounds the index to 5 decimals",
+     ULD.exportIndex("-0.003422") === -0.00342 && ULD.exportIndex("0.002808") === 0.00281 &&
+     ULD.exportIndex("-0.00803") === -0.00803 && ULD.exportIndex("") === 0);
+  const b3rounded = ULD.csvLines(1).join("\n");
+  ok("B777-300 comp1 CSV carries the rounded index, not the 6-decimal source",
+     b3rounded.includes(",-0.00342,") && !b3rounded.includes(",-0.003422,"),
+     b3rounded.split("\n")[0]);
+  const bulkRounded = ULD.csvAll().split("\n").filter(l => l.indexOf(",BULK,") >= 0);
+  ok("bulk hold rows are rounded the same way",
+     bulkRounded.some(l => l.includes(",0.00281,")) && bulkRounded.some(l => l.includes(",0.00309,")),
+     bulkRounded.join(" | "));
+  // the working data itself must be untouched — only the export rounds
+  ok("rounding on export leaves the editor's own values alone",
+     b3c1.uldGroups[0].positions[0].index === "-0.003422",
+     b3c1.uldGroups[0].positions[0].index);
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {

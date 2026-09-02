@@ -705,6 +705,18 @@ function pairSourceFor(comp, pos){
   return src;
 }
 
+/* The operator's system carries index values to 5 decimal places (…-0.00803,
+   0.00281), while the manuals we transcribe often print 6 (-0.003422,
+   0.002808). The editor keeps whatever the manual says — rounding only
+   happens on the way out, so nothing is lost in the working data. */
+var EXPORT_INDEX_DECIMALS = 5;
+function exportIndex(v){
+  var n = parseFloat(v);
+  if(isNaN(n)) return 0;
+  var f = Math.pow(10, EXPORT_INDEX_DECIMALS);
+  return Math.round(n * f) / f;
+}
+
 /* ---------- CSV ---------- */
 // Header and field order match the operator's own upload template exactly
 // (YU_B777200ER_TEMPLATE.xlsx) — including ";" joining multiple certified
@@ -734,7 +746,7 @@ function layoutRows(compNum){
       rows.push([compNum, layout.name, pos.name, certTypes, +pos.fwd, +pos.aft,
         (pos.left===""||pos.left==null)?0:+pos.left,
         (pos.right===""||pos.right==null)?0:+pos.right,
-        +pos.index, 0, +pos.maxWeight]);
+        exportIndex(pos.index), 0, +pos.maxWeight]);
     });
   });
   return rows;
@@ -746,7 +758,7 @@ function bulkRows(){
   var out = [];
   (U.bulk||[]).forEach(function(h){
     (h.positions||[]).forEach(function(p){
-      out.push([h.number, "BULK", p.name, "", +p.fwd, +p.aft, "", "", +p.index, +p.volume, +p.maxWeight]);
+      out.push([h.number, "BULK", p.name, "", +p.fwd, +p.aft, "", "", exportIndex(p.index), +p.volume, +p.maxWeight]);
     });
   });
   return out;
