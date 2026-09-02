@@ -585,11 +585,11 @@ var TPL_B777_300 = {
     {id:"u16",uldType:"PLA",    iata:"ALP",maxWeight:3175,tare:180},
     {id:"u17",uldType:"LD11",   iata:"FQA",maxWeight:2449,tare:53},
   ],
-  // RKN/RAP/AKC/DPE/DQP/UAK/DQF/AAP/ALK/ALP/FQA (and QKE, a fire-resistant
-  // AKE variant) are in the ULD catalog above but have no row in the position
-  // compatibility table (2.3) — only AKE/PKC/PLA/PAG/PMC are — so, per the
-  // operator's confirmation, they exist for later manual use but are not
-  // assigned to any position group here.
+  // The position compatibility table (2.3) covers only AKE/PKC/PLA/PAG/PMC.
+  // DQF/DQP/FQA are placed anyway, in the P bays, on the operator's word —
+  // see the note on those groups. The rest (RKN, RAP, AKC, DPE, UAK, AAP,
+  // ALK, ALP, and QKE, a fire-resistant AKE) are in the catalog for manual
+  // use but are not assigned to any position group here.
   compartments:[
   {id:"c1",number:1,uldGroups:[
     {id:"g1",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
@@ -617,6 +617,15 @@ var TPL_B777_300 = {
       {name:"11P",fwd:"201.1",aft:"297.3",left:"0",right:"0",index:"-0.003363",maxWeight:"5102"},
       {name:"12P",fwd:"299.1",aft:"395.3",left:"0",right:"0",index:"-0.003036",maxWeight:"5102"},
       {name:"13P",fwd:"396.7",aft:"493.0",left:"0",right:"0",index:"-0.002711",maxWeight:"5102"},
+    ]},
+    // LD11 (DQF/DQP/FQA) share the P bays with the pallets. The manual has
+    // no station table of its own for them, so the operator asked for the
+    // PMC row's stations and index — the bay is the same. The weight is the
+    // LD11's own 2449 certification, not the bay ceiling the PMC gets.
+    {id:"gl1",uldType:"LD11",iata:"DQF",label:"LD11 — DQF/DQP/FQA",positions:[
+      {name:"11P",fwd:"201.1",aft:"297.3",left:"0",right:"0",index:"-0.003363",maxWeight:"2449"},
+      {name:"12P",fwd:"299.1",aft:"395.3",left:"0",right:"0",index:"-0.003036",maxWeight:"2449"},
+      {name:"13P",fwd:"396.7",aft:"493.0",left:"0",right:"0",index:"-0.002711",maxWeight:"2449"},
     ]},
   ]},
   {id:"c2",number:2,uldGroups:[
@@ -664,6 +673,17 @@ var TPL_B777_300 = {
       // **6350kg only for this position (manual remark)
       {name:"25P",fwd:"885.1",aft:"981.4",left:"0",right:"0",index:"-0.001083",maxWeight:"6350"},
     ]},
+    // LD11 (DQF/DQP/FQA) share the P bays with the pallets. The manual has
+    // no station table of its own for them, so the operator asked for the
+    // PMC row's stations and index — the bay is the same. The weight is the
+    // LD11's own 2449 certification, not the bay ceiling the PMC gets.
+    {id:"gl2",uldType:"LD11",iata:"DQF",label:"LD11 — DQF/DQP/FQA",positions:[
+      {name:"21P",fwd:"494.4",aft:"590.7",left:"0",right:"0",index:"-0.002385",maxWeight:"2449"},
+      {name:"22P",fwd:"592.1",aft:"688.3",left:"0",right:"0",index:"-0.002059",maxWeight:"2449"},
+      {name:"23P",fwd:"689.8",aft:"786.0",left:"0",right:"0",index:"-0.001734",maxWeight:"2449"},
+      {name:"24P",fwd:"787.4",aft:"883.7",left:"0",right:"0",index:"-0.001408",maxWeight:"2449"},
+      {name:"25P",fwd:"885.1",aft:"981.4",left:"0",right:"0",index:"-0.001083",maxWeight:"2449"},
+    ]},
   ]},
   {id:"c3",number:3,uldGroups:[
     {id:"g11",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
@@ -702,6 +722,16 @@ var TPL_B777_300 = {
       {name:"33P",fwd:"1645.2",aft:"1741.5",left:"0",right:"0",index:"0.001451",maxWeight:"5102"},
       {name:"34P",fwd:"1742.9",aft:"1839.0",left:"0",right:"0",index:"0.001777",maxWeight:"5102"},
     ]},
+    // LD11 (DQF/DQP/FQA) share the P bays with the pallets. The manual has
+    // no station table of its own for them, so the operator asked for the
+    // PMC row's stations and index — the bay is the same. The weight is the
+    // LD11's own 2449 certification, not the bay ceiling the PMC gets.
+    {id:"gl3",uldType:"LD11",iata:"DQF",label:"LD11 — DQF/DQP/FQA",positions:[
+      {name:"31P",fwd:"1449.9",aft:"1546.1",left:"0",right:"0",index:"0.000800",maxWeight:"2449"},
+      {name:"32P",fwd:"1547.5",aft:"1643.8",left:"0",right:"0",index:"0.001126",maxWeight:"2449"},
+      {name:"33P",fwd:"1645.2",aft:"1741.5",left:"0",right:"0",index:"0.001451",maxWeight:"2449"},
+      {name:"34P",fwd:"1742.9",aft:"1839.0",left:"0",right:"0",index:"0.001777",maxWeight:"2449"},
+    ]},
   ]},
   {id:"c4",number:4,uldGroups:[
     {id:"g16",uldType:"LD3",iata:"AKE",label:"LD3 — AKE/PKC",positions:[
@@ -727,6 +757,14 @@ var TPL_B777_300 = {
     {id:"g20",uldType:"LD7/P96",iata:"PMC",label:"LD7/P96 — PMC",positions:[
       {name:"41P",fwd:"1873.3",aft:"1971.3",left:"0",right:"0",index:"0.002214",maxWeight:"5103"},
       {name:"42P",fwd:"1972.7",aft:"2069.0",left:"0",right:"0",index:"0.002543",maxWeight:"5103"},
+    ]},
+    // LD11 (DQF/DQP/FQA) share the P bays with the pallets. The manual has
+    // no station table of its own for them, so the operator asked for the
+    // PMC row's stations and index — the bay is the same. The weight is the
+    // LD11's own 2449 certification, not the bay ceiling the PMC gets.
+    {id:"gl4",uldType:"LD11",iata:"DQF",label:"LD11 — DQF/DQP/FQA",positions:[
+      {name:"41P",fwd:"1873.3",aft:"1971.3",left:"0",right:"0",index:"0.002214",maxWeight:"2449"},
+      {name:"42P",fwd:"1972.7",aft:"2069.0",left:"0",right:"0",index:"0.002543",maxWeight:"2449"},
     ]},
   ]},
   ]
