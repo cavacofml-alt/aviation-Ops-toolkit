@@ -716,6 +716,48 @@ if(inBuild("uld")) try {
   ok("undo empties out rather than repeating the last state",
      ULD.undoLast() === null && ULD.U.undo.length === 0);
 
+
+  /* The beta's position-first model must be a lossless re-shaping of the
+     same data: convert each template into it and back, and the generator has
+     to produce the identical export. This is the whole safety argument for
+     ever adopting it, so it is checked here rather than only by hand. */
+  const betaSrc = fs.readFileSync(path.join(ROOT, "src/modules/uldbeta/model.js"), "utf8");
+  eval(betaSrc + ";UBM = {ubFromTemplate, ubToOldModel, ubFromGroups, ubEffective};");
+  const exportOf = t => {
+    ULD.U.ulds = JSON.parse(JSON.stringify(t.ulds||[]));
+    ULD.U.compartments = JSON.parse(JSON.stringify(t.compartments||[]));
+    ULD.U.bulk = JSON.parse(JSON.stringify(t.bulk||[]));
+    ULD.U.refStation = t.refStation;
+    ULD.generateLayouts();
+    return ULD.csvAll();
+  };
+  const roundTrips = ULD.TEMPLATES.map(t => {
+    const before = exportOf(t);
+    const after  = exportOf(UBM.ubToOldModel(UBM.ubFromTemplate(t)));
+    return { name: t.name, same: before === after };
+  });
+  ok("the beta model round-trips every template with an identical export",
+     roundTrips.every(r => r.same),
+     roundTrips.filter(r => !r.same).map(r => r.name).join(", "));
+
+  // and it does collapse the duplication it exists to remove
+  const b3beta = UBM.ubFromTemplate(ULD.TEMPLATES[4]);
+  const bays = b3beta.compartments.reduce((s,c) => s + c.positions.length, 0);
+  const stored = ULD.TEMPLATES[4].compartments.reduce((s,c) =>
+    s + c.uldGroups.reduce((k,g) => k + g.positions.length, 0), 0);
+  ok("the beta model stores each bay once, not once per ULD",
+     bays < stored && bays === 80 && stored === 108, bays + " bays vs " + stored + " rows");
+
+  // a tick with no override takes the catalog weight; one with an override wins
+  const catalog = [{uldType:"LD3", iata:"AKE", maxWeight:1587}];
+  const bay = {name:"11L", fwd:"1", aft:"2", left:"0", right:"48", index:"-0.003"};
+  ok("a ticked ULD takes its weight from the catalog",
+     UBM.ubEffective(bay, {iata:"AKE"}, catalog).maxWeight === "1587");
+  ok("an override on the tick wins over the catalog",
+     UBM.ubEffective(bay, {iata:"AKE", maxWeight:"1478"}, catalog).maxWeight === "1478");
+  ok("an override on the tick wins over the bay's own station",
+     UBM.ubEffective(bay, {iata:"AKE", aft:"297.3"}, catalog).aft === "297.3" &&
+     UBM.ubEffective(bay, {iata:"AKE"}, catalog).aft === "2");
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {
