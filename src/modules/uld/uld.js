@@ -67,7 +67,8 @@ var uid = function(){
 
 var U = { step:0, ulds:[], compartments:[], bulk:[], refStation:"", activeComp:0,
           layouts:null, activeLayoutComp:0, editUld:null, pairForm:null, addType:"",
-          collapsed:{}, openLayout:{}, layoutLimit:{}, signAck:false, tplName:null };
+          collapsed:{}, openLayout:{}, layoutLimit:{}, signAck:false, tplName:null,
+          undo:[], myTemplates:[] };
 
 function emptyPos(name){
   return { name:name||"", fwd:"", aft:"", left:"0", right:"0", index:"", maxWeight:"" };
@@ -103,6 +104,12 @@ function uldRender(){
   if(badge){
     if(U.tplName){ badge.textContent = U.tplName; badge.style.display = ""; }
     else { badge.style.display = "none"; badge.textContent = ""; }
+  }
+  var ub = $("btnUndo");
+  if(ub){
+    var last = (U.undo||[])[ (U.undo||[]).length - 1 ];
+    ub.disabled = !last;
+    ub.title = last ? "Undo: "+last.label : "Nothing to undo";
   }
   renderStepbar();
   var host = $("uldStep");
@@ -529,6 +536,11 @@ function indexIssues(){
         if(mwIssue) warn.push(Object.assign({reason:p.maxWeight+" kg is "+mwIssue}, where));
         if(mw > GROSS_MAX_WEIGHT)
           warn.push(Object.assign({reason:"max weight of "+p.maxWeight+" kg — heavier than any ULD"}, where));
+        // positions are numbered after their hold (11L, 21P, 33…), so a 41L
+        // sitting in compartment 1 is almost always a typed digit
+        var lead = String(p.name).match(/^(\d)/);
+        if(lead && String(c.number).length === 1 && lead[1] !== String(c.number))
+          warn.push(Object.assign({reason:"named for compartment "+lead[1]+" but sits in "+c.number}, where));
         if(idxLimit && Math.abs(parseFloat(p.index)) > idxLimit)
           warn.push(Object.assign({reason:"index of "+p.index+" — far outside the range of this compartment, "+
             "check the decimal point"}, where));
@@ -1110,6 +1122,8 @@ function onUldClick(e){
     U.editUld=null; uldRender();
   }
   else if(act==="del-uld"){ var did=b.getAttribute("data-id");
+    var gone = U.ulds.filter(function(u){return u.id===did;})[0];
+    pushUndo("removed the "+((gone&&gone.iata)||"ULD"));
     U.ulds = U.ulds.filter(function(u){return u.id!==did;}); uldRender(); }
   else if(act==="add-comp"){
     U.compartments.push({ id:uid(), number:U.compartments.length+1, uldGroups:[] });
@@ -1117,6 +1131,7 @@ function onUldClick(e){
   }
   else if(act==="pick-comp"){ U.activeComp = +b.getAttribute("data-i"); uldRender(); }
   else if(act==="del-comp"){
+    pushUndo("removed compartment "+((U.compartments[U.activeComp]||{}).number||""));
     U.compartments.splice(U.activeComp,1);
     U.compartments.forEach(function(c,i){ c.number=i+1; });
     U.activeComp = Math.max(0,U.activeComp-1); uldRender();
@@ -1140,7 +1155,11 @@ function onUldClick(e){
   else if(act==="collapse-all"){
     comp.uldGroups.forEach(function(g){ U.collapsed[g.id] = true; }); uldRender();
   }
-  else if(act==="del-group"){ comp.uldGroups.splice(+b.getAttribute("data-g"),1); uldRender(); }
+  else if(act==="del-group"){
+    var goneG = comp.uldGroups[+b.getAttribute("data-g")];
+    pushUndo("removed "+(goneG?groupLabel(goneG)+" ("+goneG.positions.length+" positions)":"a group"));
+    comp.uldGroups.splice(+b.getAttribute("data-g"),1); uldRender();
+  }
   else if(act==="add-pos"){ comp.uldGroups[+b.getAttribute("data-g")].positions.push(emptyPos()); uldRender(); }
   else if(act==="open-pair"){ U.pairForm = comp.uldGroups[+b.getAttribute("data-g")].id; uldRender(); }
   else if(act==="cancel-pair"){ U.pairForm = null; uldRender(); }
@@ -1157,6 +1176,8 @@ function onUldClick(e){
     U.pairForm = null; uldRender();
   }
   else if(act==="del-pos"){
+    var gp2 = comp.uldGroups[+b.getAttribute("data-g")].positions[+b.getAttribute("data-p")];
+    pushUndo("removed position "+((gp2&&gp2.name)||""));
     comp.uldGroups[+b.getAttribute("data-g")].positions.splice(+b.getAttribute("data-p"),1); uldRender();
   }
   else if(act==="generate"){
@@ -1243,10 +1264,19 @@ $("fileCfg").addEventListener("change", function(e){
   r.readAsText(file); e.target.value = "";
 });
 $("btnPresets").addEventListener("click", openTemplates);
+$("btnUndo").addEventListener("click", function(){
+  var what = undoLast();
+  if(!what) return;
+  U.editUld = null; U.pairForm = null;
+  uldRender();
+  var el = $("uldSaveState");
+  if(el){ el.className = "savestate"; el.textContent = "Undone: "+what; }
+});
 $("btnReset").addEventListener("click", function(){
   if(!U.ulds.length && !U.compartments.length){ return; }
   if(!confirm("Clear everything and start from scratch?\n\nThis removes all ULDs, compartments and generated layouts. "+
               "Use Export file first if you want to keep the current setup.")) return;
+  pushUndo("reset everything");
   U.ulds = []; U.compartments = []; U.bulk = []; U.refStation = ""; U.layouts = null;
   U.tplName = null;
   U.step = 0; U.activeComp = 0; U.activeLayoutComp = 0; U.editUld = null; U.pairForm = null; U.addType = "";
@@ -1261,4 +1291,7 @@ $("btnReset").addEventListener("click", function(){
 uldRender();
 uldRenderArmed = true;
 if(typeof uldRestorePrompt === "function") uldRestorePrompt();
+// the operator's saved aircraft, read once so the templates modal can render
+// them synchronously like the built-in ones
+if(typeof myTemplatesLoad === "function") myTemplatesLoad();
 openTool("home");

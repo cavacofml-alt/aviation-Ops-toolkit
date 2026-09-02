@@ -286,12 +286,17 @@ if(inBuild("securezip")) try {
 } catch(e){ ok("crypto module loads", false, e.message); }
 
 if(inBuild("uld")) try {
+  // store.js reaches for window/document as it loads: with neither storage
+  // backend present it settles on "none", which is what we want here — the
+  // undo stack lives in memory either way.
+  global.window = global.window || { addEventListener(){} };
+  global.document = global.document || { getElementById: () => null };
   const uldAll = fileOf("src/core/crypto.js") + fileOf("src/core/ui.js") +
-    fileOf("src/modules/uld/templates.js") + fileOf("src/modules/uld/uld.js");
+    fileOf("src/core/store.js") + fileOf("src/modules/uld/templates.js") + fileOf("src/modules/uld/uld.js");
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
        ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines, csvAll, " +
-       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, pairAtBase, pairOffsetOf, clampDecimals, exportIndex, uldBase, groupLabel, maxWeightIssue};");
+       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, pairAtBase, pairOffsetOf, clampDecimals, exportIndex, uldBase, groupLabel, maxWeightIssue, pushUndo, undoLast};");
   ok("all aircraft templates load", ULD.TEMPLATES.length === 5);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
@@ -680,6 +685,37 @@ if(inBuild("uld")) try {
      pNames.length === 2 && pNames.indexOf("1LD7/P96(PMC)") >= 0, pNames.join(" | "));
   ok("two LD11s certified alike at that bay merge into one option",
      pNames.indexOf("1LD11(DQF/DQP)") >= 0, pNames.join(" | "));
+  /* Positions are numbered after their hold, so a 41L in compartment 1 is a
+     typed digit. A warning, not a block — the numbering is a convention. */
+  ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
+    {id:"g1",uldType:"LD3",iata:"AKE",label:"x",positions:[
+      gp("11L","300","360","-0.003","1587"),
+      gp("41L","300","360","-0.003","1587")
+    ]}
+  ]}];
+  const numbering = ULD.indexIssues();
+  ok("a position numbered for another compartment is flagged",
+     numbering.warn.some(x => x.name === "41L" && /named for compartment 4 but sits in 1/.test(x.reason)) &&
+     !numbering.warn.some(x => x.name === "11L"),
+     numbering.warn.map(x => x.name+": "+x.reason).join(" | "));
+
+  /* Undo carries the whole workspace, so removing a group and taking it back
+     restores its positions too — an autosave of the version without them is
+     what makes this worth having. */
+  ULD.U.ulds = [{id:"u1",uldType:"LD3",iata:"AKE",maxWeight:1587,tare:65}];
+  ULD.U.bulk = [{number:5, positions:[{name:"51",fwd:"1",aft:"2",index:"0.001",volume:"6",maxWeight:"100"}]}];
+  ULD.U.undo = [];
+  ULD.pushUndo("removed a group");
+  ULD.U.compartments = [];
+  ULD.U.bulk = [];
+  const undone = ULD.undoLast();
+  ok("undo restores compartments and bulk holds together",
+     undone === "removed a group" && ULD.U.compartments.length === 1 &&
+     ULD.U.compartments[0].uldGroups[0].positions.length === 2 && ULD.U.bulk.length === 1,
+     undone + " / " + ULD.U.compartments.length + " comps / " + ULD.U.bulk.length + " bulk");
+  ok("undo empties out rather than repeating the last state",
+     ULD.undoLast() === null && ULD.U.undo.length === 0);
+
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {

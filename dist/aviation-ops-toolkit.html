@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.116</title>
+<title>Aviation Ops Toolkit v1.2.122</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.116</span>
+      <span class="build-ver">v1.2.122</span>
     </header>
 
     <main>
@@ -724,6 +724,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
             <label class="btn small" style="display:inline-flex;align-items:center">
               &#8593; Import<input type="file" id="fileCfg" accept=".json" style="display:none">
             </label>
+            <button class="btn small" id="btnUndo" disabled title="Nothing to undo">&#8630; Undo</button>
             <button class="btn small danger" id="btnReset" title="Remove all ULDs and compartments">&#8635; Reset</button>
             <span class="savestate" id="uldSaveState" title="Your work is kept in this browser automatically. Use Export file to take it elsewhere."></span>
           </div>
@@ -812,7 +813,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.116 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.122 — Luís Cavaco
     Built 2026-09-02 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -3045,6 +3046,73 @@ var Store = (function(){
   };
 })();
 
+/* ---------- undo for the destructive actions ----------
+   Removing a group takes a dozen hand-typed positions with it, and the
+   autosave then faithfully stores the version without them. Each of those
+   actions parks a snapshot here first. Kept in memory only: this is for
+   taking back the click you just made, not a history across sessions. */
+var UNDO_LIMIT = 12;
+function undoSnapshot(){
+  return JSON.stringify({ ulds:U.ulds, compartments:U.compartments, bulk:U.bulk, refStation:U.refStation });
+}
+function pushUndo(label){
+  U.undo = U.undo || [];
+  U.undo.push({ label:label, state:undoSnapshot() });
+  if(U.undo.length > UNDO_LIMIT) U.undo.shift();
+}
+function undoLast(){
+  if(!U.undo || !U.undo.length) return null;
+  var entry = U.undo.pop();
+  var s;
+  try { s = JSON.parse(entry.state); } catch(e){ return null; }
+  U.ulds = s.ulds || [];
+  U.compartments = s.compartments || [];
+  U.bulk = s.bulk || [];
+  U.refStation = s.refStation || "";
+  U.layouts = null;          // generated results described the newer data
+  U.activeComp = Math.min(U.activeComp, Math.max(0, U.compartments.length-1));
+  var rs = document.getElementById("refStation"); if(rs) rs.value = U.refStation;
+  return entry.label;
+}
+
+/* ---------- the operator's own saved templates ----------
+   The built-in TEMPLATES ship in the code; these are whatever the user
+   builds, kept in this browser so a new aircraft does not need a code
+   change. Same shape, so both lists load through the same path. */
+var MY_TPL_KEY = "uld_my_templates";
+function myTemplatesLoad(){
+  if(!Store.available){ U.myTemplates = []; return Promise.resolve([]); }
+  return Store.get(MY_TPL_KEY).then(function(raw){
+    try { U.myTemplates = raw ? JSON.parse(raw) : []; } catch(e){ U.myTemplates = []; }
+    return U.myTemplates;
+  });
+}
+function myTemplatesPersist(){
+  if(!Store.available) return Promise.resolve();
+  return Store.set(MY_TPL_KEY, JSON.stringify(U.myTemplates||[]));
+}
+function myTemplateSave(name){
+  U.myTemplates = U.myTemplates || [];
+  var entry = {
+    id: "my_"+Date.now().toString(36),
+    name: String(name||"").trim() || "Untitled aircraft",
+    savedAt: new Date().toISOString(),
+    refStation: U.refStation,
+    ulds: JSON.parse(JSON.stringify(U.ulds||[])),
+    compartments: JSON.parse(JSON.stringify(U.compartments||[])),
+    bulk: JSON.parse(JSON.stringify(U.bulk||[]))
+  };
+  // saving twice under the same name replaces, rather than piling up
+  U.myTemplates = U.myTemplates.filter(function(t){ return t.name !== entry.name; });
+  U.myTemplates.push(entry);
+  myTemplatesPersist();
+  return entry;
+}
+function myTemplateDelete(id){
+  U.myTemplates = (U.myTemplates||[]).filter(function(t){ return t.id !== id; });
+  myTemplatesPersist();
+}
+
 var ULD_KEY = "uld_workspace";
 var uldDirty = false, uldSaveTimer = null, uldLastSaved = null;
 
@@ -5140,41 +5208,97 @@ function deckStrip(layout){
 /* ============================================================================
    TEMPLATES modal
    ============================================================================ */
+function tplSummary(t){
+  var pos = (t.compartments||[]).reduce(function(s,c){
+    return s + (c.uldGroups||[]).reduce(function(k,g){ return k+g.positions.length; },0); },0);
+  return (t.ulds||[]).length+' ULDs · '+(t.compartments||[]).length+
+    ' compartments · '+pos+' positions · ref. '+esc(t.refStation||"—");
+}
 function openTemplates(){
   var host = $("modalHost");
   var cards = TEMPLATES.map(function(t,i){
-    var pos = (t.compartments||[]).reduce(function(s,c){
-      return s + (c.uldGroups||[]).reduce(function(k,g){ return k+g.positions.length; },0); },0);
     return '<div class="preset-card">'+
       '<div><b style="color:var(--cyan)">'+esc(t.name)+'</b>'+
-      '<div class="note">'+(t.ulds||[]).length+' ULDs · '+(t.compartments||[]).length+
-        ' compartments · '+pos+' positions · ref. '+esc(t.refStation||"—")+'</div></div>'+
+      '<div class="note">'+tplSummary(t)+'</div></div>'+
       '<button class="btn small" data-act="load-tpl" data-i="'+i+'">Load</button></div>';
   }).join("");
+
+  // the operator's own aircraft, saved in this browser
+  var mine = (U.myTemplates||[]).map(function(t){
+    var when = t.savedAt ? new Date(t.savedAt) : null;
+    return '<div class="preset-card">'+
+      '<div><b style="color:var(--amber)">'+esc(t.name)+'</b>'+
+      '<div class="note">'+tplSummary(t)+
+        (when ? ' · saved '+esc(when.toLocaleDateString()) : '')+'</div></div>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button class="btn small" data-act="load-my" data-id="'+esc(t.id)+'">Load</button>'+
+        '<button class="btn small danger" data-act="del-my" data-id="'+esc(t.id)+'">&times;</button>'+
+      '</div></div>';
+  }).join("");
+  var hasWork = (U.ulds||[]).length || (U.compartments||[]).length;
 
   host.innerHTML = '<div class="modal-back"><div class="modal">'+
     '<div class="mh"><b>Aircraft templates</b>'+
       '<button class="btn small quiet" data-act="close">Close</button></div>'+
     '<div class="mb">'+ cards +
+      '<div class="sec mt" style="margin-bottom:10px">Your aircraft</div>'+
+      (mine || '<div class="note" style="margin-bottom:10px">Nothing saved yet — build an aircraft and save it '+
+        'here to load it again later, on this browser.</div>')+
+      '<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:12px;'+
+        'border-top:1px solid var(--line);padding-top:14px">'+
+        '<div class="field" style="flex:1;min-width:200px">'+
+          '<label for="tplName">Save the current setup as</label>'+
+          '<input id="tplName" type="text" placeholder="'+esc(U.tplName||"Boeing 777-300 (ours)")+'"'+
+            (hasWork?'':' disabled')+'>'+
+        '</div>'+
+        '<button class="btn small primary" data-act="save-my"'+(hasWork?'':' disabled')+'>&#8595; Save aircraft</button>'+
+      '</div>'+
       '<p class="note" style="margin-top:12px">Loading a template <b>replaces</b> the ULDs, compartments and '+
-      'reference station you have now. To keep the current setup, close this and use <b>Export file</b> first — '+
-      'it downloads everything to a file you can bring back later with <b>Load</b>.</p>'+
+      'reference station you have now — <b>&#8630; Undo</b> brings them back. Saved aircraft live in this browser '+
+      'only; <b>Export file</b> is what takes a setup to another machine.</p>'+
     '</div></div></div>';
 
   host.querySelector('[data-act="close"]').addEventListener("click", function(){ host.innerHTML=""; });
   host.querySelector(".modal-back").addEventListener("click", function(e){ if(e.target===this) host.innerHTML=""; });
+  function loadTemplate(t){
+    if((U.ulds||[]).length || (U.compartments||[]).length) pushUndo("loaded the "+(t.name||"template"));
+    U.ulds = JSON.parse(JSON.stringify(t.ulds||[]));
+    U.compartments = JSON.parse(JSON.stringify(t.compartments||[]));
+    U.bulk = JSON.parse(JSON.stringify(t.bulk||[]));
+    U.refStation = t.refStation||"";
+    $("refStation").value = U.refStation;
+    U.tplName = t.name||null;
+    U.step = 0; U.layouts = null; U.activeComp = 0; U.editUld = null;
+    host.innerHTML = ""; uldRender();
+  }
   Array.prototype.forEach.call(host.querySelectorAll('[data-act="load-tpl"]'), function(b){
+    b.addEventListener("click", function(){ loadTemplate(TEMPLATES[+b.getAttribute("data-i")]); });
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-act="load-my"]'), function(b){
     b.addEventListener("click", function(){
-      var t = TEMPLATES[+b.getAttribute("data-i")];
-      U.ulds = JSON.parse(JSON.stringify(t.ulds||[]));
-      U.compartments = JSON.parse(JSON.stringify(t.compartments||[]));
-      U.bulk = JSON.parse(JSON.stringify(t.bulk||[]));
-      U.refStation = t.refStation||"";
-      $("refStation").value = U.refStation;
-      U.tplName = t.name||null;
-      U.step = 0; U.layouts = null; U.activeComp = 0; U.editUld = null;
-      host.innerHTML = ""; uldRender();
+      var t = (U.myTemplates||[]).filter(function(x){ return x.id === b.getAttribute("data-id"); })[0];
+      if(t) loadTemplate(t);
     });
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('[data-act="del-my"]'), function(b){
+    b.addEventListener("click", function(){
+      var t = (U.myTemplates||[]).filter(function(x){ return x.id === b.getAttribute("data-id"); })[0];
+      if(!t || !confirm("Delete the saved aircraft \""+t.name+"\"?\n\nThe setup you have open now is not affected.")) return;
+      myTemplateDelete(t.id);
+      openTemplates();          // redraw the list in place
+    });
+  });
+  var saveBtn = host.querySelector('[data-act="save-my"]');
+  if(saveBtn) saveBtn.addEventListener("click", function(){
+    var field = host.querySelector("#tplName");
+    var name = (field && field.value.trim()) || U.tplName || "";
+    if(!name){ field && field.focus(); return; }
+    var existing = (U.myTemplates||[]).some(function(t){ return t.name === name; });
+    if(existing && !confirm("\""+name+"\" is already saved. Replace it?")) return;
+    myTemplateSave(name);
+    U.tplName = name;
+    openTemplates();
+    uldRender();
   });
 }
 
@@ -6159,7 +6283,8 @@ var uid = function(){
 
 var U = { step:0, ulds:[], compartments:[], bulk:[], refStation:"", activeComp:0,
           layouts:null, activeLayoutComp:0, editUld:null, pairForm:null, addType:"",
-          collapsed:{}, openLayout:{}, layoutLimit:{}, signAck:false, tplName:null };
+          collapsed:{}, openLayout:{}, layoutLimit:{}, signAck:false, tplName:null,
+          undo:[], myTemplates:[] };
 
 function emptyPos(name){
   return { name:name||"", fwd:"", aft:"", left:"0", right:"0", index:"", maxWeight:"" };
@@ -6195,6 +6320,12 @@ function uldRender(){
   if(badge){
     if(U.tplName){ badge.textContent = U.tplName; badge.style.display = ""; }
     else { badge.style.display = "none"; badge.textContent = ""; }
+  }
+  var ub = $("btnUndo");
+  if(ub){
+    var last = (U.undo||[])[ (U.undo||[]).length - 1 ];
+    ub.disabled = !last;
+    ub.title = last ? "Undo: "+last.label : "Nothing to undo";
   }
   renderStepbar();
   var host = $("uldStep");
@@ -6621,6 +6752,11 @@ function indexIssues(){
         if(mwIssue) warn.push(Object.assign({reason:p.maxWeight+" kg is "+mwIssue}, where));
         if(mw > GROSS_MAX_WEIGHT)
           warn.push(Object.assign({reason:"max weight of "+p.maxWeight+" kg — heavier than any ULD"}, where));
+        // positions are numbered after their hold (11L, 21P, 33…), so a 41L
+        // sitting in compartment 1 is almost always a typed digit
+        var lead = String(p.name).match(/^(\d)/);
+        if(lead && String(c.number).length === 1 && lead[1] !== String(c.number))
+          warn.push(Object.assign({reason:"named for compartment "+lead[1]+" but sits in "+c.number}, where));
         if(idxLimit && Math.abs(parseFloat(p.index)) > idxLimit)
           warn.push(Object.assign({reason:"index of "+p.index+" — far outside the range of this compartment, "+
             "check the decimal point"}, where));
@@ -7202,6 +7338,8 @@ function onUldClick(e){
     U.editUld=null; uldRender();
   }
   else if(act==="del-uld"){ var did=b.getAttribute("data-id");
+    var gone = U.ulds.filter(function(u){return u.id===did;})[0];
+    pushUndo("removed the "+((gone&&gone.iata)||"ULD"));
     U.ulds = U.ulds.filter(function(u){return u.id!==did;}); uldRender(); }
   else if(act==="add-comp"){
     U.compartments.push({ id:uid(), number:U.compartments.length+1, uldGroups:[] });
@@ -7209,6 +7347,7 @@ function onUldClick(e){
   }
   else if(act==="pick-comp"){ U.activeComp = +b.getAttribute("data-i"); uldRender(); }
   else if(act==="del-comp"){
+    pushUndo("removed compartment "+((U.compartments[U.activeComp]||{}).number||""));
     U.compartments.splice(U.activeComp,1);
     U.compartments.forEach(function(c,i){ c.number=i+1; });
     U.activeComp = Math.max(0,U.activeComp-1); uldRender();
@@ -7232,7 +7371,11 @@ function onUldClick(e){
   else if(act==="collapse-all"){
     comp.uldGroups.forEach(function(g){ U.collapsed[g.id] = true; }); uldRender();
   }
-  else if(act==="del-group"){ comp.uldGroups.splice(+b.getAttribute("data-g"),1); uldRender(); }
+  else if(act==="del-group"){
+    var goneG = comp.uldGroups[+b.getAttribute("data-g")];
+    pushUndo("removed "+(goneG?groupLabel(goneG)+" ("+goneG.positions.length+" positions)":"a group"));
+    comp.uldGroups.splice(+b.getAttribute("data-g"),1); uldRender();
+  }
   else if(act==="add-pos"){ comp.uldGroups[+b.getAttribute("data-g")].positions.push(emptyPos()); uldRender(); }
   else if(act==="open-pair"){ U.pairForm = comp.uldGroups[+b.getAttribute("data-g")].id; uldRender(); }
   else if(act==="cancel-pair"){ U.pairForm = null; uldRender(); }
@@ -7249,6 +7392,8 @@ function onUldClick(e){
     U.pairForm = null; uldRender();
   }
   else if(act==="del-pos"){
+    var gp2 = comp.uldGroups[+b.getAttribute("data-g")].positions[+b.getAttribute("data-p")];
+    pushUndo("removed position "+((gp2&&gp2.name)||""));
     comp.uldGroups[+b.getAttribute("data-g")].positions.splice(+b.getAttribute("data-p"),1); uldRender();
   }
   else if(act==="generate"){
@@ -7335,10 +7480,19 @@ $("fileCfg").addEventListener("change", function(e){
   r.readAsText(file); e.target.value = "";
 });
 $("btnPresets").addEventListener("click", openTemplates);
+$("btnUndo").addEventListener("click", function(){
+  var what = undoLast();
+  if(!what) return;
+  U.editUld = null; U.pairForm = null;
+  uldRender();
+  var el = $("uldSaveState");
+  if(el){ el.className = "savestate"; el.textContent = "Undone: "+what; }
+});
 $("btnReset").addEventListener("click", function(){
   if(!U.ulds.length && !U.compartments.length){ return; }
   if(!confirm("Clear everything and start from scratch?\n\nThis removes all ULDs, compartments and generated layouts. "+
               "Use Export file first if you want to keep the current setup.")) return;
+  pushUndo("reset everything");
   U.ulds = []; U.compartments = []; U.bulk = []; U.refStation = ""; U.layouts = null;
   U.tplName = null;
   U.step = 0; U.activeComp = 0; U.activeLayoutComp = 0; U.editUld = null; U.pairForm = null; U.addType = "";
@@ -7353,6 +7507,9 @@ $("btnReset").addEventListener("click", function(){
 uldRender();
 uldRenderArmed = true;
 if(typeof uldRestorePrompt === "function") uldRestorePrompt();
+// the operator's saved aircraft, read once so the templates modal can render
+// them synchronously like the built-in ones
+if(typeof myTemplatesLoad === "function") myTemplatesLoad();
 openTool("home");
 
 
