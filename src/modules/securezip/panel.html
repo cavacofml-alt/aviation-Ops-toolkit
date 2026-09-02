@@ -25,6 +25,18 @@
             </div>
           </div>
 
+          <div class="sec mt">Encryption</div>
+          <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:16px">
+            <div class="field" style="min-width:320px">
+              <label for="szCipher">Format</label>
+              <select id="szCipher">
+                <option value="zipcrypto" selected>ZipCrypto — opens in Windows without extra software</option>
+                <option value="aes">AES-256 — strong, needs 7-Zip / WinRAR / Keka</option>
+              </select>
+            </div>
+            <span class="note" id="szCipherNote" style="flex:1;min-width:260px;line-height:1.6"></span>
+          </div>
+
           <div class="sec mt">Password</div>
           <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:16px">
             <div class="field" style="min-width:210px">
@@ -49,9 +61,16 @@
           <div id="szResult" hidden></div>
 
           <div class="note" style="margin-top:16px;line-height:1.8;border-top:1px solid var(--line);padding-top:14px">
-            <b style="color:var(--text)">How it works.</b> Files are encrypted with <b>AES-256</b> in your browser
-            (WinZip AE-2: PBKDF2-HMAC-SHA1, 1000 iterations, 16-byte salt, HMAC-SHA1 authentication).
-            Nothing is uploaded and the password is never stored — if you lose it, the archive cannot be recovered.
-            The weak legacy ZipCrypto cipher is not used.
+            <b style="color:var(--text)">How it works.</b> Everything happens in your browser: nothing is uploaded,
+            and the password is never stored — if you lose it, the archive cannot be recovered.
+            <br><br>
+            <b style="color:var(--text)">ZipCrypto</b> is the original ZIP encryption, which is why Windows opens it
+            with no extra software. It is <b style="color:var(--amber)">weak</b>: anyone holding part of a file's
+            original content can recover the rest of that file without ever finding the password. Fine for keeping a
+            document away from a casual reader, not for personal or commercially sensitive data.
+            <br><br>
+            <b style="color:var(--text)">AES-256</b> (WinZip AE-2: PBKDF2-HMAC-SHA1, 1000 iterations, 16-byte salt,
+            HMAC-SHA1 authentication) has no such weakness, but the Windows Explorer extractor cannot read it —
+            the recipient needs 7-Zip, WinRAR, Keka or similar.
           </div>
         </section>

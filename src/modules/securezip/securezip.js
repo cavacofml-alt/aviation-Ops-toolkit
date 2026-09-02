@@ -83,6 +83,7 @@ function maybeDeflate(bytes){
 
 function szMakeZip(){
   var mode = $("szPwMode").value;
+  var aes = ($("szCipher")||{}).value === "aes";
   var len = parseInt($("szPwLen").value, 10) || 24;
   var pw;
   try { pw = genPassword(mode, len); }
@@ -97,7 +98,7 @@ function szMakeZip(){
     });
   })).then(function(entries){
     var zipBytes;
-    try { zipBytes = buildEncryptedZip(entries, pw); }
+    try { zipBytes = aes ? buildEncryptedZip(entries, pw) : buildZipCryptoZip(entries, pw); }
     catch(err){ $("szStatus").textContent = "Failed: " + err.message; $("btnSzMake").disabled = false; return; }
 
     var stamp = new Date().toISOString().slice(0,10).replace(/-/g,"");
@@ -119,7 +120,7 @@ function szMakeZip(){
         '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px">'+
           '<a class="btn primary" id="szDownload" download="'+esc(fname)+'" href="'+SZ.zipBlobUrl+'" '+
             'style="text-decoration:none;display:inline-block">&#8595; Download '+esc(fname)+'</a>'+
-          '<span class="note">'+fmtSize(zipBytes.length)+' · AES-256</span>'+
+          '<span class="note">'+fmtSize(zipBytes.length)+' &middot; '+(aes?"AES-256":"ZipCrypto")+'</span>'+
         '</div>'+
         '<div class="field" style="margin-bottom:10px">'+
           '<label>Password — store it now, it is not saved anywhere</label>'+
@@ -130,9 +131,14 @@ function szMakeZip(){
           '</div>'+
         '</div>'+
         '<div class="note" style="line-height:1.7">'+
-          'Strength: about <b style="color:var(--green)">'+bits+' bits</b> of entropy. '+
+          'Password strength: about <b style="color:var(--green)">'+bits+' bits</b> of entropy. '+
           'Send the password through a <b>different channel</b> from the file — not in the same email. '+
-          'Opens with 7-Zip, WinRAR, macOS Keka, or any tool supporting WinZip AES.'+
+          (aes
+            ? 'Opens with 7-Zip, WinRAR, macOS Keka, or any tool supporting WinZip AES — <b>not</b> with '+
+              'the Windows Explorer built-in extractor, which does not read AES.'
+            : 'Opens anywhere, including the Windows Explorer built-in extractor. '+
+              '<b style="color:var(--amber)">ZipCrypto is weak</b>: someone holding part of a file\'s '+
+              'original content can recover the rest without the password. Use AES-256 for anything sensitive.')+
         '</div>'+
       '</div>';
     $("szStatus").textContent = "";
@@ -191,6 +197,18 @@ $("btnSzMake").addEventListener("click", szMakeZip);
 $("szPwMode").addEventListener("change", function(){
   $("szPwLenWrap").style.display = this.value === "words" ? "none" : "";
 });
+/* the trade-off between the two formats is the whole decision here, so it is
+   spelled out next to the selector rather than buried in the notes below */
+function szCipherNote(){
+  var el = $("szCipherNote"), sel = $("szCipher");
+  if(!el || !sel) return;
+  el.innerHTML = sel.value === "aes"
+    ? "Strong, but the recipient needs 7-Zip, WinRAR or Keka — the Windows built-in extractor cannot open it."
+    : "<b style=\"color:var(--amber)\">Weak encryption.</b> Keeps a file away from a casual reader, "+
+      "but not from anyone who holds part of its original content. Switch to AES-256 for sensitive data.";
+}
+$("szCipher") && $("szCipher").addEventListener("change", szCipherNote);
+szCipherNote();
 function legacyCopy(inp, done){
   inp.focus(); inp.select();
   try { if(document.execCommand("copy")) done(); } catch(err){}
