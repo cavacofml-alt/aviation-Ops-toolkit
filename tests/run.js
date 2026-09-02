@@ -231,7 +231,7 @@ if(inBuild("airmsg")) try {
 
 if(inBuild("securezip")) try {
   global.crypto = require("crypto").webcrypto;
-  eval(fileOf("src/core/crypto.js") + ";CRY = {sha1, hmacSha1, pbkdf2Sha1, aesExpandKey, aesEncryptBlock, crc32, buildEncryptedZip};");
+  eval(fileOf("src/core/crypto.js") + ";CRY = {sha1, hmacSha1, pbkdf2Sha1, aesExpandKey, aesEncryptBlock, crc32, buildEncryptedZip, buildZipCryptoZip};");
   const hex = b => Buffer.from(b).toString("hex");
   const str = s => new Uint8Array(Buffer.from(s, "utf8"));
   ok("SHA-1 matches the published vector",
@@ -244,6 +244,45 @@ if(inBuild("securezip")) try {
   const big = new Uint8Array(70000); for(let i=0;i<big.length;i++) big[i] = (i*7+13) & 0xff;
   const zip = CRY.buildEncryptedZip([{name:"t.bin", data:big, deflated:null}], "pw");
   ok("encrypted ZIP is produced for data past the counter rollover", zip.length > big.length);
+
+  /* ZipCrypto — the weak legacy format, offered because it is the only one
+     Windows Explorer opens unaided. Decrypted here straight from the spec
+     (init keys from the password, XOR with the keystream, advance the keys
+     on the plaintext), so a writer that advanced them on the ciphertext, or
+     wrote the header wrong, would fail this. */
+  const zcPlain = str("PNL\r\nTP1234/16JUL LIS PART1\r\nENDPNL\r\n");
+  const zcZip = CRY.buildZipCryptoZip([{name:"m.txt", data:zcPlain, deflated:null}], "pw12345");
+  const dv = new DataView(zcZip.buffer, zcZip.byteOffset);
+  const zcFlags = dv.getUint16(6, true), zcMethod = dv.getUint16(8, true);
+  const zcCrc = dv.getUint32(14, true), zcComp = dv.getUint32(18, true), zcUncomp = dv.getUint32(22, true);
+  const zcNameLen = dv.getUint16(26, true);
+  const body = zcZip.subarray(30 + zcNameLen, 30 + zcNameLen + zcComp);
+  ok("ZipCrypto header marks the entry encrypted and sizes it with the 12-byte prefix",
+     (zcFlags & 1) === 1 && zcMethod === 0 && zcUncomp === zcPlain.length &&
+     zcComp === zcPlain.length + 12 && zcCrc === CRY.crc32(zcPlain),
+     "flags " + zcFlags + " comp " + zcComp + " uncomp " + zcUncomp);
+
+  const T = [];
+  for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = (c&1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1); T[n]=c>>>0; }
+  const keys = [0x12345678, 0x23456789, 0x34567890];
+  const upd = b => {
+    keys[0] = (T[(keys[0] ^ b) & 0xff] ^ (keys[0] >>> 8)) >>> 0;
+    keys[1] = (keys[1] + (keys[0] & 0xff)) >>> 0;
+    keys[1] = (Math.imul(keys[1], 134775813) + 1) >>> 0;
+    keys[2] = (T[(keys[2] ^ (keys[1] >>> 24)) & 0xff] ^ (keys[2] >>> 8)) >>> 0;
+  };
+  Buffer.from("pw12345", "utf8").forEach(upd);
+  const plain = new Uint8Array(body.length);
+  for(let i=0;i<body.length;i++){
+    const t = (keys[2] | 2) & 0xffff;
+    plain[i] = (body[i] ^ ((Math.imul(t, t ^ 1) >>> 8) & 0xff)) & 0xff;
+    upd(plain[i]);
+  }
+  ok("ZipCrypto content decrypts back to the original with the right password",
+     Buffer.from(plain.subarray(12)).toString("utf8") === Buffer.from(zcPlain).toString("utf8"),
+     Buffer.from(plain.subarray(12)).toString("utf8").slice(0, 30));
+  ok("ZipCrypto check byte is the CRC's high byte, so a wrong password is rejected early",
+     plain[11] === ((zcCrc >>> 24) & 0xff), plain[11] + " vs " + ((zcCrc >>> 24) & 0xff));
 } catch(e){ ok("crypto module loads", false, e.message); }
 
 if(inBuild("uld")) try {

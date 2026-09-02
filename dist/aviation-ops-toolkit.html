@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.99</title>
+<title>Aviation Ops Toolkit v1.2.102</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.99</span>
+      <span class="build-ver">v1.2.102</span>
     </header>
 
     <main>
@@ -651,6 +651,18 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
             </div>
           </div>
 
+          <div class="sec mt">Encryption</div>
+          <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:16px">
+            <div class="field" style="min-width:320px">
+              <label for="szCipher">Format</label>
+              <select id="szCipher">
+                <option value="zipcrypto" selected>ZipCrypto — opens in Windows without extra software</option>
+                <option value="aes">AES-256 — strong, needs 7-Zip / WinRAR / Keka</option>
+              </select>
+            </div>
+            <span class="note" id="szCipherNote" style="flex:1;min-width:260px;line-height:1.6"></span>
+          </div>
+
           <div class="sec mt">Password</div>
           <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:16px">
             <div class="field" style="min-width:210px">
@@ -675,10 +687,17 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
           <div id="szResult" hidden></div>
 
           <div class="note" style="margin-top:16px;line-height:1.8;border-top:1px solid var(--line);padding-top:14px">
-            <b style="color:var(--text)">How it works.</b> Files are encrypted with <b>AES-256</b> in your browser
-            (WinZip AE-2: PBKDF2-HMAC-SHA1, 1000 iterations, 16-byte salt, HMAC-SHA1 authentication).
-            Nothing is uploaded and the password is never stored — if you lose it, the archive cannot be recovered.
-            The weak legacy ZipCrypto cipher is not used.
+            <b style="color:var(--text)">How it works.</b> Everything happens in your browser: nothing is uploaded,
+            and the password is never stored — if you lose it, the archive cannot be recovered.
+            <br><br>
+            <b style="color:var(--text)">ZipCrypto</b> is the original ZIP encryption, which is why Windows opens it
+            with no extra software. It is <b style="color:var(--amber)">weak</b>: anyone holding part of a file's
+            original content can recover the rest of that file without ever finding the password. Fine for keeping a
+            document away from a casual reader, not for personal or commercially sensitive data.
+            <br><br>
+            <b style="color:var(--text)">AES-256</b> (WinZip AE-2: PBKDF2-HMAC-SHA1, 1000 iterations, 16-byte salt,
+            HMAC-SHA1 authentication) has no such weakness, but the Windows Explorer extractor cannot read it —
+            the recipient needs 7-Zip, WinRAR, Keka or similar.
           </div>
         </section>
 
@@ -793,7 +812,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.99 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.102 — Luís Cavaco
     Built 2026-09-02 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -812,9 +831,9 @@ var TOOLS = [
   { id:"msgcheck", name:"Message Validator", badge:"MSGCHECK", code:"MSG", accent:"green", wide:true,
     blurb:"Validate IATA teletype messages against the standard — PNL, ADL, PSM and 11 more. Findings are flagged character by character with the manual rule behind each one.",
     sources:"SOURCES: PSCRM 30th (RP 1707b·1708·1711·1712·1715·1716·1718·1719a/b/c) · AIRIMP 34th · AHM 780/730 · SSIM" },
-  { id:"securezip", name:"Secure ZIP", badge:"AES-256", code:"ZIP", accent:"magenta", wide:true,
-    blurb:"Attach files or paste text and get them back as a single AES-256 encrypted .zip, with a strong random password. Everything happens in your browser — nothing is uploaded.",
-    sources:"WinZip AE-2 · PBKDF2-HMAC-SHA1 · AES-256-CTR · HMAC-SHA1" },
+  { id:"securezip", name:"Secure ZIP", badge:"ENCRYPTED", code:"ZIP", accent:"magenta", wide:true,
+    blurb:"Attach files or paste text and get them back as a single encrypted .zip, with a strong random password. Choose ZipCrypto, which Windows opens on its own, or AES-256 when the contents matter. Everything happens in your browser — nothing is uploaded.",
+    sources:"ZipCrypto (PKWARE) · WinZip AE-2 · PBKDF2-HMAC-SHA1 · AES-256-CTR · HMAC-SHA1" },
   { id:"ahm", name:"AHM Audit", badge:"SHORTCUT", code:"AHM", accent:"amber",
     blurb:"Opens the AHM Audit application running on the local network. It keeps its own sign-in page.",
     sources:"Local network application · nothing stored by this toolkit" },
@@ -3501,6 +3520,129 @@ function buildPlainZip(entries){
   return out;
 }
 
+/* ============================================================================
+   ZIP writer — traditional PKWARE encryption ("ZipCrypto")
+   The only encrypted-ZIP flavour Windows Explorer opens on its own, which is
+   why it is offered at all. It is weak by modern standards: a few hundred
+   known plaintext bytes recover the keystream without ever finding the
+   password, so it protects against a casual reader, not an attacker. AES-256
+   (buildEncryptedZip above) stays available for anything that matters.
+   Layout per entry: 12-byte encryption header | ciphertext
+   ============================================================================ */
+function zcUpdateKeys(k, b){
+  k[0] = (CRC_TABLE[(k[0] ^ b) & 0xff] ^ (k[0] >>> 8)) >>> 0;
+  k[1] = (k[1] + (k[0] & 0xff)) >>> 0;
+  k[1] = (Math.imul(k[1], 134775813) + 1) >>> 0;
+  k[2] = (CRC_TABLE[(k[2] ^ (k[1] >>> 24)) & 0xff] ^ (k[2] >>> 8)) >>> 0;
+}
+function zcInitKeys(passBytes){
+  var k = new Uint32Array([0x12345678, 0x23456789, 0x34567890]);
+  for(var i=0;i<passBytes.length;i++) zcUpdateKeys(k, passBytes[i]);
+  return k;
+}
+function zcStreamByte(k){
+  var t = (k[2] | 2) & 0xffff;
+  return (Math.imul(t, t ^ 1) >>> 8) & 0xff;
+}
+/* encrypts in place, plaintext byte by plaintext byte (the keys advance on
+   the plaintext, so this cannot be run over already-encrypted data) */
+function zcEncrypt(k, plain){
+  var out = new Uint8Array(plain.length);
+  for(var i=0;i<plain.length;i++){
+    var p = plain[i];
+    out[i] = (p ^ zcStreamByte(k)) & 0xff;
+    zcUpdateKeys(k, p);
+  }
+  return out;
+}
+
+/* entries: [{name, data:Uint8Array, deflated:Uint8Array|null}] */
+function buildZipCryptoZip(entries, password){
+  var passBytes = utf8(password);
+  var chunks = [], central = [], offset = 0;
+  var now = dosDateTime(new Date());
+
+  entries.forEach(function(entry){
+    var raw = entry.data;
+    var useDeflate = !!entry.deflated;
+    var payload = useDeflate ? entry.deflated : raw;
+    var method = useDeflate ? 8 : 0;
+    var crc = crc32(raw);
+
+    // 12-byte header: 11 random bytes, then the CRC's high byte, which is
+    // what a reader checks the password against before unpacking anything
+    var header = new Uint8Array(12);
+    header.set(randomBytes(11), 0);
+    header[11] = (crc >>> 24) & 0xff;
+
+    var plain = new Uint8Array(12 + payload.length);
+    plain.set(header, 0);
+    plain.set(payload, 12);
+    var body = zcEncrypt(zcInitKeys(passBytes), plain);
+
+    var nameBytes = utf8(entry.name);
+    var compSize = body.length;
+    var uncompSize = raw.length;
+
+    var lh = new Uint8Array(30 + nameBytes.length);
+    var ldv = new DataView(lh.buffer);
+    ldv.setUint32(0, 0x04034b50, true);
+    ldv.setUint16(4, 20, true);        // version needed 2.0
+    ldv.setUint16(6, 0x0801, true);    // bit0 encrypted + bit11 UTF-8 names
+    ldv.setUint16(8, method, true);
+    ldv.setUint16(10, now.time, true);
+    ldv.setUint16(12, now.date, true);
+    ldv.setUint32(14, crc, true);
+    ldv.setUint32(18, compSize, true);
+    ldv.setUint32(22, uncompSize, true);
+    ldv.setUint16(26, nameBytes.length, true);
+    ldv.setUint16(28, 0, true);
+    lh.set(nameBytes, 30);
+
+    chunks.push(lh, body);
+
+    var ch = new Uint8Array(46 + nameBytes.length);
+    var cdv = new DataView(ch.buffer);
+    cdv.setUint32(0, 0x02014b50, true);
+    cdv.setUint16(4, 20, true);        // version made by
+    cdv.setUint16(6, 20, true);        // version needed
+    cdv.setUint16(8, 0x0801, true);
+    cdv.setUint16(10, method, true);
+    cdv.setUint16(12, now.time, true);
+    cdv.setUint16(14, now.date, true);
+    cdv.setUint32(16, crc, true);
+    cdv.setUint32(20, compSize, true);
+    cdv.setUint32(24, uncompSize, true);
+    cdv.setUint16(28, nameBytes.length, true);
+    cdv.setUint16(30, 0, true);        // extra length
+    cdv.setUint16(32, 0, true);        // comment length
+    cdv.setUint16(34, 0, true);        // disk number
+    cdv.setUint16(36, 0, true);        // internal attrs
+    cdv.setUint32(38, 0, true);        // external attrs
+    cdv.setUint32(42, offset, true);
+    ch.set(nameBytes, 46);
+    central.push(ch);
+
+    offset += lh.length + body.length;
+  });
+
+  var cdSize = central.reduce(function(s,c){ return s + c.length; }, 0);
+  var eocd = new Uint8Array(22);
+  var v = new DataView(eocd.buffer);
+  v.setUint32(0, 0x06054b50, true);
+  v.setUint16(8, entries.length, true);
+  v.setUint16(10, entries.length, true);
+  v.setUint32(12, cdSize, true);
+  v.setUint32(16, offset, true);
+
+  var total = chunks.reduce(function(s,c){ return s + c.length; }, 0) + cdSize + 22;
+  var out = new Uint8Array(total), p = 0;
+  chunks.forEach(function(c){ out.set(c, p); p += c.length; });
+  central.forEach(function(c){ out.set(c, p); p += c.length; });
+  out.set(eocd, p);
+  return out;
+}
+
 
 /*==== FILE: src/core/ui.js ====*/
 
@@ -5759,6 +5901,7 @@ function maybeDeflate(bytes){
 
 function szMakeZip(){
   var mode = $("szPwMode").value;
+  var aes = ($("szCipher")||{}).value === "aes";
   var len = parseInt($("szPwLen").value, 10) || 24;
   var pw;
   try { pw = genPassword(mode, len); }
@@ -5773,7 +5916,7 @@ function szMakeZip(){
     });
   })).then(function(entries){
     var zipBytes;
-    try { zipBytes = buildEncryptedZip(entries, pw); }
+    try { zipBytes = aes ? buildEncryptedZip(entries, pw) : buildZipCryptoZip(entries, pw); }
     catch(err){ $("szStatus").textContent = "Failed: " + err.message; $("btnSzMake").disabled = false; return; }
 
     var stamp = new Date().toISOString().slice(0,10).replace(/-/g,"");
@@ -5795,7 +5938,7 @@ function szMakeZip(){
         '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px">'+
           '<a class="btn primary" id="szDownload" download="'+esc(fname)+'" href="'+SZ.zipBlobUrl+'" '+
             'style="text-decoration:none;display:inline-block">&#8595; Download '+esc(fname)+'</a>'+
-          '<span class="note">'+fmtSize(zipBytes.length)+' · AES-256</span>'+
+          '<span class="note">'+fmtSize(zipBytes.length)+' &middot; '+(aes?"AES-256":"ZipCrypto")+'</span>'+
         '</div>'+
         '<div class="field" style="margin-bottom:10px">'+
           '<label>Password — store it now, it is not saved anywhere</label>'+
@@ -5806,9 +5949,14 @@ function szMakeZip(){
           '</div>'+
         '</div>'+
         '<div class="note" style="line-height:1.7">'+
-          'Strength: about <b style="color:var(--green)">'+bits+' bits</b> of entropy. '+
+          'Password strength: about <b style="color:var(--green)">'+bits+' bits</b> of entropy. '+
           'Send the password through a <b>different channel</b> from the file — not in the same email. '+
-          'Opens with 7-Zip, WinRAR, macOS Keka, or any tool supporting WinZip AES.'+
+          (aes
+            ? 'Opens with 7-Zip, WinRAR, macOS Keka, or any tool supporting WinZip AES — <b>not</b> with '+
+              'the Windows Explorer built-in extractor, which does not read AES.'
+            : 'Opens anywhere, including the Windows Explorer built-in extractor. '+
+              '<b style="color:var(--amber)">ZipCrypto is weak</b>: someone holding part of a file\'s '+
+              'original content can recover the rest without the password. Use AES-256 for anything sensitive.')+
         '</div>'+
       '</div>';
     $("szStatus").textContent = "";
@@ -5867,6 +6015,18 @@ $("btnSzMake").addEventListener("click", szMakeZip);
 $("szPwMode").addEventListener("change", function(){
   $("szPwLenWrap").style.display = this.value === "words" ? "none" : "";
 });
+/* the trade-off between the two formats is the whole decision here, so it is
+   spelled out next to the selector rather than buried in the notes below */
+function szCipherNote(){
+  var el = $("szCipherNote"), sel = $("szCipher");
+  if(!el || !sel) return;
+  el.innerHTML = sel.value === "aes"
+    ? "Strong, but the recipient needs 7-Zip, WinRAR or Keka — the Windows built-in extractor cannot open it."
+    : "<b style=\"color:var(--amber)\">Weak encryption.</b> Keeps a file away from a casual reader, "+
+      "but not from anyone who holds part of its original content. Switch to AES-256 for sensitive data.";
+}
+$("szCipher") && $("szCipher").addEventListener("change", szCipherNote);
+szCipherNote();
 function legacyCopy(inp, done){
   inp.focus(); inp.select();
   try { if(document.execCommand("copy")) done(); } catch(err){}

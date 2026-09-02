@@ -374,3 +374,126 @@ function buildPlainZip(entries){
   out.set(eocd, p);
   return out;
 }
+
+/* ============================================================================
+   ZIP writer — traditional PKWARE encryption ("ZipCrypto")
+   The only encrypted-ZIP flavour Windows Explorer opens on its own, which is
+   why it is offered at all. It is weak by modern standards: a few hundred
+   known plaintext bytes recover the keystream without ever finding the
+   password, so it protects against a casual reader, not an attacker. AES-256
+   (buildEncryptedZip above) stays available for anything that matters.
+   Layout per entry: 12-byte encryption header | ciphertext
+   ============================================================================ */
+function zcUpdateKeys(k, b){
+  k[0] = (CRC_TABLE[(k[0] ^ b) & 0xff] ^ (k[0] >>> 8)) >>> 0;
+  k[1] = (k[1] + (k[0] & 0xff)) >>> 0;
+  k[1] = (Math.imul(k[1], 134775813) + 1) >>> 0;
+  k[2] = (CRC_TABLE[(k[2] ^ (k[1] >>> 24)) & 0xff] ^ (k[2] >>> 8)) >>> 0;
+}
+function zcInitKeys(passBytes){
+  var k = new Uint32Array([0x12345678, 0x23456789, 0x34567890]);
+  for(var i=0;i<passBytes.length;i++) zcUpdateKeys(k, passBytes[i]);
+  return k;
+}
+function zcStreamByte(k){
+  var t = (k[2] | 2) & 0xffff;
+  return (Math.imul(t, t ^ 1) >>> 8) & 0xff;
+}
+/* encrypts in place, plaintext byte by plaintext byte (the keys advance on
+   the plaintext, so this cannot be run over already-encrypted data) */
+function zcEncrypt(k, plain){
+  var out = new Uint8Array(plain.length);
+  for(var i=0;i<plain.length;i++){
+    var p = plain[i];
+    out[i] = (p ^ zcStreamByte(k)) & 0xff;
+    zcUpdateKeys(k, p);
+  }
+  return out;
+}
+
+/* entries: [{name, data:Uint8Array, deflated:Uint8Array|null}] */
+function buildZipCryptoZip(entries, password){
+  var passBytes = utf8(password);
+  var chunks = [], central = [], offset = 0;
+  var now = dosDateTime(new Date());
+
+  entries.forEach(function(entry){
+    var raw = entry.data;
+    var useDeflate = !!entry.deflated;
+    var payload = useDeflate ? entry.deflated : raw;
+    var method = useDeflate ? 8 : 0;
+    var crc = crc32(raw);
+
+    // 12-byte header: 11 random bytes, then the CRC's high byte, which is
+    // what a reader checks the password against before unpacking anything
+    var header = new Uint8Array(12);
+    header.set(randomBytes(11), 0);
+    header[11] = (crc >>> 24) & 0xff;
+
+    var plain = new Uint8Array(12 + payload.length);
+    plain.set(header, 0);
+    plain.set(payload, 12);
+    var body = zcEncrypt(zcInitKeys(passBytes), plain);
+
+    var nameBytes = utf8(entry.name);
+    var compSize = body.length;
+    var uncompSize = raw.length;
+
+    var lh = new Uint8Array(30 + nameBytes.length);
+    var ldv = new DataView(lh.buffer);
+    ldv.setUint32(0, 0x04034b50, true);
+    ldv.setUint16(4, 20, true);        // version needed 2.0
+    ldv.setUint16(6, 0x0801, true);    // bit0 encrypted + bit11 UTF-8 names
+    ldv.setUint16(8, method, true);
+    ldv.setUint16(10, now.time, true);
+    ldv.setUint16(12, now.date, true);
+    ldv.setUint32(14, crc, true);
+    ldv.setUint32(18, compSize, true);
+    ldv.setUint32(22, uncompSize, true);
+    ldv.setUint16(26, nameBytes.length, true);
+    ldv.setUint16(28, 0, true);
+    lh.set(nameBytes, 30);
+
+    chunks.push(lh, body);
+
+    var ch = new Uint8Array(46 + nameBytes.length);
+    var cdv = new DataView(ch.buffer);
+    cdv.setUint32(0, 0x02014b50, true);
+    cdv.setUint16(4, 20, true);        // version made by
+    cdv.setUint16(6, 20, true);        // version needed
+    cdv.setUint16(8, 0x0801, true);
+    cdv.setUint16(10, method, true);
+    cdv.setUint16(12, now.time, true);
+    cdv.setUint16(14, now.date, true);
+    cdv.setUint32(16, crc, true);
+    cdv.setUint32(20, compSize, true);
+    cdv.setUint32(24, uncompSize, true);
+    cdv.setUint16(28, nameBytes.length, true);
+    cdv.setUint16(30, 0, true);        // extra length
+    cdv.setUint16(32, 0, true);        // comment length
+    cdv.setUint16(34, 0, true);        // disk number
+    cdv.setUint16(36, 0, true);        // internal attrs
+    cdv.setUint32(38, 0, true);        // external attrs
+    cdv.setUint32(42, offset, true);
+    ch.set(nameBytes, 46);
+    central.push(ch);
+
+    offset += lh.length + body.length;
+  });
+
+  var cdSize = central.reduce(function(s,c){ return s + c.length; }, 0);
+  var eocd = new Uint8Array(22);
+  var v = new DataView(eocd.buffer);
+  v.setUint32(0, 0x06054b50, true);
+  v.setUint16(8, entries.length, true);
+  v.setUint16(10, entries.length, true);
+  v.setUint32(12, cdSize, true);
+  v.setUint32(16, offset, true);
+
+  var total = chunks.reduce(function(s,c){ return s + c.length; }, 0) + cdSize + 22;
+  var out = new Uint8Array(total), p = 0;
+  chunks.forEach(function(c){ out.set(c, p); p += c.length; });
+  central.forEach(function(c){ out.set(c, p); p += c.length; });
+  out.set(eocd, p);
+  return out;
+}
