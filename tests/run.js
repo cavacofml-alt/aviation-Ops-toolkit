@@ -749,6 +749,46 @@ if(inBuild("uld")) try {
      ULD.undoLast() === null && ULD.U.undo.length === 0);
 
 
+  /* A container can fill a bay on its own without being centred: an AKE 70
+     wide in a hold 100 wide leaves no room beside it, so the bay holds one,
+     off the centreline. That is a single position with lateral arms, and it
+     has to survive next to the pair offered at the same bay. */
+  ULD.U.ulds = [{id:"u1",uldType:"LD3",iata:"AKE",maxWeight:1587,tare:65}];
+  ULD.U.bulk = []; ULD.U.refStation = "1258";
+  const bay = (n,l,r) => mkPos(n,"201.1","261.7",l,r,"-0.00342","1587");
+  ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
+    {id:"g1",uldType:"LD3",iata:"AKE",label:"x",positions:[bay("11","15","15")]}
+  ]}];
+  ULD.generateLayouts();
+  ok("one container filling a bay off-centre is offered on its own",
+     ULD.U.layouts[1].length === 1 && ULD.U.layouts[1][0].name === "1LD3" &&
+     ULD.csvLines(1)[0].indexOf(",11,\"LD3,LA\",201.1,261.7,15,15,") > 0,
+     ULD.csvLines(1).join(" | "));
+
+  // the same bay offered both ways: two mutually exclusive options, not one
+  ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
+    {id:"g1",uldType:"LD3",iata:"AKE",label:"x",positions:[
+      bay("11","15","15"), bay("11L","0","48"), bay("11R","48","0")]}
+  ]}];
+  ULD.generateLayouts();
+  const bayNames = ULD.U.layouts[1].map(l => l.name).sort();
+  ok("a bay offered as one container or as a pair keeps both offers",
+     bayNames.join(" | ") === "1LD3 | 2LD3", bayNames.join(" | "));
+  ok("and the two are mutually exclusive — never both in one layout",
+     ULD.U.layouts[1].every(l => l.positions.length === 1 || l.positions.length === 2) &&
+     !ULD.U.layouts[1].some(l => l.positions.length === 3),
+     ULD.U.layouts[1].map(l => l.positions.map(p => p.name).join("+")).join(" | "));
+
+  // a half-bay position with no other half is offered rather than dropped
+  ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
+    {id:"g1",uldType:"LD3",iata:"AKE",label:"x",positions:[bay("11L","0","48")]}
+  ]}];
+  ULD.generateLayouts();
+  ok("an L with no R of its own is still offered, not silently dropped",
+     ULD.U.layouts[1].length === 1 &&
+     ULD.U.layouts[1][0].positions[0].name === "11L",
+     JSON.stringify(ULD.U.layouts[1].map(l => l.name)));
+
 } catch(e){ ok("ULD module loads", false, e.message); }
 
 if(inBuild("recon")) try {
