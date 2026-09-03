@@ -110,22 +110,6 @@
       ],
       "tools_entry": "{ id:\"builder\", name:\"PNL Builder\", badge:\"CSV \u2192 PNL\", code:\"GEN\", accent:\"cyan\", blurb:\"Turn a passenger list in CSV into a PNL: alphabetised, grouped by destination and class, within the 64-character limit \u2014 then checked by the validator.\", sources:\"PSCRM RP 1708 \u00b7 RP 1707b \u00a72.5/\u00a72.9\" }",
       "note": "under test on its own; build with --only builder"
-    },
-    {
-      "id": "uldbeta",
-      "name": "ULD Layout Generator (beta)",
-      "panel": "src/modules/uldbeta/panel.html",
-      "logic": [
-        "src/modules/uld/templates.js",
-        "src/modules/uld/visuals.js",
-        "src/modules/uldbeta/model.js"
-      ],
-      "ui": [
-        "src/modules/uld/uld.js",
-        "src/modules/uldbeta/uldbeta.js"
-      ],
-      "tools_entry": "{ id:\"uldbeta\", name:\"ULD Layout Generator (beta)\", badge:\"BETA\", code:\"ULD\", accent:\"magenta\", wide:true, blurb:\"Same generator, different editor: a compartment is a list of bays, and each bay is ticked for the ULDs certified in it. Weights come from the ULD catalog unless the manual says otherwise.\", sources:\"BETA \\u00b7 the shipped tool is unchanged\" }",
-      "note": "position-first editing model, under test; build with --only uldbeta"
     }
   ]
 }
