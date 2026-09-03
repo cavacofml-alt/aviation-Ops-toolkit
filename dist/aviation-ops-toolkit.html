@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.134</title>
+<title>Aviation Ops Toolkit v1.2.135</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.134</span>
+      <span class="build-ver">v1.2.135</span>
     </header>
 
     <main>
@@ -813,7 +813,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.134 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.135 — Luís Cavaco
     Built 2026-09-03 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -5143,7 +5143,11 @@ function zoneGrid(comp){
   var rows = "", legend = [];
   groups.forEach(function(g){
     var color = groupColor(g.uldType);
-    var iata = g.iata || g.uldType;
+    // The row label is the zone view's own legend for this group — it must
+    // list every certified IATA (iatasOf), not just one. g.iata (singular)
+    // is a stale field groups no longer carry, so it always fell back to
+    // the bare type code and hid every certified ULD but the first.
+    var iata = iatasOf(g).join("/");
     var hasLR = g.positions.some(function(p){ return /[LR]$/.test(p.name); });
     var hasP  = g.positions.some(function(p){ return /P$/.test(p.name); });
     if(hasLR){

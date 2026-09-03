@@ -167,7 +167,11 @@ function zoneGrid(comp){
   var rows = "", legend = [];
   groups.forEach(function(g){
     var color = groupColor(g.uldType);
-    var iata = g.iata || g.uldType;
+    // The row label is the zone view's own legend for this group — it must
+    // list every certified IATA (iatasOf), not just one. g.iata (singular)
+    // is a stale field groups no longer carry, so it always fell back to
+    // the bare type code and hid every certified ULD but the first.
+    var iata = iatasOf(g).join("/");
     var hasLR = g.positions.some(function(p){ return /[LR]$/.test(p.name); });
     var hasP  = g.positions.some(function(p){ return /P$/.test(p.name); });
     if(hasLR){
