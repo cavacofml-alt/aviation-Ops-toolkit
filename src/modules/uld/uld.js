@@ -362,10 +362,13 @@ function groupBox(comp,g,gi){
       '</div></div>';
   }
 
+  var singleBtn = '<button class="btn small" data-act="add-pos" data-g="'+gi+'" '+
+    'style="border-color:'+gc+';color:'+gc+'" title="One container filling the bay on its own — '+
+    'give it the lateral arms if it does not sit on the centreline">+ Position</button>';
   var addBtn = isLD3
     ? '<button class="btn small" data-act="open-pair" data-g="'+gi+'" style="border-color:'+gc+';color:'+gc+'"'+
-      (U.pairForm===g.id?" disabled":"")+'>+ L/R pair</button>'
-    : '<button class="btn small" data-act="add-pos" data-g="'+gi+'" style="border-color:'+gc+';color:'+gc+'">+ Position</button>';
+      (U.pairForm===g.id?" disabled":"")+'>+ L/R pair</button>'+singleBtn
+    : singleBtn;
 
   if(!open) return '<div class="group-box" data-collapsed="1" style="--gc:'+gc+'">'+header+'</div>';
   var included = g.include !== false;
@@ -657,6 +660,11 @@ function generateLayouts(){
   var allLayouts = {};
   U.compartments.forEach(function(comp){
     var zoneOptionsMap = {};
+    // The signature says how a bay is filled, not only where it is: an AKE
+    // sitting alone across the middle and a pair of them side by side share a
+    // station and a weight, but they are two different offers, and folding
+    // one into the other would lose it. Hence the position count and the
+    // lateral arms in the key.
     // Two groups can certify the same fwd/aft/index/max-weight at a zone
     // (e.g. AKE and PKC, when they haven't been derated relative to each
     // other) — that's one physical slot with more than one certified ULD,
@@ -691,58 +699,45 @@ function generateLayouts(){
     }
     comp.uldGroups.forEach(function(group){
       if(group.include === false) return;         // excluded from generation
-      // L/R pairing is a property of the position names, not of any one ULD
-      // type — PLA and LD6 (half pallets) also sit in L/R bays and must be
-      // pairable the same way LD3 is, or a bare L/R suffix conflict check
-      // would treat the two sides as mutually exclusive instead of side by
-      // side, and only ever offer one side at a time.
-      // …and so is the P bay: an LD11 loaded at 11P sits in the same bay as
-      // the PAG and PMC that are also certified there, so it has to key off
-      // the same base ("11"). Reading it off the type instead — LD7 only —
-      // filed the LD11 under a base of its own, where it could never be
-      // recognised as the same slot.
-      var cfgType = group.positions.some(function(p){ return /[LR]$/.test(p.name); }) ? "LR"
-        : (group.positions.some(function(p){ return /P$/.test(p.name); }) ? "P" : "Simple");
-      // Every ULD ticked on this group is certified for the same positions,
-      // so each one is offered there. They carry the position's own values,
-      // so they share a signature and merge into one slot listing them all —
-      // ticking more never multiplies the layouts, it only names them.
+      // Whether a bay is filled by a pair or by one container is a property
+      // of the position, not of the group: an AKE 70 wide in a hold 100 wide
+      // fills its bay alone, off the centreline, and the group next to it
+      // still pairs 11L with 11R. Deciding this per group meant one single
+      // position anywhere silenced every other one in that group.
       var uldDefs = uldDefsOf(group);
       if(!uldDefs.length) return;
-      if(cfgType==="LR"){
-        var Ls = group.positions.filter(function(p){ return /L$/.test(p.name); });
-        var Rs = group.positions.filter(function(p){ return /R$/.test(p.name); });
-        Ls.forEach(function(posL){
-          var base = posL.name.slice(0,-1);
-          var posR = Rs.filter(function(p){ return p.name===base+"R"; })[0];
-          if(!posR) return;
-          var mw = Math.min(parseFloat(posL.maxWeight||0), parseFloat(posR.maxWeight||0));
-          var sig = posL.fwd+"|"+posL.aft+"|"+posL.index+"|"+mw;
-          uldDefs.forEach(function(uldDef){
-            addOption(base, sig,
-              [ Object.assign({},posL,{uld:uldDef.iata,uldType:group.uldType}),
-                Object.assign({},posR,{uld:uldDef.iata,uldType:group.uldType}) ]);
-          });
+      var positions = group.positions || [];
+      var mate = function(p){
+        var m = String(p.name||"").match(/^(.*)([LR])$/);
+        if(!m) return null;
+        var want = m[1] + (m[2] === "L" ? "R" : "L");
+        return positions.filter(function(q){ return q.name === want; })[0] || null;
+      };
+      var offer = function(base, sig, posList){
+        uldDefs.forEach(function(uldDef){
+          addOption(base, sig, posList.map(function(p){
+            return Object.assign({}, p, {uld:uldDef.iata, uldType:group.uldType});
+          }));
         });
-      } else if(cfgType==="P"){
-        group.positions.forEach(function(pos){
-          var base = pos.name.replace(/P$/,"");
-          var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
-          uldDefs.forEach(function(uldDef){
-            addOption(base, sig,
-              [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ]);
-          });
-        });
-      } else {
-        group.positions.forEach(function(pos){
-          var base = pos.name;
-          var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
-          uldDefs.forEach(function(uldDef){
-            addOption(base, sig,
-              [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ]);
-          });
-        });
-      }
+      };
+      // side by side: every L with an R of its own
+      positions.forEach(function(posL){
+        if(!/L$/.test(posL.name)) return;
+        var posR = mate(posL);
+        if(!posR) return;
+        var base = posL.name.slice(0,-1);
+        var mw = Math.min(parseFloat(posL.maxWeight||0), parseFloat(posR.maxWeight||0));
+        offer(base, posL.fwd+"|"+posL.aft+"|"+posL.index+"|"+mw+
+              "|2|"+posL.left+"/"+posL.right+"+"+posR.left+"/"+posR.right, [posL, posR]);
+      });
+      // and one container to a bay: a whole-bay position, a P bay, or a
+      // half-bay position with no other half defined
+      positions.forEach(function(pos){
+        if(/[LR]$/.test(pos.name) && mate(pos)) return;     // already offered as a pair
+        var base = String(pos.name||"").replace(/[LRP]$/,"") || pos.name;
+        offer(base, pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight+
+              "|1|"+pos.left+"/"+pos.right, [pos]);
+      });
     });
     Object.keys(zoneOptionsMap).forEach(function(base){
       zoneOptionsMap[base].forEach(function(opt){
