@@ -752,11 +752,19 @@ function generateLayouts(){
           if(types.indexOf(c.type) < 0) types.push(c.type);
           if(bases.indexOf(uldBase(c.type)) < 0) bases.push(uldBase(c.type));
         });
-        // One base — the shared type code says it all: 2LD3(AKE/PKC).
+        // One base — the shared type code says it all: 2LD3.
         // Different bases in the same slot — name both, or the second ULD
-        // reads as if it were the first one's type: 2LD3/LD2(AKE/DPE).
+        // reads as if it were the first one's type: 2LD3/LD2.
         var typePart = bases.length > 1 ? types.join("/") : types[0];
-        opt.label = opt.positions.length + typePart + "(" + iatas.join("/") + ")";
+        // The ULDs are only spelled out when the slot is narrower than the
+        // type: every LD3 in the catalog certified here says nothing that
+        // "2LD3" does not, while "2LD3(AKE/PKC)" says two of the five.
+        var narrowed = types.some(function(t){
+          var here = opt.certified.filter(function(c){ return c.type === t; })
+                                  .map(function(c){ return c.iata; });
+          return iatasOfType(t).some(function(i){ return here.indexOf(i) < 0; });
+        });
+        opt.label = opt.positions.length + typePart + (narrowed ? "("+iatas.join("/")+")" : "");
       });
     });
 
@@ -1002,6 +1010,26 @@ function bindStep(){
       if(cb.getAttribute("data-opt")==="include") g.include = cb.checked;
       else g.exclusive = cb.checked;
       U.layouts = null;          // previous results no longer describe these rules
+      uldRender();
+    });
+  });
+  // which ULDs of the type this group is certified for
+  Array.prototype.forEach.call(host.querySelectorAll('input[data-iata-tick]'), function(cb){
+    cb.addEventListener("change", function(){
+      var comp = U.compartments[U.activeComp];
+      var g = comp && comp.uldGroups[+cb.getAttribute("data-g")];
+      if(!g) return;
+      var iata = cb.getAttribute("data-iata-tick");
+      if(typeof pushUndo === "function")
+        pushUndo((cb.checked?"certified ":"un-certified ")+iata+" for "+groupLabel(g));
+      if(!setTicked(g, iata, cb.checked)){
+        // the last one cannot be unticked: a group certified for nothing
+        // would silently stop producing layouts
+        cb.checked = true;
+        return;
+      }
+      U.layouts = null;          // previous results named the older list
+      if(typeof uldTouch === "function") uldTouch();
       uldRender();
     });
   });

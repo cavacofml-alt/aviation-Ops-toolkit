@@ -48,6 +48,17 @@ Cada grupo tem duas opções:
 - **Use in layout generation**: desliga se não quiseres que este tipo entre nas combinações geradas (ex: um tipo raramente usado).
 - **Only on its own — never mixed with other types**: liga se este tipo só puder aparecer sozinho no compartimento, nunca misturado com outros.
 
+E, por baixo, a linha **CERTIFIED ULDS**: uma caixa por cada ULD desse tipo que
+tenhas no catálogo, todas ligadas de início. Desliga as que não sejam
+certificadas neste avião. Isto muda o nome do layout no export:
+
+- todas ligadas → `2LD3` (qualquer LD3 serve)
+- só algumas → `2LD3(AKE/PKC)` (só estes)
+
+A coluna "Certified ULDs" do ficheiro leva sempre o código de tipo, por isso
+não é afetada. Não dá para desligar a última — um grupo sem nenhum ULD deixaria
+de gerar seja o que for.
+
 Só avanças para o passo seguinte quando todos os grupos tiverem pelo menos 1 posição.
 
 ### Passo 3 — Layouts (gerar e exportar)
