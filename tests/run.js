@@ -297,7 +297,7 @@ if(inBuild("uld")) try {
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
        ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines, csvAll, " +
        "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, pairAtBase, pairOffsetOf, clampDecimals, exportIndex, uldBase, groupLabel, maxWeightIssue, pushUndo, undoLast};");
-  ok("all aircraft templates load", ULD.TEMPLATES.length === 5);
+  ok("all aircraft templates load", ULD.TEMPLATES.length === 6);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
   ok("a zero index asks for confirmation", ULD.validateIndex("0", "19", "36") !== null);
@@ -422,6 +422,33 @@ if(inBuild("uld")) try {
   const csvC1 = ULD.csvLines(1).join("\n");
   ok("B777 CSV export: a merged zone lists every certified type",
      csvC1.includes('"LD3,LA;L3P/PKC,LA"'));
+
+  const b767 = ULD.TEMPLATES.filter(t => t.name === "Boeing 767-300ER")[0];
+  ULD.U.ulds = JSON.parse(JSON.stringify(b767.ulds));
+  ULD.U.compartments = JSON.parse(JSON.stringify(b767.compartments));
+  ULD.U.refStation = b767.refStation;
+  ok("B767-300ER template has all 4 compartments", ULD.U.compartments.length === 4,
+     ULD.U.compartments.length + '/4');
+  ok("B767-300ER raises no blocking index issue", ULD.indexIssues().hard.length === 0);
+  ULD.generateLayouts();
+  const b767counts = ULD.U.compartments.map(c => (ULD.U.layouts[c.number] || []).length);
+  ok("B767-300ER template generates layouts in every compartment", b767counts.every(n => n > 0), b767counts.join("/"));
+  // Neither the LD11 group nor the LD3 group ticks any ULD explicitly, so
+  // each stands for every catalog ULD of its type (DQF/DQP/ALP, AKC/AKE) —
+  // the exact case whose display was truncated to one IATA before the
+  // zone-view and deckStrip fixes. Confirm generation itself always carried
+  // the full list, position 14 of compartment 1 being one such slot.
+  const b767c1Layouts = (ULD.U.layouts[1]||[]);
+  const ld11Pos = b767c1Layouts.map(l => l.positions.filter(p => p.name === "14" &&
+    (p.certified||[]).some(c => c.type === "LD11"))[0]).filter(Boolean)[0];
+  const ld11Iatas = ld11Pos ? ld11Pos.certified.filter(c => c.type === "LD11").map(c => c.iata).sort().join("/") : "";
+  ok("B767-300ER's untouched LD11 group certifies every LD11 in the catalog (ALP/DQF/DQP)",
+     ld11Iatas === "ALP/DQF/DQP", ld11Iatas);
+  const ld3Pos = b767c1Layouts.map(l => l.positions.filter(p => p.name === "14" &&
+    (p.certified||[]).some(c => c.type === "LD3"))[0]).filter(Boolean)[0];
+  const ld3Iatas = ld3Pos ? ld3Pos.certified.filter(c => c.type === "LD3").map(c => c.iata).sort().join("/") : "";
+  ok("B767-300ER's untouched LD3 group certifies every LD3 in the catalog (AKC/AKE)",
+     ld3Iatas === "AKC/AKE", ld3Iatas);
 
   // A330-200: appended last in TEMPLATES so this and the B777 checks above
   // never need to track each other's array index.
