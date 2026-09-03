@@ -372,17 +372,20 @@ if(inBuild("uld")) try {
   ok("B777 comp1: 11L lists both AKE and PKC as certified (identical there)",
      c1CertTypes.join(",") === "AKE,PKC", c1CertTypes.join(","));
 
-  // The layout name itself must reflect every certified IATA at a merged
-  // zone ("2LD3(AKE/PKC)") — not just whichever group happened to reach it
-  // first, which would misrepresent the layout as AKE-only.
-  const c1MergedName = (ULD.U.layouts[1] || []).find(l => l.name.indexOf("2LD3(AKE/PKC)") >= 0
-    || l.name.indexOf("2LD3(PKC/AKE)") >= 0);
-  ok("B777 comp1: merged-zone layout names list every certified IATA", !!c1MergedName,
+  // A slot certified for every ULD of its type is named by the type alone:
+  // AKE and PKC are the whole LD3 family on this aircraft, and "2LD3" says
+  // that. The IATAs appear only when the slot is narrower than the type.
+  const c1MergedName = (ULD.U.layouts[1] || []).find(l => l.name.indexOf("2LD3") >= 0);
+  const c1_11L_cert = (ULD.U.layouts[1] || [])
+    .map(l => l.positions.find(p => p.name === "11L")).find(Boolean);
+  ok("B777 comp1: a slot certified for the whole type is named by the type",
+     !!c1MergedName && !/2LD3\(/.test(c1MergedName.name) &&
+     c1_11L_cert.certified.map(c => c.iata).sort().join(",") === "AKE,PKC",
      (ULD.U.layouts[1]||[]).slice(0,3).map(l=>l.name).join(" | "));
 
   // The "/" in a two-part type code (L3P/PKC) must survive into the layout
   // name, not be stripped into an unreadable run-together "L3PPKC".
-  const c4PkcName = (ULD.U.layouts[4] || []).some(l => l.name.indexOf("2L3P/PKC(PKC)") >= 0);
+  const c4PkcName = (ULD.U.layouts[4] || []).some(l => l.name.indexOf("2L3P/PKC") >= 0);
   ok("B777 comp4: L3P/PKC keeps its slash in the layout name", c4PkcName);
 
   // Comp4: PKC is derated below AKE at every position there — a genuinely
@@ -636,8 +639,34 @@ if(inBuild("uld")) try {
   // share a base (LD3 and the operator's L3P/PKC coding) still name one,
   // which is what keeps the B777-200's "2LD3(AKE/PKC)" above unchanged.
   ok("a slot shared by two bases names both types",
-     ULD.U.layouts[1].every(l => l.name.indexOf("2LD3/LD2(AKE/DPE)") === 0),
+     ULD.U.layouts[1].every(l => l.name.indexOf("2LD3/LD2") === 0),
      ULD.U.layouts[1].map(l => l.name).join(" | "));
+  /* The naming rule the operator chose: the type alone when the slot is
+     certified for every ULD of it, the IATAs when it is narrower. Ticking
+     is what makes the difference visible in the file. */
+  ULD.U.ulds = [{id:"u1",uldType:"LD3",iata:"AKE",maxWeight:1587,tare:65},
+                {id:"u2",uldType:"LD3",iata:"PKC",maxWeight:1587,tare:40},
+                {id:"u3",uldType:"LD3",iata:"QKE",maxWeight:1587,tare:74}];
+  ULD.U.bulk = []; ULD.U.refStation = "1258";
+  const tickComp = iatas => [{id:"c1",number:1,uldGroups:[
+    {id:"g1",uldType:"LD3",iata:"AKE",label:"x",iatas:iatas,positions:[
+      mkPos("11L","201.1","261.7","0","48","-0.00342","1587"),
+      mkPos("11R","201.1","261.7","48","0","-0.00342","1587")]}
+  ]}];
+  ULD.U.compartments = tickComp(null);          // untouched group: all of the type
+  ULD.generateLayouts();
+  ok("a group certified for the whole type is named by the type alone",
+     ULD.U.layouts[1][0].name === "2LD3", ULD.U.layouts[1][0].name);
+  ok("and it certifies every ULD of that type",
+     ULD.U.layouts[1][0].positions[0].certified.map(c => c.iata).sort().join(",") === "AKE,PKC,QKE");
+
+  ULD.U.compartments = tickComp(["AKE","PKC"]);  // narrowed by unticking QKE
+  ULD.generateLayouts();
+  ok("a narrowed group spells out what is ticked",
+     ULD.U.layouts[1][0].name === "2LD3(AKE/PKC)", ULD.U.layouts[1][0].name);
+  ok("unticking removes it from the certified list too",
+     ULD.U.layouts[1][0].positions[0].certified.map(c => c.iata).sort().join(",") === "AKE,PKC");
+
   ok("types sharing a base still name just the one",
      ULD.uldBase("L3P/PKC") === ULD.uldBase("LD3") && ULD.uldBase("LD2") !== ULD.uldBase("LD3"));
 
@@ -675,16 +704,19 @@ if(inBuild("uld")) try {
     {id:"g1",uldType:"LD7/P96",iata:"PMC",label:"LD7/P96 — PMC",positions:[
       mkPos("11P","201.1","297.3","0","0","-0.003363","5102")]},
     {id:"g2",uldType:"LD11",iata:"DQF",label:"LD11 — DQF",positions:[
-      mkPos("11P","201.1","297.3","0","0","-0.003363","2449")]},
-    {id:"g3",uldType:"LD11",iata:"DQP",label:"LD11 — DQP",positions:[
       mkPos("11P","201.1","297.3","0","0","-0.003363","2449")]}
   ]}];
   ULD.generateLayouts();
   const pNames = ULD.U.layouts[1].map(l => l.name).sort();
   ok("an LD11 in a P bay is one option against the pallet, not a bay of its own",
-     pNames.length === 2 && pNames.indexOf("1LD7/P96(PMC)") >= 0, pNames.join(" | "));
-  ok("two LD11s certified alike at that bay merge into one option",
-     pNames.indexOf("1LD11(DQF/DQP)") >= 0, pNames.join(" | "));
+     pNames.length === 2 && pNames.indexOf("1LD7/P96") >= 0, pNames.join(" | "));
+  // one group, ticked for both LD11s in the catalog: one slot naming both,
+  // each ULD listed once however many times it reaches the slot
+  const ld11Slot = ULD.U.layouts[1].map(l => l.positions[0]).find(p => p.uldType === "LD11");
+  ok("a group ticked for two ULDs certifies both at one slot",
+     pNames.indexOf("1LD11") >= 0 &&
+     ld11Slot.certified.map(c => c.iata).sort().join(",") === "DQF,DQP",
+     pNames.join(" | ") + " / " + JSON.stringify(ld11Slot.certified.map(c => c.iata)));
   /* Positions are numbered after their hold, so a 41L in compartment 1 is a
      typed digit. A warning, not a block — the numbering is a convention. */
   ULD.U.compartments = [{id:"c1",number:1,uldGroups:[

@@ -46,8 +46,37 @@ function iatasOfType(type){
   return U.ulds.filter(function(u){ return u.uldType===type; })
     .map(function(u){ return u.iata; });
 }
+/* Which ULDs of the type this group is actually certified for — the ticks in
+   its header. A group that has never been touched carries none, and stands
+   for every ULD of its type: the manuals are often not explicit, and the
+   operator's judgement is what settles it. Untick to narrow it. */
+function iatasOf(g){
+  var all = iatasOfType(g.uldType);
+  if(!g.iatas || !g.iatas.length) return all;
+  var ticked = g.iatas.filter(function(i){ return all.indexOf(i) >= 0; });
+  return ticked.length ? ticked : all;
+}
+function isTicked(g, iata){ return iatasOf(g).indexOf(iata) >= 0; }
+function setTicked(g, iata, on){
+  var all = iatasOfType(g.uldType);
+  var now = iatasOf(g).slice();
+  var i = now.indexOf(iata);
+  if(on && i < 0) now.push(iata);
+  else if(!on && i >= 0) now.splice(i, 1);
+  if(!now.length) return false;              // a group with nothing ticked is not a group
+  // keep the catalog's order, so the label reads the same way every time
+  g.iatas = all.filter(function(x){ return now.indexOf(x) >= 0; });
+  return true;
+}
+/* the ULDs behind the ticks, and the one that limits the group: a position
+   certified for more than the lightest of them is worth flagging */
+function uldDefsOf(g){
+  return iatasOf(g).map(function(i){
+    return U.ulds.filter(function(u){ return u.uldType===g.uldType && u.iata===i; })[0];
+  }).filter(Boolean);
+}
 function groupLabel(g){
-  var iatas = iatasOfType(g.uldType);
+  var iatas = iatasOf(g);
   return iatas.length ? g.uldType+" — "+iatas.join("/") : (g.label || g.uldType);
 }
 var ULD_TYPE_LABELS = {
@@ -353,6 +382,19 @@ function groupBox(comp,g,gi){
        : g.exclusive ? '<b style="color:var(--amber)">Single-type layouts only</b>'
        : '<b style="color:var(--green)">Combines with the other types</b>')+
     '</span>'+
+  '</div>'+
+  /* which ULDs of this type these positions are certified for. All of them
+     to begin with — untick what does not belong on this aircraft. */
+  '<div class="gen-opts" style="border-top:1px dashed var(--line);padding-top:8px;margin-top:2px">'+
+    '<span class="note" style="letter-spacing:1px">CERTIFIED ULDS</span>'+
+    iatasOfType(g.uldType).map(function(iata){
+      var on = isTicked(g, iata);
+      return '<label title="'+esc(iata)+' is certified for these positions">'+
+        '<input type="checkbox" data-iata-tick="'+esc(iata)+'" data-g="'+gi+'"'+(on?' checked':'')+'>'+
+        '<span style="'+(on?'':'color:var(--faint)')+'">'+esc(iata)+'</span></label>';
+    }).join("")+
+    (iatasOfType(g.uldType).length < 2
+      ? '<span class="note">the only '+esc(g.uldType)+' in the catalog</span>' : '')+
   '</div>';
   return '<div class="group-box" style="--gc:'+gc+'">'+header+'<div class="gbody">'+opts+colHead+
     (rows || '<div class="note" style="margin-bottom:8px">No positions yet.</div>')+
@@ -462,8 +504,11 @@ function viewStep3(){
    bay's ceiling and the ULD's own rating both apply, and the lower one wins.
    Returned as a message rather than thrown, so it can sit under the field. */
 function maxWeightIssue(g, p){
-  var def = uldDefFor(g);
-  if(!def || p.maxWeight === "" || p.maxWeight == null) return null;
+  // measured against the lightest ULD ticked here: if the position states
+  // more than that one carries, at least one certified ULD cannot take it
+  var defs = uldDefsOf(g);
+  if(!defs.length || p.maxWeight === "" || p.maxWeight == null) return null;
+  var def = defs.slice().sort(function(a,b){ return parseFloat(a.maxWeight)-parseFloat(b.maxWeight); })[0];
   var pos = parseFloat(p.maxWeight), uld = parseFloat(def.maxWeight);
   if(isNaN(pos) || isNaN(uld) || pos <= uld) return null;
   return "above the "+def.iata+"'s own "+def.maxWeight+" kg";
@@ -625,7 +670,12 @@ function generateLayouts(){
       if(!zoneBySignature[base]) zoneBySignature[base] = {};
       var existing = zoneBySignature[base][sig];
       if(existing){
-        existing.certified.push({type:positions[0].uldType, iata:positions[0].uld});
+        // the same ULD can reach a slot twice — two groups of one type, or a
+        // group ticked for a ULD another group also names. It is one ULD
+        // either way, and must be listed once.
+        var already = existing.certified.some(function(c){
+          return c.type === positions[0].uldType && c.iata === positions[0].uld; });
+        if(!already) existing.certified.push({type:positions[0].uldType, iata:positions[0].uld});
         return;
       }
       var certified = [{type:positions[0].uldType, iata:positions[0].uld}];
@@ -653,12 +703,12 @@ function generateLayouts(){
       // recognised as the same slot.
       var cfgType = group.positions.some(function(p){ return /[LR]$/.test(p.name); }) ? "LR"
         : (group.positions.some(function(p){ return /P$/.test(p.name); }) ? "P" : "Simple");
-      // Scoped to this group's own declared ULD (type + IATA code) — not just
-      // type — so a group never silently borrows another group's identity or
-      // weight tier when two ULDs of the same type are in the fleet catalog
-      // (e.g. AKE and PKC both being "LD3").
-      var uldDef = U.ulds.filter(function(u){ return u.uldType===group.uldType && u.iata===group.iata; })[0];
-      if(!uldDef) return;
+      // Every ULD ticked on this group is certified for the same positions,
+      // so each one is offered there. They carry the position's own values,
+      // so they share a signature and merge into one slot listing them all —
+      // ticking more never multiplies the layouts, it only names them.
+      var uldDefs = uldDefsOf(group);
+      if(!uldDefs.length) return;
       if(cfgType==="LR"){
         var Ls = group.positions.filter(function(p){ return /L$/.test(p.name); });
         var Rs = group.positions.filter(function(p){ return /R$/.test(p.name); });
@@ -668,23 +718,29 @@ function generateLayouts(){
           if(!posR) return;
           var mw = Math.min(parseFloat(posL.maxWeight||0), parseFloat(posR.maxWeight||0));
           var sig = posL.fwd+"|"+posL.aft+"|"+posL.index+"|"+mw;
-          addOption(base, sig,
-            [ Object.assign({},posL,{uld:uldDef.iata,uldType:group.uldType}),
-              Object.assign({},posR,{uld:uldDef.iata,uldType:group.uldType}) ]);
+          uldDefs.forEach(function(uldDef){
+            addOption(base, sig,
+              [ Object.assign({},posL,{uld:uldDef.iata,uldType:group.uldType}),
+                Object.assign({},posR,{uld:uldDef.iata,uldType:group.uldType}) ]);
+          });
         });
       } else if(cfgType==="P"){
         group.positions.forEach(function(pos){
           var base = pos.name.replace(/P$/,"");
           var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
-          addOption(base, sig,
-            [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ]);
+          uldDefs.forEach(function(uldDef){
+            addOption(base, sig,
+              [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ]);
+          });
         });
       } else {
         group.positions.forEach(function(pos){
           var base = pos.name;
           var sig = pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight;
-          addOption(base, sig,
-            [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ]);
+          uldDefs.forEach(function(uldDef){
+            addOption(base, sig,
+              [ Object.assign({},pos,{uld:uldDef.iata,uldType:group.uldType}) ]);
+          });
         });
       }
     });
@@ -696,11 +752,19 @@ function generateLayouts(){
           if(types.indexOf(c.type) < 0) types.push(c.type);
           if(bases.indexOf(uldBase(c.type)) < 0) bases.push(uldBase(c.type));
         });
-        // One base — the shared type code says it all: 2LD3(AKE/PKC).
+        // One base — the shared type code says it all: 2LD3.
         // Different bases in the same slot — name both, or the second ULD
-        // reads as if it were the first one's type: 2LD3/LD2(AKE/DPE).
+        // reads as if it were the first one's type: 2LD3/LD2.
         var typePart = bases.length > 1 ? types.join("/") : types[0];
-        opt.label = opt.positions.length + typePart + "(" + iatas.join("/") + ")";
+        // The ULDs are only spelled out when the slot is narrower than the
+        // type: every LD3 in the catalog certified here says nothing that
+        // "2LD3" does not, while "2LD3(AKE/PKC)" says two of the five.
+        var narrowed = types.some(function(t){
+          var here = opt.certified.filter(function(c){ return c.type === t; })
+                                  .map(function(c){ return c.iata; });
+          return iatasOfType(t).some(function(i){ return here.indexOf(i) < 0; });
+        });
+        opt.label = opt.positions.length + typePart + (narrowed ? "("+iatas.join("/")+")" : "");
       });
     });
 
@@ -946,6 +1010,26 @@ function bindStep(){
       if(cb.getAttribute("data-opt")==="include") g.include = cb.checked;
       else g.exclusive = cb.checked;
       U.layouts = null;          // previous results no longer describe these rules
+      uldRender();
+    });
+  });
+  // which ULDs of the type this group is certified for
+  Array.prototype.forEach.call(host.querySelectorAll('input[data-iata-tick]'), function(cb){
+    cb.addEventListener("change", function(){
+      var comp = U.compartments[U.activeComp];
+      var g = comp && comp.uldGroups[+cb.getAttribute("data-g")];
+      if(!g) return;
+      var iata = cb.getAttribute("data-iata-tick");
+      if(typeof pushUndo === "function")
+        pushUndo((cb.checked?"certified ":"un-certified ")+iata+" for "+groupLabel(g));
+      if(!setTicked(g, iata, cb.checked)){
+        // the last one cannot be unticked: a group certified for nothing
+        // would silently stop producing layouts
+        cb.checked = true;
+        return;
+      }
+      U.layouts = null;          // previous results named the older list
+      if(typeof uldTouch === "function") uldTouch();
       uldRender();
     });
   });
