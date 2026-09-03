@@ -80,10 +80,18 @@ Se editares qualquer posição depois de já teres gerado os layouts, aparece um
 ## Desfazer
 
 O botão **↶ Undo** (na barra do topo, ao lado do Reset) desfaz a última ação
-destrutiva: remover um grupo, um compartimento, uma posição ou um ULD, carregar
-um template por cima do que tinhas, ou o Reset. Passa o rato por cima para ver
-o que vai desfazer. Guarda as últimas 12 ações, e só enquanto a página estiver
-aberta.
+destrutiva: remover um grupo, um compartimento, uma posição ou um ULD, desligar
+uma caixa dos Certified ULDs, carregar um template por cima do que tinhas, ou o
+Reset. Passa o rato por cima para ver o que vai desfazer. Guarda as últimas 12
+ações, e só enquanto a página estiver aberta.
+
+**Atalho: `Ctrl+Z`** (`Cmd+Z` no Mac). Útil quando estás no fim de uma lista
+longa de posições e o botão já não está à vista — aparece uma confirmação em
+baixo a dizer o que foi desfeito.
+
+Dentro de um campo de texto o `Ctrl+Z` continua a ser o desfazer normal da
+escrita, como em qualquer página. Clica fora do campo primeiro se quiseres
+desfazer a ação anterior.
 
 ## Guardar os teus próprios aviões
 

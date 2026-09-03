@@ -138,7 +138,7 @@ function uldRender(){
   if(ub){
     var last = (U.undo||[])[ (U.undo||[]).length - 1 ];
     ub.disabled = !last;
-    ub.title = last ? "Undo: "+last.label : "Nothing to undo";
+    ub.title = (last ? "Undo: "+last.label : "Nothing to undo")+" (Ctrl+Z)";
   }
   renderStepbar();
   var host = $("uldStep");
@@ -1348,13 +1348,50 @@ $("fileCfg").addEventListener("change", function(e){
   r.readAsText(file); e.target.value = "";
 });
 $("btnPresets").addEventListener("click", openTemplates);
-$("btnUndo").addEventListener("click", function(){
+/* The toolbar sits at the top, and the positions being edited run well past
+   the fold — by the time a group is removed, the button that takes it back is
+   off screen. So the result is said where the work is, and the keyboard
+   reaches it from anywhere. */
+function uldToast(text, tone){
+  var el = $("uldToast");
+  if(!el){
+    el = document.createElement("div");
+    el.id = "uldToast";
+    el.style.cssText = "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;"+
+      "padding:10px 18px;border-radius:var(--radius-sm);font-family:var(--mono);font-size:12.5px;"+
+      "box-shadow:var(--shadow);pointer-events:none;transition:opacity .25s";
+    document.body.appendChild(el);
+  }
+  el.style.background = tone==="none" ? "var(--panel2)" : "var(--green-soft)";
+  el.style.border = "1px solid "+(tone==="none" ? "var(--line-2)" : "var(--green)");
+  el.style.color = tone==="none" ? "var(--dim)" : "var(--green)";
+  el.textContent = text;
+  el.style.opacity = "1";
+  clearTimeout(uldToast._t);
+  uldToast._t = setTimeout(function(){ el.style.opacity = "0"; }, 2600);
+}
+function doUndo(){
   var what = undoLast();
-  if(!what) return;
+  if(!what){ uldToast("Nothing left to undo", "none"); return; }
   U.editUld = null; U.pairForm = null;
   uldRender();
   var el = $("uldSaveState");
   if(el){ el.className = "savestate"; el.textContent = "Undone: "+what; }
+  uldToast("↶ Undone: "+what);
+}
+$("btnUndo").addEventListener("click", doUndo);
+/* Ctrl+Z / Cmd+Z, but never while typing: inside a field that shortcut is the
+   browser's own undo for the text, and taking it over would leave no way to
+   take back a keystroke. */
+document.addEventListener("keydown", function(e){
+  if(e.key !== "z" && e.key !== "Z") return;
+  if(!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+  var panel = $("panel-uld");
+  if(!panel || panel.classList.contains("panel-hidden")) return;
+  var t = e.target;
+  if(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+  e.preventDefault();
+  doUndo();
 });
 $("btnReset").addEventListener("click", function(){
   if(!U.ulds.length && !U.compartments.length){ return; }
