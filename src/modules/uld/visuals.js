@@ -215,14 +215,21 @@ function deckStrip(layout){
   });
   var tiles = positions.map(function(p){
     var col = groupColor(p.uldType);
-    var cert = (p.certified||[{type:p.uldType,iata:p.uld}])
-      .map(function(c){ return c.type+" ("+c.iata+")"; }).join(", ");
+    var certList = p.certified||[{type:p.uldType,iata:p.uld}];
+    var cert = certList.map(function(c){ return c.type+" ("+c.iata+")"; }).join(", ");
+    // A merged slot (e.g. PAG and PMC certified identically at 12P) is
+    // built from whichever group's position got there first — p.uld alone
+    // would silently show only that one, as if the other were not
+    // certified here at all. The tile's own label must list every IATA
+    // certified for this exact slot, same as its tooltip and the expanded
+    // table below it.
+    var label = certList.map(function(c){ return c.iata; }).join("/");
     return '<div title="Certified ULDs: '+esc(cert)+'" style="min-width:56px;height:40px;'+
       'border:1.5px solid '+col+';background:color-mix(in srgb, '+col+' 14%, transparent);'+
       'border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;'+
       'font-family:var(--mono);cursor:default">'+
       '<span style="font-size:11px;color:'+col+'">'+esc(p.name)+'</span>'+
-      '<span style="font-size:9px;color:var(--dim)">'+esc(p.uld)+'</span>'+
+      '<span style="font-size:9px;color:var(--dim)">'+esc(label)+'</span>'+
     '</div>';
   }).join("");
   return '<div style="display:flex;gap:6px;flex-wrap:wrap;padding:10px;background:var(--panel2);'+
