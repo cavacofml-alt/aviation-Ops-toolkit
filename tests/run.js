@@ -675,16 +675,17 @@ if(inBuild("uld")) try {
     {id:"g1",uldType:"LD7/P96",iata:"PMC",label:"LD7/P96 — PMC",positions:[
       mkPos("11P","201.1","297.3","0","0","-0.003363","5102")]},
     {id:"g2",uldType:"LD11",iata:"DQF",label:"LD11 — DQF",positions:[
-      mkPos("11P","201.1","297.3","0","0","-0.003363","2449")]},
-    {id:"g3",uldType:"LD11",iata:"DQP",label:"LD11 — DQP",positions:[
       mkPos("11P","201.1","297.3","0","0","-0.003363","2449")]}
   ]}];
   ULD.generateLayouts();
   const pNames = ULD.U.layouts[1].map(l => l.name).sort();
   ok("an LD11 in a P bay is one option against the pallet, not a bay of its own",
      pNames.length === 2 && pNames.indexOf("1LD7/P96(PMC)") >= 0, pNames.join(" | "));
-  ok("two LD11s certified alike at that bay merge into one option",
-     pNames.indexOf("1LD11(DQF/DQP)") >= 0, pNames.join(" | "));
+  // one group, ticked for both LD11s in the catalog: one slot naming both,
+  // each ULD listed once however many times it reaches the slot
+  ok("a group ticked for two ULDs offers one slot naming both",
+     pNames.indexOf("1LD11(DQP/DQF)") >= 0 || pNames.indexOf("1LD11(DQF/DQP)") >= 0,
+     pNames.join(" | "));
   /* Positions are numbered after their hold, so a 41L in compartment 1 is a
      typed digit. A warning, not a block — the numbering is a convention. */
   ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
