@@ -431,9 +431,9 @@ function viewStep3(){
   } else if(iss.sign.length){
     gate = issueBox({ items:iss.sign,
       title:iss.sign.length+" index value"+(iss.sign.length!==1?"s":"")+" disagree with the reference station",
-      lead:"Against station <b>"+esc(U.refStation||"—")+"</b>, these signs look inverted. Index sign conventions "+
-           "differ between operators and aircraft types, so this is not blocked outright — but generating layouts "+
-           "from a wrong sign would shift the centre of gravity the wrong way.",
+      lead:"Against the reference station entered above, <b>"+esc(U.refStation||"—")+"</b>, these signs fall on the "+
+           "wrong side of zero. It is not blocked outright — the reference station itself may be what needs "+
+           "correcting — but generating from a wrong sign would shift the centre of gravity the wrong way.",
       after:'<label style="display:flex;align-items:center;gap:8px;margin-top:14px;cursor:pointer;color:var(--text)">'+
         '<input type="checkbox" id="signAck"'+(U.signAck?" checked":"")+'>'+
         '<span style="font-size:12.5px">I have checked these against the aircraft index convention — generate anyway</span>'+
@@ -446,8 +446,8 @@ function viewStep3(){
   if(iss.warn.length){
     gate += issueBox({ collapsible:true, items:iss.warn, style:gate?"margin-top:12px":"",
       title:iss.warn.length+" position"+(iss.warn.length!==1?"s":"")+" worth checking",
-      lead:"These all generate — nothing here is blocked. They are the figures that most often turn out to be "+
-           "a typing slip rather than what the manual says." });
+      lead:"These all generate — nothing here is blocked. Each one is a number in this setup disagreeing "+
+           "with another number in it." });
   }
 
   /* Two types certified for the same bay with the same station, index and
@@ -516,8 +516,10 @@ function viewStep3(){
 }
 
 /* A position cannot be certified for more than the ULD itself carries: the
-   bay's ceiling and the ULD's own rating both apply, and the lower one wins.
-   Returned as a message rather than thrown, so it can sit under the field. */
+   bay's ceiling and the ULD's rating in the catalog both apply, and the lower
+   one wins. Measured against the catalog, so it is this setup checked against
+   itself. Returned as a message rather than thrown, so it can sit under the
+   field. */
 function maxWeightIssue(g, p){
   // measured against the lightest ULD ticked here: if the position states
   // more than that one carries, at least one certified ULD cannot take it
@@ -557,14 +559,15 @@ function grossIndexLimit(comp){
    Three classes of problem, deliberately treated differently:
      hard  — the value cannot be used at all (missing, not a number, or a bay
              with no length). Blocks.
-     sign  — the index sign disagrees with the reference-station convention.
-             Index sign conventions differ between operators and aircraft, so this
-             cannot be a hard block; it requires an explicit acknowledgement.
-     warn  — the data is usable but looks wrong: a position certified for more
-             than the ULD carries, or a number orders of magnitude off.
-             Shown, never blocks —
-             the manuals do carry surprising figures, and this tool is not the
-             authority on them. */
+     sign  — the index falls on the wrong side of zero for where it sits
+             relative to the reference station. Either value can be the wrong
+             one, so this cannot be a hard block; it requires an explicit
+             acknowledgement.
+     warn  — the data is usable, but two values in this setup disagree with
+             each other: a bay authorising more than the ULD certified for it
+             is rated to carry, or a number orders of magnitude off its
+             neighbours. Shown, never blocks — which of the two values is the
+             wrong one is the operator's to say, not ours. */
 function indexIssues(){
   var hard = [], sign = [], warn = [];
   U.compartments.forEach(function(c, ci){
@@ -683,8 +686,9 @@ var ISSUE_HELP = {
     "The last ULD of this type was removed from the catalog, so the group certifies nothing and its positions "+
     "reach neither the layouts nor the export. Add the ULD back in step 1, or remove the group.",
   "Above the ULD's own rating":
-    "The bay is certified for more than the lightest ULD ticked on the group carries. Manuals do carry figures "+
-    "like this — worth confirming it is deliberate.",
+    "This bay authorises more weight than the lightest ULD ticked on the group is rated for in the catalog. "+
+    "Two numbers in this setup disagree, and the file would carry the higher one: fix the ULD's rating in "+
+    "step 1, or the bay's limit here.",
   "Heavier than any ULD":
     "Heavier than any ULD in service — usually a weight entered in pounds, or one digit too many.",
   "Numbered for another compartment":
@@ -694,15 +698,15 @@ var ISSUE_HELP = {
   "Incomplete position":
     "A position generates nothing until it carries all of: name, FWD, AFT, index and max weight.",
   "Index sign against the reference station":
-    "Forward of the reference station the index should be negative, aft of it positive. Conventions differ "+
-    "between operators and aircraft — but a single position disagreeing with its neighbours is usually a "+
-    "missing minus sign, and it moves the centre of gravity the wrong way.",
+    "Measured against the reference station entered at the top, this index falls on the wrong side of zero: "+
+    "forward of it the index is negative, aft of it positive. A sign the wrong way round moves the centre of "+
+    "gravity the wrong way.",
   "Index rounds away to zero":
     "The file carries five decimals. An index smaller than that is written as 0, and a position with a zero "+
     "index contributes no moment at all — whatever is loaded there stops affecting the trim.",
   "Weight unlike the rest of its type":
-    "Three times more or less than the other positions of this type carry. Legitimate deratings are rarely "+
-    "this large — check for a digit too many, or one too few.",
+    "Three times more or less than the other positions of this type carry in this setup — check for a digit "+
+    "too many, or one too few.",
   "Generated before the last edit":
     "Positions were edited after these layouts were computed, so the file would describe numbers the editor no "+
     "longer holds. Go back and generate again before exporting."
