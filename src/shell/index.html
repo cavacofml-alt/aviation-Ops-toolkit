@@ -417,6 +417,33 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 .zone-legend i{width:12px; height:12px; border-radius:var(--radius-sm); display:inline-block}
 .warnbox{border:1px solid var(--amber); background:var(--amber-soft); border-radius:var(--radius-sm);
   padding:12px 14px; margin:12px 0; font-size:12.5px; color:var(--amber)}
+/* Data-quality issues. One problem across four bays is one problem, not
+   four, so they group by what is wrong; and since this sits above the work
+   it is warning about, it stays one line until asked to open. */
+.issuebox{border:1px solid var(--amber); background:var(--amber-soft); color:var(--amber);
+  border-radius:var(--radius-sm); margin:12px 0; overflow:hidden}
+.issuebox.stop{border-color:var(--red); background:var(--red-soft); color:var(--red)}
+.issue-sum{display:flex; align-items:center; gap:9px; width:100%; padding:11px 14px;
+  background:none; border:0; color:inherit; font-family:inherit; font-size:12.5px; text-align:left}
+button.issue-sum{cursor:pointer}
+button.issue-sum:hover{background:color-mix(in srgb, currentColor 8%, transparent)}
+.issue-sum .count{font-family:var(--mono)}
+.issue-sum .act{margin-left:auto; display:flex; align-items:center; gap:6px;
+  font-size:10.5px; letter-spacing:1.2px; text-transform:uppercase; color:var(--dim)}
+.issue-sum .chev{transition:transform .15s}
+.issue-sum .chev[data-open="1"]{transform:rotate(90deg)}
+.issue-body{padding:0 14px 12px}
+.issue-body > .lead{margin:0 0 4px; color:var(--dim); font-size:11.5px; line-height:1.55}
+.issue-kind{border-top:1px solid color-mix(in srgb, currentColor 20%, transparent); padding:11px 0 3px}
+.issue-kind .t{font-weight:600; font-size:12.5px}
+.issue-kind .t em{font-style:normal; font-family:var(--mono); font-size:11px; color:var(--dim); margin-left:7px}
+.issue-kind .why{margin:3px 0 8px; color:var(--dim); font-size:11.5px; line-height:1.55}
+.issue-chips{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+.issue-chip{font-family:var(--mono); font-size:11px; line-height:1.6; padding:2px 8px;
+  border-radius:var(--radius-sm); cursor:pointer; color:inherit; background:none;
+  border:1px solid color-mix(in srgb, currentColor 42%, transparent)}
+.issue-chip:hover{background:color-mix(in srgb, currentColor 14%, transparent)}
+.issue-chip i{font-style:normal; color:var(--dim); margin-left:5px}
 .stat-grid{display:grid; gap:10px; margin-bottom:16px}
 .stat{border:1px solid var(--line); background:var(--panel2); border-radius:var(--radius-sm); padding:12px 16px; text-align:center}
 .stat .v{font-size:26px; font-weight:700; color:var(--cyan); font-family:var(--mono)}

@@ -296,7 +296,7 @@ if(inBuild("uld")) try {
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
        ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines, csvAll, " +
-       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, pairAtBase, pairOffsetOf, clampDecimals, exportIndex, uldBase, groupLabel, maxWeightIssue, pushUndo, undoLast};");
+       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, pairAtBase, pairOffsetOf, clampDecimals, exportIndex, uldBase, groupLabel, maxWeightIssue, pushUndo, undoLast, issueBody};");
   ok("all aircraft templates load", ULD.TEMPLATES.length === 6);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
@@ -871,6 +871,33 @@ if(inBuild("uld")) try {
      JSON.stringify(orphan.map(x => x.type + " " + x.reason)));
   ok("a group that still has its ULDs is not flagged",
      !orphan.some(x => x.type === "LD2"));
+  /* One problem across four bays is one problem, not four: the box groups
+     the issues by what is wrong, so every issue has to carry a kind, and
+     each kind is stated once with the positions as chips under it. */
+  ULD.U.ulds = [{id:"u1",uldType:"LD3",iata:"AKE",maxWeight:1587,tare:65}];
+  ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
+    {id:"g1",uldType:"LD3",iata:"AKE",positions:[
+      mkPos("11L","201.1","261.7","0","48","-0.00342","1587"),
+      mkPos("41L","201.1","261.7","0","48","-0.00342","99999")]}
+  ]}];
+  const mixed = ULD.indexIssues();
+  ok("every issue carries a kind to group it by",
+     mixed.hard.concat(mixed.sign, mixed.warn).every(x => !!x.kind),
+     JSON.stringify(mixed.warn.map(x => x.kind)));
+  const grouped = ULD.issueBody(mixed.warn);
+  const kinds = new Set(mixed.warn.map(x => x.kind));
+  ok("the box states each kind once, however many positions it touches",
+     (grouped.match(/class="issue-kind"/g)||[]).length === kinds.size && kinds.size > 1,
+     kinds.size + " kinds, " + mixed.warn.length + " issues");
+  ok("and every position is still reachable as its own chip",
+     (grouped.match(/data-act="fix-pos"/g)||[]).length === mixed.warn.length);
+  ok("the two silent-loss kinds explain what to do about them",
+     ULD.issueBody([{kind:"One bay described twice",ci:0,gid:"g",comp:1,name:"11",type:"LD3",reason:"r"}])
+        .indexOf("untick") > 0 &&
+     ULD.issueBody([{kind:"Nothing certified — generates nothing",ci:0,gid:"g",comp:1,name:"11",type:"LD3",reason:"r"}])
+        .indexOf("Add the ULD back") > 0);
+
+  ULD.U.ulds = [{id:"u1",uldType:"LD2",iata:"DPE",maxWeight:1224,tare:72}];
   ok("and no shipped template is left certifying nothing",
      ULD.TEMPLATES.every(t => {
        ULD.U.ulds = JSON.parse(JSON.stringify(t.ulds));

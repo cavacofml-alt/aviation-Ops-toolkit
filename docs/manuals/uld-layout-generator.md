@@ -99,10 +99,24 @@ separados, com a caixa ligada ou desligada.
 
 Se editares qualquer posição depois de já teres gerado os layouts, aparece um aviso amarelo a dizer que os dados mudaram. Basta clicar outra vez em **Generate all layouts** para atualizar tudo.
 
-### Dois avisos que valem uma leitura atenta
+### A caixa de avisos
 
-Aparecem na caixa amarela "positions worth checking", não bloqueiam nada, e
-cada um tem um botão que salta para o grupo em causa:
+Quando há dados que merecem uma segunda vista, aparece uma linha amarela por
+cima dos layouts: **"⚠ N positions worth checking"**, com um botão **REVIEW**
+à direita. Fica fechada — é só uma linha — para não empurrar o trabalho para
+baixo. Clica em **REVIEW** para abrir.
+
+Aberta, os avisos vêm **agrupados pelo tipo de problema**, não um por
+posição: cada problema é explicado uma vez, e por baixo ficam as posições
+afetadas em pequenas etiquetas (`11 C1 · LD3`). Clica numa etiqueta para
+saltar direto ao grupo no Passo 2, já aberto para editares. Passa o rato por
+cima para veres o detalhe daquela posição em concreto.
+
+Se houver dados que **impedem** a geração, essa caixa é vermelha e está
+sempre aberta — não há nada a gerar até resolveres.
+
+Dois dos avisos valem uma leitura atenta, porque em ambos há dados teus que
+não chegam ao ficheiro final:
 
 - **"another LD3 group describes this bay with different numbers"** — tens
   dois grupos do mesmo tipo a descrever a mesma baia com index ou peso

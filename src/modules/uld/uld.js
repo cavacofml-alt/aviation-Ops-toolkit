@@ -97,7 +97,7 @@ var uid = function(){
 var U = { step:0, ulds:[], compartments:[], bulk:[], refStation:"", activeComp:0,
           layouts:null, activeLayoutComp:0, editUld:null, pairForm:null, addType:"",
           collapsed:{}, openLayout:{}, layoutLimit:{}, signAck:false, tplName:null,
-          undo:[], myTemplates:[], mergeIdentical:true };
+          undo:[], myTemplates:[], mergeIdentical:true, issuesOpen:false };
 
 function emptyPos(name){
   return { name:name||"", fwd:"", aft:"", left:"0", right:"0", index:"", maxWeight:"" };
@@ -424,36 +424,30 @@ function viewStep3(){
 
   var gate = "";
   if(iss.hard.length){
-    gate = '<div class="warnbox" style="border-color:var(--red);background:var(--red-soft);color:var(--red)">'+
-      '<b>&#9888; Cannot generate — '+iss.hard.length+' position'+(iss.hard.length!==1?"s":"")+' with unusable data</b>'+
-      '<div style="margin-top:6px;color:var(--dim)">Every position must carry a name, FWD and AFT stations, '+
-      'an index and a max weight. Loading against a wrong or missing index would put the centre of gravity '+
-      'out by exactly the amount of the error.</div>'+
-      issueList(iss.hard, "red")+
-    '</div>';
+    gate = issueBox({ stop:true, items:iss.hard,
+      title:"Cannot generate — "+iss.hard.length+" position"+(iss.hard.length!==1?"s":"")+" with unusable data",
+      lead:"Every position must carry a name, FWD and AFT stations, an index and a max weight. Loading against "+
+           "a wrong or missing index would put the centre of gravity out by exactly the amount of the error." });
   } else if(iss.sign.length){
-    gate = '<div class="warnbox">'+
-      '<b>&#9888; '+iss.sign.length+' index value'+(iss.sign.length!==1?"s":"")+' disagree with the reference station</b>'+
-      '<div style="margin-top:6px;color:var(--dim)">Against station <b>'+esc(U.refStation||"—")+'</b>, these signs look '+
-      'inverted. Index sign conventions differ between operators and aircraft types, so this is not blocked outright — '+
-      'but generating layouts from a wrong sign would shift the centre of gravity the wrong way.</div>'+
-      issueList(iss.sign, "amber")+
-      '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;color:var(--text)">'+
+    gate = issueBox({ items:iss.sign,
+      title:iss.sign.length+" index value"+(iss.sign.length!==1?"s":"")+" disagree with the reference station",
+      lead:"Against station <b>"+esc(U.refStation||"—")+"</b>, these signs look inverted. Index sign conventions "+
+           "differ between operators and aircraft types, so this is not blocked outright — but generating layouts "+
+           "from a wrong sign would shift the centre of gravity the wrong way.",
+      after:'<label style="display:flex;align-items:center;gap:8px;margin-top:14px;cursor:pointer;color:var(--text)">'+
         '<input type="checkbox" id="signAck"'+(U.signAck?" checked":"")+'>'+
-        '<span style="font-size:13px">I have checked these against the aircraft index convention — generate anyway</span>'+
-      '</label>'+
-    '</div>';
+        '<span style="font-size:12.5px">I have checked these against the aircraft index convention — generate anyway</span>'+
+      '</label>' });
   }
   // shown alongside whatever the gate says, and never blocking: these are
-  // figures worth a second look, not data the generator cannot use
+  // figures worth a second look, not data the generator cannot use. Folded
+  // away by default — it sits above the layouts, and a warning that buries
+  // the work it is warning about gets scrolled past, not read.
   if(iss.warn.length){
-    gate += '<div class="warnbox" style="margin-top:'+(gate?"12px":"0")+'">'+
-      '<b>&#9888; '+iss.warn.length+' position'+(iss.warn.length!==1?"s":"")+' worth checking</b>'+
-      '<div style="margin-top:6px;color:var(--dim)">These generate fine, but the numbers look off — a position '+
-      'certified for more than the ULD itself carries, or a decimal point out of place. Manuals do carry '+
-      'surprising figures, so nothing is blocked here.</div>'+
-      issueList(iss.warn, "amber")+
-    '</div>';
+    gate += issueBox({ collapsible:true, items:iss.warn, style:gate?"margin-top:12px":"",
+      title:iss.warn.length+" position"+(iss.warn.length!==1?"s":"")+" worth checking",
+      lead:"These all generate — nothing here is blocked. They are the figures that most often turn out to be "+
+           "a typing slip rather than what the manual says." });
   }
 
   /* Two types certified for the same bay with the same station, index and
@@ -584,42 +578,49 @@ function indexIssues(){
          empties. */
       if(g.include !== false && (g.positions||[]).length && !uldDefsOf(g).length){
         warn.push({ comp:c.number, ci:ci, gid:g.id, type:g.uldType,
+          kind:"Nothing certified — generates nothing",
           name:(g.positions[0].name||"(unnamed)"),
           reason:"no "+g.uldType+" left in the ULD catalog — this group generates nothing" });
       }
       (g.positions||[]).forEach(function(p){
         var where = { comp:c.number, ci:ci, gid:g.id, name:p.name||"(unnamed)", type:g.uldType };
         if(!p.name || p.fwd==="" || p.aft==="" || p.index==="" || p.maxWeight===""){
-          hard.push(Object.assign({reason:"incomplete — name, FWD, AFT, index and max weight are all required"}, where));
+          hard.push(Object.assign({kind:"Incomplete position",
+            reason:"incomplete — name, FWD, AFT, index and max weight are all required"}, where));
           return;
         }
         if(isNaN(parseFloat(p.index))){
-          hard.push(Object.assign({reason:"index is not a number"}, where)); return;
+          hard.push(Object.assign({kind:"Index is not a number", reason:"index is not a number"}, where)); return;
         }
         if(isNaN(parseFloat(p.fwd)) || isNaN(parseFloat(p.aft))){
-          hard.push(Object.assign({reason:"FWD/AFT station is not a number"}, where)); return;
+          hard.push(Object.assign({kind:"Station is not a number", reason:"FWD/AFT station is not a number"}, where)); return;
         }
         var fwd = parseFloat(p.fwd), aft = parseFloat(p.aft), mw = parseFloat(p.maxWeight);
         if(aft <= fwd){
-          hard.push(Object.assign({reason:"AFT station is not behind FWD — the bay has no length"}, where)); return;
+          hard.push(Object.assign({kind:"Bay has no length",
+            reason:"AFT station is not behind FWD — the bay has no length"}, where)); return;
         }
         if(isNaN(mw) || mw <= 0){
-          hard.push(Object.assign({reason:"max weight is not a usable number"}, where)); return;
+          hard.push(Object.assign({kind:"Max weight is not usable", reason:"max weight is not a usable number"}, where)); return;
         }
         var w = validateIndex(p.index, p.fwd, U.refStation);
-        if(w) sign.push(Object.assign({reason:w}, where));
+        if(w) sign.push(Object.assign({kind:"Index sign against the reference station", reason:w}, where));
 
         var mwIssue = maxWeightIssue(g, p);
-        if(mwIssue) warn.push(Object.assign({reason:p.maxWeight+" kg is "+mwIssue}, where));
+        if(mwIssue) warn.push(Object.assign({kind:"Above the ULD's own rating",
+          reason:p.maxWeight+" kg is "+mwIssue}, where));
         if(mw > GROSS_MAX_WEIGHT)
-          warn.push(Object.assign({reason:"max weight of "+p.maxWeight+" kg — heavier than any ULD"}, where));
+          warn.push(Object.assign({kind:"Heavier than any ULD",
+            reason:"max weight of "+p.maxWeight+" kg — heavier than any ULD"}, where));
         // positions are numbered after their hold (11L, 21P, 33…), so a 41L
         // sitting in compartment 1 is almost always a typed digit
         var lead = String(p.name).match(/^(\d)/);
         if(lead && String(c.number).length === 1 && lead[1] !== String(c.number))
-          warn.push(Object.assign({reason:"named for compartment "+lead[1]+" but sits in "+c.number}, where));
+          warn.push(Object.assign({kind:"Numbered for another compartment",
+            reason:"named for compartment "+lead[1]+" but sits in "+c.number}, where));
         if(idxLimit && Math.abs(parseFloat(p.index)) > idxLimit)
-          warn.push(Object.assign({reason:"index of "+p.index+" — far outside the range of this compartment, "+
+          warn.push(Object.assign({kind:"Index far outside the compartment",
+            reason:"index of "+p.index+" — far outside the range of this compartment, "+
             "check the decimal point"}, where));
       });
       // No overlap check between positions of one group: P bays legitimately
@@ -662,6 +663,7 @@ function nameCollisions(c, ci){
       if(offers[key] === undefined) { offers[key] = sig; return; }
       if(offers[key] === sig) return;          // the same offer twice: harmless
       out.push({ comp:c.number, ci:ci, gid:g.id, name:list[0].name||"(unnamed)", type:g.uldType,
+        kind:"One bay described twice",
         reason:"bay "+base+" is also described by another "+g.uldType+" group with different "+
                "numbers — both layouts would be named the same, so only one is generated" });
     });
@@ -669,15 +671,72 @@ function nameCollisions(c, ci){
   return out;
 }
 
-function issueList(items, tone){
-  return '<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">'+
-    items.slice(0,12).map(function(it){
-      return '<button class="btn small" data-act="fix-pos" data-c="'+it.ci+'" data-gid="'+esc(it.gid)+'" '+
-        'style="text-align:left;text-transform:none;letter-spacing:0;font-family:var(--mono);font-size:11.5px;'+
-        'border-color:var(--'+tone+');color:var(--'+tone+')">'+
-        'Compartment '+it.comp+' &middot; '+esc(it.name)+' ('+esc(it.type)+') — '+esc(it.reason)+' &#8594;</button>';
-    }).join("")+
-    (items.length>12 ? '<span class="note">…and '+(items.length-12)+' more</span>' : '')+
+/* What to do about each kind, said once for the kind rather than repeated
+   on every position it touches. Kinds whose own message already says it
+   (a station that is not a number) carry nothing here. */
+var ISSUE_HELP = {
+  "One bay described twice":
+    "A layout is named for its type and its ticked ULDs, never for its stations and weights — so both of these "+
+    "would be called the same thing, and only one of them is generated. Merge the two groups, or untick each "+
+    "down to its own ULD: <b>2LD3(AKE)</b> and <b>2LD3(PKC)</b> are different names, and both survive.",
+  "Nothing certified — generates nothing":
+    "The last ULD of this type was removed from the catalog, so the group certifies nothing and its positions "+
+    "reach neither the layouts nor the export. Add the ULD back in step 1, or remove the group.",
+  "Above the ULD's own rating":
+    "The bay is certified for more than the lightest ULD ticked on the group carries. Manuals do carry figures "+
+    "like this — worth confirming it is deliberate.",
+  "Heavier than any ULD":
+    "Heavier than any ULD in service — usually a weight entered in pounds, or one digit too many.",
+  "Numbered for another compartment":
+    "Positions are numbered after the hold they sit in, so this is almost always a mistyped first digit.",
+  "Index far outside the compartment":
+    "Orders of magnitude away from every other position in this hold — check the decimal point.",
+  "Incomplete position":
+    "A position generates nothing until it carries all of: name, FWD, AFT, index and max weight."
+};
+/* Enough chips to see the shape of the problem; past that the count says
+   the rest, and the group is one click away anyway. */
+var ISSUE_CHIP_CAP = 14;
+function issueBody(items){
+  var order = [], byKind = {};
+  items.forEach(function(it){
+    var k = it.kind || "Worth checking";
+    if(!byKind[k]){ byKind[k] = []; order.push(k); }
+    byKind[k].push(it);
+  });
+  return order.map(function(k){
+    var list = byKind[k], shown = list.slice(0, ISSUE_CHIP_CAP);
+    return '<div class="issue-kind">'+
+      '<div class="t">'+esc(k)+'<em>'+list.length+'</em></div>'+
+      (ISSUE_HELP[k] ? '<div class="why">'+ISSUE_HELP[k]+'</div>' : '')+
+      '<div class="issue-chips">'+
+        shown.map(function(it){
+          return '<button class="issue-chip" data-act="fix-pos" data-c="'+it.ci+'" '+
+            'data-gid="'+esc(it.gid)+'" title="'+esc(it.reason)+'">'+
+            esc(it.name)+'<i>C'+esc(it.comp)+' &middot; '+esc(it.type)+'</i></button>';
+        }).join("")+
+        (list.length > shown.length
+          ? '<span class="note">+'+(list.length-shown.length)+' more</span>' : '')+
+      '</div></div>';
+  }).join("");
+}
+/* Blocking issues open on arrival — nothing generates until they are dealt
+   with. Everything else is one line the operator opens when they want it. */
+function issueBox(o){
+  var open = o.collapsible ? !!U.issuesOpen : true;
+  var sumTag = o.collapsible ? "button" : "div";
+  return '<div class="issuebox'+(o.stop?" stop":"")+'"'+(o.style?' style="'+o.style+'"':'')+'>'+
+    '<'+sumTag+' class="issue-sum"'+(o.collapsible?' data-act="toggle-issues" type="button"':'')+'>'+
+      '<span>&#9888;</span><span><b>'+esc(o.title)+'</b></span>'+
+      (o.collapsible
+        ? '<span class="act">'+(open?"Hide":"Review")+
+          ' <span class="chev" data-open="'+(open?1:0)+'">&#9656;</span></span>'
+        : '')+
+    '</'+sumTag+'>'+
+    (open ? '<div class="issue-body">'+
+      (o.lead ? '<div class="lead">'+o.lead+'</div>' : '')+
+      issueBody(o.items)+ (o.after||"") +
+    '</div>' : '')+
   '</div>';
 }
 
@@ -1363,6 +1422,7 @@ function onUldClick(e){
     if(iss2.hard.length || (iss2.sign.length && !U.signAck)) return;   // gate, belt and braces
     generateLayouts(); uldRender();
   }
+  else if(act==="toggle-issues"){ U.issuesOpen = !U.issuesOpen; uldRender(); }
   else if(act==="fix-pos"){
     U.step = 1;
     U.activeComp = +b.getAttribute("data-c");
