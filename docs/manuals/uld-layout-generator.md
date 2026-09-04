@@ -95,6 +95,35 @@ separados, com a caixa ligada ou desligada.
 - **↓ Export all (Excel)**: descarrega um ficheiro `.xlsx` com todas as combinações de todos os compartimentos — este é o formato recomendado, porque abre sempre certo em qualquer Excel, sem configurações.
 - **CSV (all)** / **CSV compartment N**: alternativa em texto simples, só se precisares mesmo de `.csv` (ex: para um sistema que só aceite esse formato). Nota: dependendo das definições regionais do Windows, pode ser preciso abrir com **Data → From Text/CSV** em vez de duplo-clique direto, para o Excel separar as colunas corretamente.
 
+### A verificação antes de exportar
+
+Sempre que carregas num dos botões de export, a ferramenta olha primeiro
+para os números **tal como vão ficar no ficheiro** — já arredondados às 5
+casas decimais, e lidos dos layouts gerados, não do editor. Se estiver tudo
+bem, o ficheiro sai direto e não vês nada. Se houver algo a apontar, aparece
+uma janela **"Check before exporting"** com os problemas agrupados, e duas
+saídas: **Export anyway** ou **Go back and check**. Cada etiqueta salta para
+o campo que a originou.
+
+O que é verificado:
+
+| Verificação | O que apanha |
+|---|---|
+| **Sinal do index** | Index positivo à frente da ref. station, ou negativo atrás. Um sinal trocado desloca o centro de gravidade para o lado errado. É perguntado outra vez aqui mesmo que já tenhas aceitado o aviso antes de gerar. |
+| **Index que arredonda para zero** | Um index tão pequeno que sai do ficheiro como `0` — a posição deixa de contar para o trim, seja o que for que lá ponhas. |
+| **Peso acima do ULD** | O ficheiro autorizaria carregar mais do que o ULD mais leve certificado ali aguenta. |
+| **Peso fora do normal** | Três vezes mais (ou menos) do que as outras posições do mesmo tipo — tipicamente um dígito a mais ou a menos. |
+| **Index fora do compartimento** | Ordens de grandeza fora do resto do porão: ponto decimal fora do sítio. |
+| **Peso inutilizável** | Zero ou em branco: não se carrega nada contra ele. |
+| **Layouts desatualizados** | Editaste posições depois de gerar, por isso o ficheiro descreveria números que já não tens. |
+
+Nos porões **bulk** esta é a única verificação que existe — eles não passam
+pela geração de layouts, por isso o index e o peso deles só são olhados aqui.
+
+Nota: nos templates B787-900 e B777-300 esta janela aparece sempre, com as
+posições que o próprio manual certifica acima do ULD (25P, 31P, 41P, 42P).
+Não é um erro — é o manual a dizer isso mesmo. Confirmas e exportas.
+
 ### Se aparecer um aviso de "dados alterados"
 
 Se editares qualquer posição depois de já teres gerado os layouts, aparece um aviso amarelo a dizer que os dados mudaram. Basta clicar outra vez em **Generate all layouts** para atualizar tudo.

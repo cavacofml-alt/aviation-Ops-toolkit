@@ -296,7 +296,7 @@ if(inBuild("uld")) try {
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
        ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines, csvAll, " +
-       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, pairAtBase, pairOffsetOf, clampDecimals, exportIndex, uldBase, groupLabel, maxWeightIssue, pushUndo, undoLast, issueBody};");
+       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, pairAtBase, pairOffsetOf, clampDecimals, exportIndex, uldBase, groupLabel, maxWeightIssue, pushUndo, undoLast, issueBody, exportIssues};");
   ok("all aircraft templates load", ULD.TEMPLATES.length === 6);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
@@ -964,6 +964,79 @@ if(inBuild("uld")) try {
      !ULD.U.layouts[1].some(l => l.positions.length === 3),
      ULD.U.layouts[1].map(l => l.positions.map(p => p.name).join("+")).join(" | "));
 
+  /* The check before the file leaves the tool. It reads the layouts, not the
+     editor: an index is rounded on the way out, the sign gate can have been
+     acknowledged once and never asked again, and bulk holds never pass
+     through the generation gate at all. */
+  const b767tpl = ULD.TEMPLATES.filter(t => t.name === "Boeing 767-300ER")[0];
+  const loadB767 = () => {
+    ULD.U.ulds = JSON.parse(JSON.stringify(b767tpl.ulds));
+    ULD.U.compartments = JSON.parse(JSON.stringify(b767tpl.compartments));
+    ULD.U.bulk = JSON.parse(JSON.stringify(b767tpl.bulk||[]));
+    ULD.U.refStation = b767tpl.refStation;
+    ULD.U.mergeIdentical = true; ULD.U.layoutsStale = false;
+  };
+  const exportKinds = () => {
+    ULD.generateLayouts();
+    const by = {};
+    ULD.exportIssues().forEach(i => { by[i.kind] = (by[i.kind]||0) + 1; });
+    return by;
+  };
+  loadB767();
+  ok("clean data exports without a word", Object.keys(exportKinds()).length === 0,
+     JSON.stringify(exportKinds()));
+
+  loadB767();
+  ULD.U.compartments[0].uldGroups[3].positions[0].index = "-0.000004";
+  ok("an index too small to survive the rounding is caught before it is written",
+     exportKinds()["Index rounds away to zero"] === 1, JSON.stringify(exportKinds()));
+
+  loadB767();
+  ULD.U.compartments[0].uldGroups[5].positions[0].maxWeight = "15870";
+  ok("a weight orders of magnitude off its own type is caught",
+     exportKinds()["Weight unlike the rest of its type"] === 1, JSON.stringify(exportKinds()));
+
+  loadB767();
+  ULD.U.compartments[0].uldGroups[3].positions[1].index = "0.004716";   // forward, positive
+  ok("a sign that disagrees with the reference station is caught at the export too",
+     exportKinds()["Index sign against the reference station"] === 1, JSON.stringify(exportKinds()));
+
+  /* Bulk holds are not generated and never reach indexIssues, so the export
+     is the only place their numbers are ever looked at. */
+  loadB767();
+  ULD.U.bulk = [{number:5, positions:[
+    {name:"51",fwd:"300",aft:"340",index:"0.004",volume:"6",maxWeight:"1701"},
+    {name:"52",fwd:"340",aft:"380",index:"-0.003",volume:"7",maxWeight:"0"}]}];
+  const bulkKinds = exportKinds();
+  ok("a bulk hold's index sign and weight are checked, the only place they are",
+     bulkKinds["Index sign against the reference station"] === 1 &&
+     bulkKinds["Max weight is not usable"] === 1, JSON.stringify(bulkKinds));
+
+  loadB767();
+  ULD.generateLayouts();
+  ULD.U.layoutsStale = true;
+  ok("exporting layouts older than the last edit is called out",
+     ULD.exportIssues().some(i => i.kind === "Generated before the last edit"));
+
+  /* Per-compartment exports carry only their own compartment's numbers, so
+     they are checked against those alone. */
+  const b3tpl = ULD.TEMPLATES.filter(t => t.name === "Boeing 777-300")[0];
+  ULD.U.ulds = JSON.parse(JSON.stringify(b3tpl.ulds));
+  ULD.U.compartments = JSON.parse(JSON.stringify(b3tpl.compartments));
+  ULD.U.bulk = JSON.parse(JSON.stringify(b3tpl.bulk||[]));
+  ULD.U.refStation = b3tpl.refStation; ULD.U.layoutsStale = false;
+  ULD.generateLayouts();
+  ok("the B777-300's manual remarks surface at the export, all six of them",
+     ULD.exportIssues().length === 6 &&
+     ULD.exportIssues().every(i => i.kind === "Above the ULD's own rating"),
+     JSON.stringify(ULD.exportIssues().map(i => i.name)));
+  ok("and a single compartment is checked against its own rows only",
+     ULD.exportIssues(2).length === 2 && ULD.exportIssues(1).length === 0,
+     ULD.exportIssues(2).map(i => i.name+"/"+i.comp).join(" | "));
+  ok("every export finding can be traced back to the group that wrote it",
+     ULD.exportIssues().every(i => i.gid != null && i.ci != null));
+
+  ULD.U.bulk = [];
   // a half-bay position with no other half is offered rather than dropped
   ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
     {id:"g1",uldType:"LD3",iata:"AKE",label:"x",positions:[bay("11L","0","48")]}
