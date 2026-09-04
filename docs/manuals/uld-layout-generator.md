@@ -111,7 +111,7 @@ O que é verificado:
 |---|---|
 | **Sinal do index** | Index positivo à frente da ref. station, ou negativo atrás. Um sinal trocado desloca o centro de gravidade para o lado errado. É perguntado outra vez aqui mesmo que já tenhas aceitado o aviso antes de gerar. |
 | **Index que arredonda para zero** | Um index tão pequeno que sai do ficheiro como `0` — a posição deixa de contar para o trim, seja o que for que lá ponhas. |
-| **Peso acima do ULD** | O ficheiro autorizaria carregar mais do que o ULD mais leve certificado ali aguenta. |
+| **Peso acima do ULD** | A posição autoriza mais peso do que o ULD mais leve ali ticado tem no catálogo (Passo 1). Dois valores teus a discordarem, e o ficheiro leva o mais alto. |
 | **Peso fora do normal** | Três vezes mais (ou menos) do que as outras posições do mesmo tipo — tipicamente um dígito a mais ou a menos. |
 | **Index fora do compartimento** | Ordens de grandeza fora do resto do porão: ponto decimal fora do sítio. |
 | **Peso inutilizável** | Zero ou em branco: não se carrega nada contra ele. |
@@ -120,9 +120,15 @@ O que é verificado:
 Nos porões **bulk** esta é a única verificação que existe — eles não passam
 pela geração de layouts, por isso o index e o peso deles só são olhados aqui.
 
-Nota: nos templates B787-900 e B777-300 esta janela aparece sempre, com as
-posições que o próprio manual certifica acima do ULD (25P, 31P, 41P, 42P).
-Não é um erro — é o manual a dizer isso mesmo. Confirmas e exportas.
+Todas estas verificações comparam os teus dados **uns com os outros** — o
+peso da posição contra o peso do ULD no catálogo, o index contra a ref.
+station que introduziste, cada valor contra os seus vizinhos. Não há aqui
+nenhuma autoridade externa: o que conta é o que está na aplicação, porque é
+isso que vai para o ficheiro.
+
+Quando um aviso aparece, há sempre **dois valores teus a discordarem** — o
+trabalho é decidir qual dos dois está certo e corrigir o outro. Se ambos
+estiverem certos, o *Export anyway* está lá para isso.
 
 ### Se aparecer um aviso de "dados alterados"
 
@@ -144,8 +150,9 @@ cima para veres o detalhe daquela posição em concreto.
 Se houver dados que **impedem** a geração, essa caixa é vermelha e está
 sempre aberta — não há nada a gerar até resolveres.
 
-Dois dos avisos valem uma leitura atenta, porque em ambos há dados teus que
-não chegam ao ficheiro final:
+Todos os avisos comparam os teus dados uns com os outros — não seguem
+nenhuma autoridade externa. Dois deles valem uma leitura atenta, porque em
+ambos há dados teus que não chegam ao ficheiro final:
 
 - **"another LD3 group describes this bay with different numbers"** — tens
   dois grupos do mesmo tipo a descrever a mesma baia com index ou peso
