@@ -1,214 +1,330 @@
 # Manual — ULD Layout Generator
 
-O que faz: define os ULDs (contentores/paletes) e os compartimentos de um avião, e gera automaticamente **todas as combinações possíveis** de posições válidas, com o índice de balanceamento e o peso máximo de cada uma — sem sobreposições. No fim, exporta tudo para Excel/CSV.
+**O que faz:** descreves o avião uma vez — que ULDs aceita, que posições tem
+em cada porão — e a ferramenta gera **todas as combinações válidas** de
+carregamento, sem sobreposições, cada uma com o seu index e peso máximo. No
+fim exporta tudo para Excel ou CSV, no formato que o teu sistema importa.
 
-Esta é a ferramenta mais complexa do conjunto. A forma mais fácil de começar é sempre **carregar um template já pronto** em vez de construir tudo do zero.
+É a ferramenta mais complexa do conjunto. Trabalha-se em **3 passos**, na
+barra do topo: `ULDs → Compartments & Zones → Layouts`.
 
-## Atalho rápido: usar um template existente
+> **A forma mais fácil de começar é carregar um template pronto** e ajustar,
+> em vez de construir um avião do zero.
+
+---
+
+## Começar depressa
 
 1. Abre **ULD Layout Generator**.
-2. Clica em **✈ Templates** no topo.
-3. Escolhe o avião (ex: Boeing 777-200, Airbus A330-200…) e clica em **LOAD**.
+2. Clica em **✈ TEMPLATES** no topo.
+3. Escolhe o avião e clica em **LOAD**.
 
-   ⚠️ Isto **substitui** tudo o que já tinhas configurado. Se quiseres guardar o que tens antes, fecha esta janela e usa primeiro **↓ Export file**.
-4. Segue os passos abaixo a partir de "Passo 3 — Gerar layouts".
+Vêm seis aviões prontos:
 
-Se o avião que precisas ainda não existe como template, continua a ler para construíres um do zero (ou pede para ser adicionado, com as páginas do manual de peso e balanceamento do avião).
+| Avião | Ref. station |
+|---|---|
+| Boeing 787-900 | 1199.2 |
+| Boeing 777-200 | 1244.13 |
+| Boeing 777-300 | 1258 |
+| Boeing 767-300ER | 972.6 |
+| Airbus A330-200 | 33.1555 |
+| Airbus A330-300 | 36.35 |
 
-## Os 3 passos (barra no topo: ULDs → Compartments & Zones → Layouts)
+⚠️ Carregar um template **substitui** tudo o que tinhas aberto. Se queres
+guardar o que já fizeste, fecha a janela e usa primeiro **↓ EXPORT FILE**
+(ou guarda-o em *Your aircraft*, mais abaixo).
 
-### Passo 1 — ULDs
+Depois de carregado, salta direto para o **Passo 3** e gera. Se o avião que
+precisas não está na lista, constrói-o com os passos seguintes.
 
-Aqui defines o **catálogo** de tipos de contentor/palete que o avião aceita (ex: AKE, PMC, PAG…).
+---
 
-Para cada um, preenche:
-- **ULD Type**: o código do tipo (LD3, LD7/P88, PLA…) — escolhe na lista.
-- **IATA**: o código IATA de 3 letras (ex: `AKE`).
-- **Max weight (kg)**: peso máximo certificado.
-- **Tare (kg)**: peso vazio do próprio contentor/palete (para descontar do peso da carga).
+## Passo 1 — ULDs (o catálogo)
 
-Clica em **+ Add ULD** para cada tipo. Podes editar (✎ Edit) ou remover (✕ Remove) depois. A tabela ordena-se sempre pelo tipo de ULD.
+Aqui dizes **que contentores e paletes existem** neste avião. É só a lista;
+onde eles cabem vem no passo seguinte.
 
-Só avanças para o passo seguinte depois de teres pelo menos 1 ULD definido.
+Para cada um:
 
-### Passo 2 — Compartments & Zones
+| Campo | O que é |
+|---|---|
+| **ULD Type** | O código do tipo — `LD3`, `LD2`, `LD7/P88`, `PLA`… Escolhe na lista. |
+| **IATA** | O código de 3 letras do contentor em concreto: `AKE`, `PMC`, `DPE`… |
+| **Max weight (kg)** | O peso máximo que **esse ULD** aguenta. |
+| **Tare (kg)** | O peso do contentor vazio. |
 
-Aqui defines os **compartimentos físicos** do avião (porão 1, 2, 3…) e, dentro de cada um, os **grupos de posições** onde cada tipo de ULD pode ir.
+**+ ADD ULD** para cada um. Depois dá para **✎ EDIT** e **× REMOVE**. A tabela
+ordena-se sozinha por tipo.
 
-1. Clica em **+ Add compartment** para criar o compartimento 1, 2, etc.
-2. Dentro de um compartimento, escolhe um tipo de ULD na lista "Add ULD group" e clica em **+ Add group**.
-3. Dentro do grupo, clica em **+ Position** para cada posição física (ex: `11L`, `11R`, `12P`…) e preenche:
-   - **FWD STAT** / **AFT STAT**: estações dianteira/traseira dessa posição (do manual de peso e balanceamento).
-   - **LEFT** / **RIGHT**: braço lateral (0 se a posição não for L/R).
-   - **INDEX**: índice de balanceamento por unidade de peso, nessa posição.
-   - **MAX WT (KG)**: peso máximo permitido *nessa posição em concreto* (pode ser diferente do máximo geral do ULD).
-4. Se dois tipos de ULD (ex: AKE e PKC) cabem exatamente na mesma posição, com os mesmos valores, cria um grupo para cada um — a ferramenta junta-os automaticamente numa só opção mais tarde, sem duplicar layouts.
+Podes ter vários IATAs do mesmo tipo (`AKE`, `AKC`, `PKC`… todos `LD3`) — é
+normal e é assim que deve ser. O tipo é o que define onde cabem; o IATA é o
+que distingue cada um.
 
-Cada grupo tem duas opções:
-- **Use in layout generation**: desliga se não quiseres que este tipo entre nas combinações geradas (ex: um tipo raramente usado).
-- **Only on its own — never mixed with other types**: liga se este tipo só puder aparecer sozinho no compartimento, nunca misturado com outros.
+⚠️ O **Max weight** que pões aqui é usado depois para verificar as posições.
+Se apagares o último ULD de um tipo, todos os grupos desse tipo deixam de
+gerar seja o que for — a ferramenta avisa-te quando isso acontece.
 
-E, por baixo, a linha **CERTIFIED ULDS**: uma caixa por cada ULD desse tipo que
-tenhas no catálogo, todas ligadas de início. Desliga as que não sejam
-certificadas neste avião. Isto muda o nome do layout no export:
+Só avanças com pelo menos 1 ULD definido.
+
+---
+
+## Passo 2 — Compartments & Zones
+
+Aqui defines os **porões** e, dentro de cada um, os **grupos de posições**
+onde cada tipo de ULD pode ir.
+
+1. **+ COMPARTMENT** cria o porão 1, 2, 3…
+2. Dentro do porão, escolhe um tipo em *Add ULD group* e clica em **+ ADD
+   GROUP**.
+3. Dentro do grupo, cria as posições.
+
+### As duas formas de encher uma baia
+
+Os grupos de tipos que se carregam **dois lado a lado** (LD3, LD2, L3P/PKC)
+têm dois botões; os restantes têm só o segundo:
+
+- **+ L/R PAIR** — dois contentores lado a lado na mesma baia. Preenches os
+  valores comuns uma vez (base, FWD, AFT, offset, index, peso) e a ferramenta
+  cria o `L` e o `R` de uma vez, já com os braços trocados.
+- **+ POSITION** — **um contentor a ocupar a baia sozinho**. Serve para
+  paletes e para os casos em que um contentor enche a baia por si só.
+
+  Se ele não ficar ao centro, mete os braços laterais em **LEFT/RIGHT** e a
+  ferramenta trata dele como posição única deslocada. Exemplo: um AKE com 70
+  de largura num porão de 100 — não cabe nada ao lado, mas também não está
+  centrado.
+
+  A mesma baia pode ter **as duas opções** ao mesmo tempo (um ao meio, ou
+  dois ao lado): cria as duas, e a ferramenta oferece-as como alternativas
+  que nunca aparecem juntas no mesmo layout.
+
+### Os campos de cada posição
+
+| Campo | O que é |
+|---|---|
+| **POSITION** | O nome da posição: `11L`, `11R`, `12P`, `13`… |
+| **FWD STAT** / **AFT STAT** | Estações à frente e atrás da posição. |
+| **LEFT** / **RIGHT** | Braço lateral. `0/0` se a posição está centrada. |
+| **INDEX** | Índice de balanceamento por unidade de peso, nessa posição. |
+| **MAX WT (KG)** | Peso máximo **nesta posição** — pode ser inferior ao do ULD. |
+
+**Dois automatismos que poupam trabalho:**
+
+- Ao dar nome a uma posição de baia inteira (`12`), se já existir o par
+  `12L`/`12R` nesse porão, o FWD, o AFT e o index são preenchidos sozinhos.
+  Só acontece se ainda não tiveres escrito nada nesses campos.
+- Num par `L`/`R`, editar um lado atualiza o outro — nos dois sentidos. FWD,
+  AFT, index e peso ficam iguais; os braços ficam trocados.
+
+**Casas decimais do index:** o editor aceita até **6** casas. O ficheiro
+exportado leva **5** — o arredondamento acontece só à saída, os teus valores
+ficam intactos. (Um index tão pequeno que arredonde para `0` é apanhado na
+verificação antes de exportar.)
+
+### CERTIFIED ULDS
+
+Por baixo das opções, uma caixa por cada ULD desse tipo que tens no catálogo,
+**todas ligadas de início**. Desliga as que não sejam certificadas neste
+avião. Isto muda o nome do layout:
 
 - todas ligadas → `2LD3` (qualquer LD3 serve)
 - só algumas → `2LD3(AKE/PKC)` (só estes)
 
-A coluna "Certified ULDs" do ficheiro leva sempre o código de tipo, por isso
-não é afetada. Não dá para desligar a última — um grupo sem nenhum ULD deixaria
-de gerar seja o que for.
+A coluna *Certified ULDs* do ficheiro leva sempre o **código de tipo**, por
+isso não é afetada por isto. Não dá para desligar a última — um grupo sem
+nenhum ULD deixa de gerar.
 
-Só avanças para o passo seguinte quando todos os grupos tiverem pelo menos 1 posição.
+### As duas opções do grupo
 
-### Passo 3 — Layouts (gerar e exportar)
+- **Use in layout generation** — desliga para o grupo não entrar nas
+  combinações, sem o apagares.
+- **Only on its own — never mixed with other types** — liga se este tipo só
+  puder aparecer sozinho no porão, nunca misturado com outros.
 
-#### Combinar ULDs na mesma posição (caixa por baixo dos botões)
+Só avanças quando todos os grupos tiverem pelo menos 1 posição.
 
-Quando dois tipos diferentes cabem na mesma posição **com o mesmo FWD/AFT,
-o mesmo index e o mesmo peso máximo**, tens duas maneiras de os tratar — e
-a escolha é tua, porque depende do sistema para onde vais importar o ficheiro:
+> **REF. STATION** (no topo, ao lado dos botões) é a referência contra a qual
+> os sinais dos index são verificados. Muda-a e o desenho do avião atualiza-se
+> logo.
 
-- **Ligada** (por omissão): partilham a mesma posição. Sai um único layout
-  `2LD3/LD2`, e a coluna *Certified ULDs* leva os dois — `"LD3,LA;LD2,LA"`.
-- **Desligada**: cada tipo tem o seu próprio layout, mesmo com os números
-  iguais — `2LD3` e `2LD2` em separado, cada um com o seu tipo na coluna.
+---
 
-A caixa só muda a forma como os layouts são apresentados e exportados; não
-altera nenhum dado que tenhas introduzido. Se já tiveres layouts gerados,
-são recalculados na hora para veres a diferença. A escolha fica guardada com
-o resto do trabalho e vai também no **↓ Export file**.
+## Passo 3 — Layouts
 
-Isto só se aplica quando os números são **exatamente iguais**. Se o index ou
-o peso da posição diferirem nem que seja num dígito, os tipos ficam sempre
-separados, com a caixa ligada ou desligada.
+### Combinar ULDs na mesma posição
 
-#### Gerar
+A caixa por baixo dos botões, **ligada por omissão**. Decide o que acontece
+quando dois tipos diferentes cabem na mesma posição com o **mesmo FWD/AFT,
+o mesmo index e o mesmo peso máximo**:
 
-1. Clica em **⚡ Generate all layouts**.
-2. Aparece o desenho do avião de lado, com cada compartimento colorido, e por baixo uma tabela por compartimento com todas as combinações válidas encontradas.
-3. Clica num compartimento no desenho (ou nos separadores "Compartment 1", "Compartment 2"…) para ver as suas combinações.
-4. Clica numa linha da lista para expandir e ver as posições exatas dessa combinação.
+| | Resultado |
+|---|---|
+| **Ligada** | Partilham a posição: um layout `2LD3/LD2`, e a coluna leva os dois — `"LD3,LA;LD2,LA"` |
+| **Desligada** | Cada tipo com o seu layout: `2LD3` e `2LD2` em separado |
 
-### Exportar
+Qual escolher depende do sistema para onde vais importar — por isso a escolha
+é tua. Não altera nenhum dado teu, e se já tiveres layouts gerados são
+recalculados na hora para veres a diferença. Fica guardada com o trabalho e
+vai também no **↓ EXPORT FILE**.
 
-- **↓ Export all (Excel)**: descarrega um ficheiro `.xlsx` com todas as combinações de todos os compartimentos — este é o formato recomendado, porque abre sempre certo em qualquer Excel, sem configurações.
-- **CSV (all)** / **CSV compartment N**: alternativa em texto simples, só se precisares mesmo de `.csv` (ex: para um sistema que só aceite esse formato). Nota: dependendo das definições regionais do Windows, pode ser preciso abrir com **Data → From Text/CSV** em vez de duplo-clique direto, para o Excel separar as colunas corretamente.
+⚠️ Isto só se aplica quando os números são **exatamente iguais**. Basta o
+index ou o peso diferirem num dígito e os tipos ficam sempre separados, com a
+caixa ligada ou desligada.
+
+O que **não** muda com esta caixa: um grupo ticado para vários ULDs lista-os
+sempre todos na mesma posição. A caixa separa **grupos**, não as ticks.
+
+### Gerar e ler
+
+1. **⚡ GENERATE ALL LAYOUTS**.
+2. Aparece o avião de lado, cada porão com a sua cor, e por baixo os números
+   de combinações encontradas.
+3. Clica num porão no desenho, ou nos separadores *Compartment 1, 2…*, para
+   ver as combinações desse porão.
+4. Clica numa linha para a abrir e ver as posições exatas — com o desenho da
+   baia e a tabela de estações, index e pesos.
+
+Se editares alguma posição depois de gerar, aparece um aviso a dizer que os
+dados mudaram: clica outra vez em **GENERATE ALL LAYOUTS**.
+
+---
+
+## Os avisos
+
+Quando há dados que merecem uma segunda vista, aparece uma linha por cima dos
+layouts. Há duas cores:
+
+| | |
+|---|---|
+| **Amarela** — `⚠ N positions worth checking` com um botão **REVIEW** | Não bloqueia nada. Fica fechada, numa linha só, para não empurrar o trabalho para baixo. Abre em **REVIEW**. |
+| **Vermelha** — `Cannot generate` | Bloqueia. Está sempre aberta, porque não há nada a gerar até resolveres. |
+
+Aberta, os avisos vêm **agrupados pelo problema**, não um por posição: cada
+problema explicado uma vez, e por baixo as posições afetadas em etiquetas
+(`25P C2 · LD7/P96`). Clica numa etiqueta para saltar direto ao grupo no
+Passo 2, já aberto. Passa o rato por cima para ver o detalhe daquela posição.
+
+**Todos os avisos comparam os teus dados uns com os outros** — o peso da
+posição contra o peso do ULD no catálogo, o index contra a ref. station que
+introduziste, cada valor contra os seus vizinhos. Não há aqui nenhuma
+autoridade externa: o que conta é o que está na aplicação, porque é isso que
+vai para o ficheiro. Quando um aviso aparece, há sempre **dois valores teus a
+discordarem** — o trabalho é decidir qual dos dois está certo.
+
+### Dois que valem uma leitura atenta
+
+Nestes dois há dados teus que **não chegam ao ficheiro**:
+
+- **"another LD3 group describes this bay with different numbers"** — tens
+  dois grupos do mesmo tipo a descrever a mesma baia com index ou peso
+  diferentes. Como o nome do layout é feito do tipo e dos ULDs ticados, ambos
+  se chamariam `2LD3`, e **só um é gerado**. Junta os dois grupos num só, ou
+  destica cada um até ao seu ULD — aí ficam `2LD3(AKE)` e `2LD3(PKC)`, nomes
+  diferentes, e os dois sobrevivem.
+- **"no LD3 left in the ULD catalog"** — apagaste do catálogo o último ULD de
+  um tipo que ainda tem grupos. Esses grupos deixam de gerar e as suas
+  posições não aparecem no ficheiro. Volta a criar o ULD, ou remove o grupo.
+
+---
+
+## Exportar
+
+- **↓ EXPORT ALL (EXCEL)** — um `.xlsx` com tudo. **É o formato
+  recomendado**: abre sempre certo em qualquer Excel, sem configurações. A
+  folha chama-se sempre `D3`, que é o nome fixo que o sistema de upload
+  espera, para qualquer avião.
+- **↓ EXCEL COMPARTMENT N** — só um porão.
+- **CSV (ALL)** / **CSV** — texto simples, só se precisares mesmo. Consoante
+  as definições regionais do Windows, pode ser preciso abrir com **Dados →
+  De Texto/CSV** em vez de duplo-clique, para o Excel separar as colunas.
 
 ### A verificação antes de exportar
 
-Sempre que carregas num dos botões de export, a ferramenta olha primeiro
-para os números **tal como vão ficar no ficheiro** — já arredondados às 5
-casas decimais, e lidos dos layouts gerados, não do editor. Se estiver tudo
-bem, o ficheiro sai direto e não vês nada. Se houver algo a apontar, aparece
-uma janela **"Check before exporting"** com os problemas agrupados, e duas
-saídas: **Export anyway** ou **Go back and check**. Cada etiqueta salta para
-o campo que a originou.
+Ao carregar em qualquer botão de export, a ferramenta olha primeiro para os
+números **tal como vão ficar no ficheiro** — já arredondados às 5 casas, e
+lidos dos layouts gerados, não do editor. Se estiver tudo bem, o ficheiro sai
+direto e não vês nada.
+
+Se houver algo a apontar, aparece **"Check before exporting"** com os
+problemas agrupados e duas saídas: **EXPORT ANYWAY** ou **GO BACK AND
+CHECK**. As etiquetas saltam para o campo que as originou.
 
 O que é verificado:
 
 | Verificação | O que apanha |
 |---|---|
-| **Sinal do index** | Index positivo à frente da ref. station, ou negativo atrás. Um sinal trocado desloca o centro de gravidade para o lado errado. É perguntado outra vez aqui mesmo que já tenhas aceitado o aviso antes de gerar. |
-| **Index que arredonda para zero** | Um index tão pequeno que sai do ficheiro como `0` — a posição deixa de contar para o trim, seja o que for que lá ponhas. |
-| **Peso acima do ULD** | A posição autoriza mais peso do que o ULD mais leve ali ticado tem no catálogo (Passo 1). Dois valores teus a discordarem, e o ficheiro leva o mais alto. |
-| **Peso fora do normal** | Três vezes mais (ou menos) do que as outras posições do mesmo tipo — tipicamente um dígito a mais ou a menos. |
+| **Sinal do index** | Index positivo à frente da ref. station, ou negativo atrás. Um sinal trocado desloca o CG para o lado errado. É perguntado outra vez aqui, mesmo que já tenhas aceitado o aviso antes de gerar. |
+| **Index que arredonda para zero** | Tão pequeno que sai do ficheiro como `0` — a posição deixa de contar para o trim, seja o que for que lá ponhas. |
+| **Peso acima do ULD** | A posição autoriza mais peso do que o ULD mais leve ali ticado tem no catálogo. O ficheiro levaria o valor mais alto. |
+| **Peso fora do normal** | Três vezes mais (ou menos) do que as outras posições do mesmo tipo — um dígito a mais ou a menos. |
 | **Index fora do compartimento** | Ordens de grandeza fora do resto do porão: ponto decimal fora do sítio. |
-| **Peso inutilizável** | Zero ou em branco: não se carrega nada contra ele. |
-| **Layouts desatualizados** | Editaste posições depois de gerar, por isso o ficheiro descreveria números que já não tens. |
+| **Peso inutilizável** | Zero ou em branco. |
+| **Layouts desatualizados** | Editaste posições depois de gerar; o ficheiro descreveria números que já não tens. |
 
-Nos porões **bulk** esta é a única verificação que existe — eles não passam
-pela geração de layouts, por isso o index e o peso deles só são olhados aqui.
+### Porões bulk
 
-Todas estas verificações comparam os teus dados **uns com os outros** — o
-peso da posição contra o peso do ULD no catálogo, o index contra a ref.
-station que introduziste, cada valor contra os seus vizinhos. Não há aqui
-nenhuma autoridade externa: o que conta é o que está na aplicação, porque é
-isso que vai para o ficheiro.
+Os porões de carga solta (sem ULDs) aparecem no desenho e saem no export
+combinado como linhas `BULK`, mas **não passam pela geração de layouts** —
+não têm combinações a calcular. Consequência prática: a verificação antes de
+exportar é **o único sítio** onde o index e o peso deles são vistos.
 
-Quando um aviso aparece, há sempre **dois valores teus a discordarem** — o
-trabalho é decidir qual dos dois está certo e corrigir o outro. Se ambos
-estiverem certos, o *Export anyway* está lá para isso.
+Vêm dos templates ou de um ficheiro importado; não há campos para os editar
+no ecrã.
 
-### Se aparecer um aviso de "dados alterados"
-
-Se editares qualquer posição depois de já teres gerado os layouts, aparece um aviso amarelo a dizer que os dados mudaram. Basta clicar outra vez em **Generate all layouts** para atualizar tudo.
-
-### A caixa de avisos
-
-Quando há dados que merecem uma segunda vista, aparece uma linha amarela por
-cima dos layouts: **"⚠ N positions worth checking"**, com um botão **REVIEW**
-à direita. Fica fechada — é só uma linha — para não empurrar o trabalho para
-baixo. Clica em **REVIEW** para abrir.
-
-Aberta, os avisos vêm **agrupados pelo tipo de problema**, não um por
-posição: cada problema é explicado uma vez, e por baixo ficam as posições
-afetadas em pequenas etiquetas (`11 C1 · LD3`). Clica numa etiqueta para
-saltar direto ao grupo no Passo 2, já aberto para editares. Passa o rato por
-cima para veres o detalhe daquela posição em concreto.
-
-Se houver dados que **impedem** a geração, essa caixa é vermelha e está
-sempre aberta — não há nada a gerar até resolveres.
-
-Todos os avisos comparam os teus dados uns com os outros — não seguem
-nenhuma autoridade externa. Dois deles valem uma leitura atenta, porque em
-ambos há dados teus que não chegam ao ficheiro final:
-
-- **"another LD3 group describes this bay with different numbers"** — tens
-  dois grupos do mesmo tipo a descrever a mesma baia com index ou peso
-  diferentes. Como o nome do layout é feito do tipo (e dos ULDs ticados),
-  ambos se chamariam `2LD3` e **só um é gerado**. Resolve-se juntando os dois
-  grupos num só, ou desticando cada um até ao seu ULD — aí ficam `2LD3(AKE)`
-  e `2LD3(PKC)`, com nomes diferentes, e os dois são gerados.
-- **"no LD3 left in the ULD catalog"** — apagaste do catálogo (Passo 1) o
-  último ULD de um tipo que ainda tem grupos no Passo 2. Esses grupos deixam
-  de gerar seja o que for e as suas posições não aparecem no export. Volta a
-  criar o ULD no catálogo, ou remove o grupo.
+---
 
 ## Desfazer
 
-O botão **↶ Undo** (na barra do topo, ao lado do Reset) desfaz a última ação
-destrutiva: remover um grupo, um compartimento, uma posição ou um ULD, desligar
-uma caixa dos Certified ULDs, carregar um template por cima do que tinhas, ou o
-Reset. Passa o rato por cima para ver o que vai desfazer. Guarda as últimas 12
-ações, e só enquanto a página estiver aberta.
+**↶ UNDO** (na barra do topo) desfaz a última ação destrutiva: remover um
+grupo, um compartimento, uma posição ou um ULD, desligar uma tick dos
+Certified ULDs, carregar um template por cima do teu trabalho, ou o Reset.
+Passa o rato por cima para ver o que vai desfazer. Guarda as últimas 12
+ações, só enquanto a página estiver aberta.
 
-**Atalho: `Ctrl+Z`** (`Cmd+Z` no Mac). Útil quando estás no fim de uma lista
-longa de posições e o botão já não está à vista — aparece uma confirmação em
-baixo a dizer o que foi desfeito.
+**Atalho: `Ctrl+Z`** (`Cmd+Z` no Mac) — útil quando estás no fim de uma lista
+longa e o botão já não está à vista. Aparece uma confirmação em baixo a dizer
+o que foi desfeito.
 
-Dentro de um campo de texto o `Ctrl+Z` continua a ser o desfazer normal da
-escrita, como em qualquer página. Clica fora do campo primeiro se quiseres
-desfazer a ação anterior.
+Dentro de um campo de texto, o `Ctrl+Z` continua a ser o desfazer normal da
+escrita. Clica fora do campo primeiro se queres desfazer a ação anterior.
 
-## Guardar os teus próprios aviões
+---
 
-Em **✈ Templates**, por baixo da lista dos aviões que vêm com a ferramenta, há a
-secção **Your aircraft**:
+## Guardar o trabalho
 
-1. Monta o avião (ULDs, compartimentos, posições).
-2. Abre **✈ Templates**, escreve um nome em "Save the current setup as" e clica
-   em **↓ Save aircraft**.
-3. Fica ali para carregares sempre que precisares, com o botão **LOAD** — e o
-   **×** apaga.
+**Automático neste browser.** O indicador **"Saved HH:MM"** no topo confirma.
+É só neste computador e neste browser — não é uma cópia de segurança.
 
-Guardar com um nome que já existe substitui o anterior.
+**↓ EXPORT FILE / ↑ IMPORT** — um `.json` com tudo (ULDs, porões, posições,
+ref. station e a opção de combinar). É assim que levas um avião para outro
+computador ou o guardas a sério.
 
-⚠️ Ficam guardados **neste browser**, neste computador. Para levar um avião para
-outra máquina continua a ser o `↓ Export file` / `↑ Import`.
+**Your aircraft** (dentro de ✈ TEMPLATES) — guarda o avião que montaste com
+um nome, para o voltares a carregar quando quiseres:
 
-## Guardar o teu trabalho
+1. Monta o avião.
+2. Abre **✈ TEMPLATES**, escreve um nome em *Save the current setup as* e
+   clica em **↓ SAVE AIRCRAFT**.
+3. Fica na lista, com **LOAD** para carregar e **×** para apagar.
 
-- O que preenches fica guardado automaticamente neste browser (indicador **"Saved HH:MM"** no topo) — mas só neste computador/browser.
-- Para levares a configuração para outro computador, ou guardares uma cópia de segurança, usa **↓ Export file** (fica um `.json`) e depois **↑ Import** nesse ficheiro noutra sessão.
-- **↺ Reset** apaga tudo — usa com cuidado, e exporta primeiro se quiseres manter alguma coisa.
+Guardar com um nome que já existe substitui o anterior. ⚠️ Também ficam só
+**neste browser** — para levar para outra máquina continua a ser o
+`↓ EXPORT FILE`.
+
+**↺ RESET** apaga tudo. Exporta primeiro se queres manter alguma coisa (e o
+`Ctrl+Z` ainda o desfaz, enquanto a página estiver aberta).
+
+---
 
 ## Termos rápidos
 
 | Termo | Significado |
 |---|---|
-| ULD | Unit Load Device — contentor ou palete de carga |
-| Compartimento | Um porão do avião (1, 2, 3, 4…) |
-| Zona/Posição | Um lugar físico específico dentro do compartimento (ex: `21L`) |
-| Layout | Uma combinação completa e válida de ULDs a ocupar um compartimento |
-| Index | Valor usado no cálculo do centro de gravidade do avião |
+| ULD | *Unit Load Device* — contentor ou palete de carga |
+| Compartimento / porão | Um porão do avião (1, 2, 3, 4…) |
+| Baia | O espaço ao longo do porão que uma posição ocupa (`11`, `12`…) |
+| Posição | Um lugar concreto: `11L`, `11R`, `12P`, `13` |
+| Layout | Uma combinação completa e válida de ULDs a ocupar um porão |
+| Index | Valor usado no cálculo do centro de gravidade |
+| Ref. station | A estação de referência contra a qual o sinal do index é medido |
+| Tara | Peso do ULD vazio |
