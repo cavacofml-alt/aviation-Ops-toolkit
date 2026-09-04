@@ -122,7 +122,8 @@ function uldSnapshot(){
     ulds: U.ulds,
     compartments: U.compartments,
     bulk: U.bulk,
-    refStation: U.refStation
+    refStation: U.refStation,
+    mergeIdentical: U.mergeIdentical !== false
   });
 }
 function uldHasWork(){ return U.ulds.length > 0 || U.compartments.length > 0; }
@@ -187,6 +188,9 @@ function uldRestorePrompt(){
       U.compartments = data.compartments || [];
       U.bulk = data.bulk || [];
       U.refStation = data.refStation || "";
+      // absent in anything saved before the setting existed — those sessions
+      // were generated with the types combined, so that is what they restore
+      U.mergeIdentical = data.mergeIdentical !== false;
       var rs = document.getElementById("refStation"); if(rs) rs.value = U.refStation;
       U.step = 0; U.layouts = null; U.activeComp = 0;
       bar.hidden = true;

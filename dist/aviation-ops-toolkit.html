@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.140</title>
+<title>Aviation Ops Toolkit v1.2.149</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -484,7 +484,7 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.140</span>
+      <span class="build-ver">v1.2.149</span>
     </header>
 
     <main>
@@ -813,8 +813,8 @@ button.stepbar-btn:disabled{cursor:default; opacity:.45}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.140 — Luís Cavaco
-    Built 2026-09-03 from the source tree; see build.manifest.json.
+/*! Aviation Ops Toolkit v1.2.149 — Luís Cavaco
+    Built 2026-09-04 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
 
@@ -3123,7 +3123,8 @@ function uldSnapshot(){
     ulds: U.ulds,
     compartments: U.compartments,
     bulk: U.bulk,
-    refStation: U.refStation
+    refStation: U.refStation,
+    mergeIdentical: U.mergeIdentical !== false
   });
 }
 function uldHasWork(){ return U.ulds.length > 0 || U.compartments.length > 0; }
@@ -3188,6 +3189,9 @@ function uldRestorePrompt(){
       U.compartments = data.compartments || [];
       U.bulk = data.bulk || [];
       U.refStation = data.refStation || "";
+      // absent in anything saved before the setting existed — those sessions
+      // were generated with the types combined, so that is what they restore
+      U.mergeIdentical = data.mergeIdentical !== false;
       var rs = document.getElementById("refStation"); if(rs) rs.value = U.refStation;
       U.step = 0; U.layouts = null; U.activeComp = 0;
       bar.hidden = true;
@@ -6473,7 +6477,7 @@ var uid = function(){
 var U = { step:0, ulds:[], compartments:[], bulk:[], refStation:"", activeComp:0,
           layouts:null, activeLayoutComp:0, editUld:null, pairForm:null, addType:"",
           collapsed:{}, openLayout:{}, layoutLimit:{}, signAck:false, tplName:null,
-          undo:[], myTemplates:[] };
+          undo:[], myTemplates:[], mergeIdentical:true };
 
 function emptyPos(name){
   return { name:name||"", fwd:"", aft:"", left:"0", right:"0", index:"", maxWeight:"" };
@@ -6832,10 +6836,28 @@ function viewStep3(){
     '</div>';
   }
 
+  /* Two types certified for the same bay with the same station, index and
+     max weight are one physical slot — but whether the file should say so
+     depends on the system reading it, so it is the operator's call, not
+     ours. On (the default) they share a slot: "2LD3/LD2", one row listing
+     both. Off, each type gets its own layout, and the bay is loaded once
+     per type. */
+  var mergeOn = U.mergeIdentical !== false;
+  var mergeBox = '<div style="margin-bottom:16px">'+
+    '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text)">'+
+      '<input type="checkbox" id="mergeIdentical"'+(mergeOn?" checked":"")+'>'+
+      '<span style="font-size:13px">Combine ULDs certified for the same position</span>'+
+    '</label>'+
+    '<div class="note" style="margin-top:4px">'+
+      (mergeOn
+        ? 'Types sharing a bay’s station, index and max weight are offered as one slot — <b>2LD3/LD2</b>, one layout naming both.'
+        : 'Each type gets its own layout even where the numbers are identical — <b>2LD3</b> and <b>2LD2</b> separately.')+
+    '</div></div>';
+
   var head = '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'+
     '<button class="btn primary" data-act="generate"'+(blocked?" disabled":"")+'>&#9889; Generate all layouts</button>'+
     (U.layouts && !blocked ? '<button class="btn" data-act="xlsx-all">&#8595; Export all (Excel)</button>':'')+
-    (U.layouts && !blocked ? '<button class="btn small quiet" data-act="csv-all">CSV (all)</button>':'')+'</div>' + gate+
+    (U.layouts && !blocked ? '<button class="btn small quiet" data-act="csv-all">CSV (all)</button>':'')+'</div>' + mergeBox + gate+
     (U.layouts && U.layoutsStale && !blocked ? '<div class="warnbox" style="margin-bottom:14px">'+
       '<b>&#9888; Data changed since these layouts were generated</b>'+
       '<div style="margin-top:4px;color:var(--dim)">A position was edited after the layouts below were computed — '+
@@ -6934,6 +6956,17 @@ function indexIssues(){
   U.compartments.forEach(function(c, ci){
     var idxLimit = grossIndexLimit(c);
     (c.uldGroups||[]).forEach(function(g){
+      /* Deleting the last ULD of a type from the catalog leaves any group of
+         that type with nothing certified, and a group with nothing certified
+         generates nothing: its positions simply stop appearing, in the
+         layouts and in the export alike. The positions themselves are fine,
+         so this is not a hard stop — but it must be said, or a hold quietly
+         empties. */
+      if(g.include !== false && (g.positions||[]).length && !uldDefsOf(g).length){
+        warn.push({ comp:c.number, ci:ci, gid:g.id, type:g.uldType,
+          name:(g.positions[0].name||"(unnamed)"),
+          reason:"no "+g.uldType+" left in the ULD catalog — this group generates nothing" });
+      }
       (g.positions||[]).forEach(function(p){
         var where = { comp:c.number, ci:ci, gid:g.id, name:p.name||"(unnamed)", type:g.uldType };
         if(!p.name || p.fwd==="" || p.aft==="" || p.index==="" || p.maxWeight===""){
@@ -6974,8 +7007,46 @@ function indexIssues(){
       // 18 cm, the B787's 42 and 43 by a tenth of an inch), and the
       // generator already treats overlapping options as mutually exclusive.
     });
+    nameCollisions(c, ci).forEach(function(w){ warn.push(w); });
   });
   return { hard:hard, sign:sign, warn:warn };
+}
+
+/* Two groups of one type, certified for the same ULDs, describing the same
+   bay with different numbers, both generate an option — and both options
+   are named the same thing ("2LD3"), because the name is made of types and
+   IATAs, not of stations and weights. Identical names collapse at the end
+   of generation, so the second set of numbers is dropped without a word.
+   No shipped template does this; a hand-built or imported compartment can.
+   Flagged rather than resolved: which of the two numbers is right is the
+   operator's to say, and unticking one group down to its own ULD names the
+   layouts apart ("2LD3(AKE)" / "2LD3(PKC)") and keeps both. */
+function nameCollisions(c, ci){
+  var offers = {}, out = [];
+  (c.uldGroups||[]).forEach(function(g){
+    if(g.include === false) return;
+    var positions = g.positions || [];
+    var byBase = {};
+    positions.forEach(function(p){
+      var base = String(p.name||"").replace(/[LRP]$/,"") || String(p.name||"");
+      (byBase[base] = byBase[base] || []).push(p);
+    });
+    // the layout name carries the type and, when narrowed, the ticked IATAs
+    var nameKey = g.uldType + " " + iatasOf(g).slice().sort().join(",");
+    Object.keys(byBase).forEach(function(base){
+      var list = byBase[base].slice().sort(function(a,b){
+        return String(a.name) < String(b.name) ? -1 : 1; });
+      var sig = list.map(function(p){
+        return [p.fwd,p.aft,p.left,p.right,p.index,p.maxWeight].join("|"); }).join("+");
+      var key = base + " " + list.length + " " + nameKey;
+      if(offers[key] === undefined) { offers[key] = sig; return; }
+      if(offers[key] === sig) return;          // the same offer twice: harmless
+      out.push({ comp:c.number, ci:ci, gid:g.id, name:list[0].name||"(unnamed)", type:g.uldType,
+        reason:"bay "+base+" is also described by another "+g.uldType+" group with different "+
+               "numbers — both layouts would be named the same, so only one is generated" });
+    });
+  });
+  return out;
 }
 
 function issueList(items, tone){
@@ -7049,10 +7120,22 @@ function generateLayouts(){
     // into its "certified" list instead of creating a look-alike duplicate.
     // A genuinely different signature (PKC derated below AKE) still creates
     // a separate, mutually exclusive option, as before.
+    //
+    // Whether that folding happens at all is the operator's call: some
+    // systems want one slot naming every ULD certified for it, others want
+    // one layout per type even when the numbers are identical. With
+    // "combine" off the group joins the key, so each group keeps its own
+    // offer — the group stays the unit either way, so a group ticked for
+    // several ULDs still lists them all at one slot. Two groups that end up
+    // truly identical (same type, same ticks) name their layouts the same
+    // and are dropped by the by-name dedupe at the end, so turning this off
+    // never produces a duplicate.
+    var mergeIdentical = U.mergeIdentical !== false;
     var zoneBySignature = {};
-    function addOption(base, sig, positions){
+    function addOption(base, sig, positions, gid){
       if(!zoneBySignature[base]) zoneBySignature[base] = {};
-      var existing = zoneBySignature[base][sig];
+      var key = mergeIdentical ? sig : sig + "\u0000" + gid;
+      var existing = zoneBySignature[base][key];
       if(existing){
         // the same ULD can reach a slot twice — two groups of one type, or a
         // group ticked for a ULD another group also names. It is one ULD
@@ -7069,12 +7152,15 @@ function generateLayouts(){
       // every certified IATA ("2LD3(AKE/PKC)"), not just whichever group
       // happened to reach it first.
       var opt = { positions:positions, certified:certified };
-      zoneBySignature[base][sig] = opt;
+      zoneBySignature[base][key] = opt;
       if(!zoneOptionsMap[base]) zoneOptionsMap[base]=[];
       zoneOptionsMap[base].push(opt);
     }
-    comp.uldGroups.forEach(function(group){
+    comp.uldGroups.forEach(function(group, gi){
       if(group.include === false) return;         // excluded from generation
+      // a group built before ids existed, or one hand-written in a config
+      // file, still has to key distinctly from the group beside it
+      var gid = group.id || ("#" + gi);
       // Whether a bay is filled by a pair or by one container is a property
       // of the position, not of the group: an AKE 70 wide in a hold 100 wide
       // fills its bay alone, off the centreline, and the group next to it
@@ -7093,7 +7179,7 @@ function generateLayouts(){
         uldDefs.forEach(function(uldDef){
           addOption(base, sig, posList.map(function(p){
             return Object.assign({}, p, {uld:uldDef.iata, uldType:group.uldType});
-          }));
+          }), gid);
         });
       };
       // side by side: every L with an R of its own
@@ -7373,6 +7459,23 @@ function bindStep(){
   var host = $("uldStep");
   var ack = host.querySelector("#signAck");
   if(ack) ack.addEventListener("change", function(){ U.signAck = ack.checked; uldRender(); });
+  /* Regenerated on the spot when there are already results: the setting
+     only means anything through the layouts, so showing the old ones under
+     the new label would be the one reading nobody could trust. Which rows
+     are expanded is keyed by list position, so those are dropped — the
+     lists either side of the switch are not the same lists. */
+  var merge = host.querySelector("#mergeIdentical");
+  if(merge) merge.addEventListener("change", function(){
+    U.mergeIdentical = merge.checked;
+    if(U.layouts){
+      var keepComp = U.activeLayoutComp;
+      U.openLayout = {}; U.layoutLimit = {};
+      generateLayouts();
+      U.activeLayoutComp = Math.min(keepComp, Math.max(0, U.compartments.length-1));
+    }
+    if(typeof uldTouch === "function") uldTouch();
+    uldRender();
+  });
   Array.prototype.forEach.call(host.querySelectorAll('input[data-opt]'), function(cb){
     cb.addEventListener("change", function(){
       var comp = U.compartments[U.activeComp];
@@ -7698,7 +7801,8 @@ $("refStation").addEventListener("input", function(){
 $("btnSaveCfg").addEventListener("click", function(){
   if(typeof uldSaveNow === "function") uldSaveNow();
   showTextModal("Export configuration",
-    JSON.stringify({ulds:U.ulds, compartments:U.compartments, bulk:U.bulk, refStation:U.refStation}, null, 2),
+    JSON.stringify({ulds:U.ulds, compartments:U.compartments, bulk:U.bulk,
+                    refStation:U.refStation, mergeIdentical:U.mergeIdentical !== false}, null, 2),
     "uld_config.json");
 });
 $("fileCfg").addEventListener("change", function(e){
@@ -7710,6 +7814,9 @@ $("fileCfg").addEventListener("change", function(e){
       if(d.ulds) U.ulds = d.ulds;
       if(d.compartments) U.compartments = d.compartments;
       U.bulk = d.bulk || [];
+      // a file written before the setting existed carries none: it was
+      // exported with the types combined, so it comes back that way
+      U.mergeIdentical = d.mergeIdentical !== false;
       if(d.refStation!==undefined){ U.refStation = d.refStation; $("refStation").value = d.refStation; }
       U.tplName = null;
       U.step = 0; U.layouts = null; uldRender();

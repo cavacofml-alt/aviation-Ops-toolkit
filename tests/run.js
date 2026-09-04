@@ -668,6 +668,56 @@ if(inBuild("uld")) try {
   ok("a slot shared by two bases names both types",
      ULD.U.layouts[1].every(l => l.name.indexOf("2LD3/LD2") === 0),
      ULD.U.layouts[1].map(l => l.name).join(" | "));
+
+  /* Combining those two into one slot is the operator's call: some systems
+     want the row that names both, others want one layout per type even
+     where the numbers are identical. Default on, so nothing already built
+     changes; the same fixture, generated again with it off, must split. */
+  ok("combining is on unless the operator turns it off", ULD.U.mergeIdentical !== false);
+  ULD.U.mergeIdentical = false;
+  ULD.generateLayouts();
+  const splitCsv = ULD.csvLines(1);
+  const s11 = splitCsv.filter(l => l.indexOf(",11L,") >= 0);
+  ok("with combining off, an identical LD2 and LD3 no longer share a slot",
+     s11.length > 0 && s11.every(l => l.indexOf('"LD3,LA;LD2,LA"') < 0) &&
+     s11.some(l => l.indexOf('"LD3,LA"') >= 0) && s11.some(l => l.indexOf('"LD2,LA"') >= 0),
+     s11.join(" | "));
+  ok("each type is named on its own once they are no longer combined",
+     ULD.U.layouts[1].every(l => l.name.indexOf("2LD3/LD2") < 0) &&
+     ULD.U.layouts[1].some(l => l.name.indexOf("2LD3") === 0) &&
+     ULD.U.layouts[1].some(l => l.name.indexOf("2LD2") === 0),
+     ULD.U.layouts[1].map(l => l.name).join(" | "));
+  ok("the two are alternatives for the bay, never both at once",
+     ULD.U.layouts[1].every(l => l.positions.filter(p => p.name === "11L").length === 1),
+     ULD.U.layouts[1].map(l => l.name).join(" | "));
+  // The group stays the unit: what a group is ticked for is not what this
+  // setting splits, or unticking would be the only way to keep a slot whole.
+  ULD.U.ulds = [{id:"u1",uldType:"LD3",iata:"AKE",maxWeight:1587,tare:65},
+                {id:"u2",uldType:"LD3",iata:"PKC",maxWeight:1587,tare:40}];
+  ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
+    {id:"g1",uldType:"LD3",iata:"AKE",label:"x",positions:[
+      mkPos("11L","201.1","261.7","0","48","-0.00342","1587"),
+      mkPos("11R","201.1","261.7","48","0","-0.00342","1587")]}
+  ]}];
+  ULD.generateLayouts();
+  ok("a group ticked for two ULDs still lists both, combining off or on",
+     ULD.U.layouts[1].length === 1 && ULD.U.layouts[1][0].name === "2LD3" &&
+     ULD.U.layouts[1][0].positions[0].certified.map(c => c.iata).sort().join(",") === "AKE,PKC",
+     ULD.U.layouts[1].map(l => l.name).join(" | "));
+  // Two groups that are genuinely the same offer are still one layout: they
+  // name it identically, and identical names collapse.
+  ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
+    {id:"g1",uldType:"LD3",iata:"AKE",label:"x",positions:[
+      mkPos("11L","201.1","261.7","0","48","-0.00342","1587"),
+      mkPos("11R","201.1","261.7","48","0","-0.00342","1587")]},
+    {id:"g2",uldType:"LD3",iata:"AKE",label:"x",positions:[
+      mkPos("11L","201.1","261.7","0","48","-0.00342","1587"),
+      mkPos("11R","201.1","261.7","48","0","-0.00342","1587")]}
+  ]}];
+  ULD.generateLayouts();
+  ok("splitting never duplicates a layout two identical groups both describe",
+     ULD.U.layouts[1].length === 1, ULD.U.layouts[1].map(l => l.name).join(" | "));
+  ULD.U.mergeIdentical = true;
   /* The naming rule the operator chose: the type alone when the slot is
      certified for every ULD of it, the IATAs when it is narrower. Ticking
      is what makes the difference visible in the file. */
@@ -746,6 +796,7 @@ if(inBuild("uld")) try {
      pNames.join(" | ") + " / " + JSON.stringify(ld11Slot.certified.map(c => c.iata)));
   /* Positions are numbered after their hold, so a 41L in compartment 1 is a
      typed digit. A warning, not a block — the numbering is a convention. */
+  ULD.U.ulds = [{id:"u1",uldType:"LD3",iata:"AKE",maxWeight:1587,tare:65}];
   ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
     {id:"g1",uldType:"LD3",iata:"AKE",label:"x",positions:[
       gp("11L","300","360","-0.003","1587"),
@@ -757,6 +808,86 @@ if(inBuild("uld")) try {
      numbering.warn.some(x => x.name === "41L" && /named for compartment 4 but sits in 1/.test(x.reason)) &&
      !numbering.warn.some(x => x.name === "11L"),
      numbering.warn.map(x => x.name+": "+x.reason).join(" | "));
+
+  /* A layout is named for its types and ticked IATAs, never its numbers, so
+     two groups of one type certified for the same ULDs and describing one
+     bay differently both generate "2LD3" — and identical names collapse,
+     dropping the second set of numbers without a word. Flagged, because
+     which number is right is not ours to pick. */
+  ULD.U.ulds = [{id:"u1",uldType:"LD3",iata:"AKE",maxWeight:1587,tare:65},
+                {id:"u2",uldType:"LD3",iata:"PKC",maxWeight:1587,tare:40},
+                {id:"u3",uldType:"LD2",iata:"DPE",maxWeight:1224,tare:72}];
+  ULD.U.bulk = []; ULD.U.refStation = "1258";
+  const clash = (a, b) => {
+    ULD.U.compartments = [{id:"c1",number:1,uldGroups:[a,b]}];
+    return ULD.indexIssues().warn.filter(x => /named the same/.test(x.reason));
+  };
+  const pair = (over, mw, ix) => ({id:"g"+over, uldType:"LD3", iata:"AKE", positions:[
+    mkPos("11L","201.1","261.7","0","48",ix||"-0.00342",mw),
+    mkPos("11R","201.1","261.7","48","0",ix||"-0.00342",mw)]});
+  ok("two same-type groups describing one bay with different weights are flagged",
+     clash(pair(1,"1587"), pair(2,"1200")).length === 1,
+     JSON.stringify(clash(pair(1,"1587"), pair(2,"1200")).map(x => x.reason)));
+  ok("and with a different index at that bay, equally",
+     clash(pair(1,"1587"), pair(2,"1587","-0.00400")).length === 1);
+  ok("but not when the ticks already name the two layouts apart",
+     clash(Object.assign(pair(1,"1587"), {iatas:["AKE"]}),
+           Object.assign(pair(2,"1200"), {iatas:["PKC"]})).length === 0);
+  ok("nor when the two groups describe the bay identically",
+     clash(pair(1,"1587"), pair(2,"1587")).length === 0);
+  ok("nor when the second group is a different type — those names differ",
+     clash(pair(1,"1587"),
+           {id:"g2",uldType:"LD2",iata:"DPE",positions:[
+             mkPos("11L","201.1","261.7","0","48","-0.00342","1224"),
+             mkPos("11R","201.1","261.7","48","0","-0.00342","1224")]}).length === 0);
+  ok("nor when the clashing group is excluded from generation",
+     clash(pair(1,"1587"), Object.assign(pair(2,"1200"), {include:false})).length === 0);
+  ok("no shipped template trips the collision check",
+     ULD.TEMPLATES.every(t => {
+       ULD.U.ulds = JSON.parse(JSON.stringify(t.ulds));
+       ULD.U.compartments = JSON.parse(JSON.stringify(t.compartments));
+       ULD.U.refStation = t.refStation;
+       return !ULD.indexIssues().warn.some(x => /named the same/.test(x.reason));
+     }));
+  /* A group whose type has no ULD left in the catalog certifies nothing, so
+     it generates nothing — the positions vanish from the layouts and from
+     the export together. Reachable with one click: removing the last LD3
+     from the catalog orphans every LD3 group. */
+  ULD.U.ulds = [{id:"u1",uldType:"LD2",iata:"DPE",maxWeight:1224,tare:72}];
+  ULD.U.refStation = "1258";
+  ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
+    {id:"g1",uldType:"LD3",iata:"AKE",positions:[
+      mkPos("11L","201.1","261.7","0","48","-0.00342","1224"),
+      mkPos("11R","201.1","261.7","48","0","-0.00342","1224")]},
+    {id:"g2",uldType:"LD2",iata:"DPE",positions:[
+      mkPos("12L","299.1","360.1","0","48","-0.00310","1224"),
+      mkPos("12R","299.1","360.1","48","0","-0.00310","1224")]}
+  ]}];
+  const orphan = ULD.indexIssues().warn.filter(x => /generates nothing/.test(x.reason));
+  ULD.generateLayouts();
+  ok("a group left with no ULD in the catalog is flagged, not silently dropped",
+     orphan.length === 1 && orphan[0].type === "LD3" &&
+     ULD.csvLines(1).every(l => l.indexOf(",11L,") < 0),
+     JSON.stringify(orphan.map(x => x.type + " " + x.reason)));
+  ok("a group that still has its ULDs is not flagged",
+     !orphan.some(x => x.type === "LD2"));
+  ok("and no shipped template is left certifying nothing",
+     ULD.TEMPLATES.every(t => {
+       ULD.U.ulds = JSON.parse(JSON.stringify(t.ulds));
+       ULD.U.compartments = JSON.parse(JSON.stringify(t.compartments));
+       ULD.U.refStation = t.refStation;
+       return !ULD.indexIssues().warn.some(x => /generates nothing/.test(x.reason));
+     }));
+
+  // the checks below carry on from the compartment the numbering test built
+  ULD.U.ulds = [{id:"u1",uldType:"LD3",iata:"AKE",maxWeight:1587,tare:65}];
+  ULD.U.refStation = "1258";
+  ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
+    {id:"g1",uldType:"LD3",iata:"AKE",label:"x",positions:[
+      gp("11L","300","360","-0.003","1587"),
+      gp("41L","300","360","-0.003","1587")
+    ]}
+  ]}];
 
   /* Undo carries the whole workspace, so removing a group and taking it back
      restores its positions too — an autosave of the version without them is
