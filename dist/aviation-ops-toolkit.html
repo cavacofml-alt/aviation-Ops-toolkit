@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.153</title>
+<title>Aviation Ops Toolkit v1.2.156</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -511,7 +511,7 @@ button.issue-sum:hover{background:color-mix(in srgb, currentColor 8%, transparen
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.153</span>
+      <span class="build-ver">v1.2.156</span>
     </header>
 
     <main>
@@ -840,7 +840,7 @@ button.issue-sum:hover{background:color-mix(in srgb, currentColor 8%, transparen
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.153 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.156 — Luís Cavaco
     Built 2026-09-04 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -7099,7 +7099,20 @@ var ISSUE_HELP = {
   "Index far outside the compartment":
     "Orders of magnitude away from every other position in this hold — check the decimal point.",
   "Incomplete position":
-    "A position generates nothing until it carries all of: name, FWD, AFT, index and max weight."
+    "A position generates nothing until it carries all of: name, FWD, AFT, index and max weight.",
+  "Index sign against the reference station":
+    "Forward of the reference station the index should be negative, aft of it positive. Conventions differ "+
+    "between operators and aircraft — but a single position disagreeing with its neighbours is usually a "+
+    "missing minus sign, and it moves the centre of gravity the wrong way.",
+  "Index rounds away to zero":
+    "The file carries five decimals. An index smaller than that is written as 0, and a position with a zero "+
+    "index contributes no moment at all — whatever is loaded there stops affecting the trim.",
+  "Weight unlike the rest of its type":
+    "Three times more or less than the other positions of this type carry. Legitimate deratings are rarely "+
+    "this large — check for a digit too many, or one too few.",
+  "Generated before the last edit":
+    "Positions were edited after these layouts were computed, so the file would describe numbers the editor no "+
+    "longer holds. Go back and generate again before exporting."
 };
 /* Enough chips to see the shape of the problem; past that the count says
    the rest, and the group is one click away anyway. */
@@ -7118,9 +7131,13 @@ function issueBody(items){
       (ISSUE_HELP[k] ? '<div class="why">'+ISSUE_HELP[k]+'</div>' : '')+
       '<div class="issue-chips">'+
         shown.map(function(it){
+          // a bulk hold, or anything the editor has no field for, is a label
+          // rather than a button: there is nowhere for it to jump to
+          var body = esc(it.name)+'<i>C'+esc(it.comp)+' &middot; '+esc(it.type)+'</i>';
+          if(it.gid == null || it.ci == null)
+            return '<span class="issue-chip" style="cursor:default" title="'+esc(it.reason)+'">'+body+'</span>';
           return '<button class="issue-chip" data-act="fix-pos" data-c="'+it.ci+'" '+
-            'data-gid="'+esc(it.gid)+'" title="'+esc(it.reason)+'">'+
-            esc(it.name)+'<i>C'+esc(it.comp)+' &middot; '+esc(it.type)+'</i></button>';
+            'data-gid="'+esc(it.gid)+'" title="'+esc(it.reason)+'">'+body+'</button>';
         }).join("")+
         (list.length > shown.length
           ? '<span class="note">+'+(list.length-shown.length)+' more</span>' : '')+
@@ -7518,6 +7535,123 @@ function allLayoutRows(){
   U.compartments.forEach(function(c){ out = out.concat(layoutRows(c.number)); });
   return out.concat(bulkRows());
 }
+
+/* ---------- the check before the file leaves the tool ----------
+   The gate before generation reads the editor; this reads what the file is
+   actually going to say, which is not the same thing. An index is rounded
+   on the way out, a layout can have been generated before a position was
+   edited, and the sign warning can have been acknowledged once and never
+   asked about again. Everything downstream trusts this file to place weight
+   on an aircraft, so it is worth one last look at the numbers as written.
+
+   One position, not one row: a bay appears in every layout it fits, and
+   that is the same bay to check a hundred times over. */
+function exportedPositions(compNum){
+  var seen = {}, out = [];
+  U.compartments.forEach(function(c){
+    if(compNum !== undefined && c.number !== compNum) return;
+    ((U.layouts||{})[c.number]||[]).forEach(function(l){
+      l.positions.forEach(function(p){
+        var k = c.number+"|"+p.name+"|"+p.uldType;
+        if(seen[k]) return;
+        seen[k] = 1;
+        out.push({ comp:c.number, p:p });
+      });
+    });
+  });
+  // bulk holds ride along in the combined export only
+  if(compNum === undefined) (U.bulk||[]).forEach(function(h){
+    (h.positions||[]).forEach(function(p){ out.push({ comp:h.number, p:p, bulk:true }); });
+  });
+  return out;
+}
+/* Which group a written position came from, so its chip can still jump to
+   the field that produced it. */
+function groupBehind(compNum, pos){
+  var found = { ci:null, gid:null };
+  U.compartments.forEach(function(c, i){
+    if(c.number !== compNum) return;
+    (c.uldGroups||[]).forEach(function(g){
+      if(g.uldType !== pos.uldType) return;
+      if((g.positions||[]).some(function(q){ return q.name === pos.name; })){ found = { ci:i, gid:g.id }; }
+    });
+  });
+  return found;
+}
+/* A weight this far from what the rest of its type carries is a typing slip,
+   not a derating: a 1587 kg LD3 keyed as 15870, or as 158. */
+var EXPORT_WEIGHT_FACTOR = 3;
+var EXPORT_WEIGHT_MIN_SAMPLE = 4;
+function medianOf(nums){
+  var s = nums.slice().sort(function(a,b){ return a-b; });
+  return s.length ? s[Math.floor(s.length/2)] : null;
+}
+function exportIssues(compNum){
+  if(!U.layouts) return [];
+  var items = exportedPositions(compNum), out = [];
+
+  // what most positions of each type carry, for the "unlike the others" check
+  var byType = {}, typeMid = {};
+  items.forEach(function(it){
+    if(it.bulk) return;
+    var w = parseFloat(it.p.maxWeight);
+    if(!isNaN(w) && w > 0) (byType[it.p.uldType] = byType[it.p.uldType] || []).push(w);
+  });
+  Object.keys(byType).forEach(function(t){
+    if(byType[t].length >= EXPORT_WEIGHT_MIN_SAMPLE) typeMid[t] = medianOf(byType[t]);
+  });
+  var idxLimit = {};
+  U.compartments.forEach(function(c){ idxLimit[c.number] = grossIndexLimit(c); });
+
+  items.forEach(function(it){
+    var p = it.p;
+    var g = it.bulk ? { ci:null, gid:null } : groupBehind(it.comp, p);
+    var where = { comp:it.comp, ci:g.ci, gid:g.gid, name:p.name||"(unnamed)",
+                  type:it.bulk ? "BULK" : p.uldType };
+    var add = function(kind, reason){ out.push(Object.assign({kind:kind, reason:reason}, where)); };
+
+    var raw = parseFloat(p.index), written = exportIndex(p.index);
+    // 1. the sign, against the reference station — asked again here because
+    //    the gate before generation can have been acknowledged once
+    var sign = validateIndex(p.index, p.fwd, U.refStation);
+    if(sign) add("Index sign against the reference station", sign+" (station "+p.fwd+", ref "+(U.refStation||"—")+")");
+    // 2. an index small enough to round away carries no arm at all once written
+    if(!isNaN(raw) && raw !== 0 && written === 0)
+      add("Index rounds away to zero", "index "+p.index+" is written as 0 — the position would carry no moment arm");
+    // 3. the weight the file authorises
+    var w = parseFloat(p.maxWeight);
+    if(isNaN(w) || w <= 0){
+      add("Max weight is not usable", "max weight \""+p.maxWeight+"\" — nothing can be loaded against it");
+    } else {
+      if(w > GROSS_MAX_WEIGHT) add("Heavier than any ULD", "max weight of "+w+" kg");
+      if(!it.bulk){
+        var lightest = null;
+        (p.certified||[]).forEach(function(cert){
+          (U.ulds||[]).forEach(function(u){
+            if(u.uldType !== cert.type || u.iata !== cert.iata) return;
+            var m = parseFloat(u.maxWeight);
+            if(!isNaN(m) && (lightest === null || m < lightest.mw)) lightest = { mw:m, iata:u.iata };
+          });
+        });
+        if(lightest && w > lightest.mw)
+          add("Above the ULD's own rating", w+" kg written against the "+lightest.iata+"'s own "+lightest.mw+" kg");
+        var mid = typeMid[p.uldType];
+        if(mid && (w > mid*EXPORT_WEIGHT_FACTOR || w < mid/EXPORT_WEIGHT_FACTOR))
+          add("Weight unlike the rest of its type", w+" kg where most "+p.uldType+" positions carry about "+mid+" kg");
+      }
+    }
+    // 4. an index orders of magnitude away from the rest of its hold
+    var lim = idxLimit[it.comp];
+    if(lim && !isNaN(raw) && Math.abs(raw) > lim)
+      add("Index far outside the compartment", "index of "+p.index+" — check the decimal point");
+  });
+
+  // the file would describe numbers the editor no longer holds
+  if(U.layoutsStale) out.unshift({ kind:"Generated before the last edit", comp:"—", ci:null, gid:null,
+    name:"all", type:"—",
+    reason:"a position was edited after these layouts were computed" });
+  return out;
+}
 function rowToCsvLine(r){
   return [r[0], r[1], r[2], '"'+r[3]+'"', r[4], r[5], r[6], r[7], r[8], r[9], r[10]].join(",");
 }
@@ -7857,19 +7991,65 @@ function onUldClick(e){
   }
   else if(act==="csv-one"){
     var n = U.compartments.map(function(c){return c.number;})[U.activeLayoutComp];
-    showTextModal("CSV — compartment "+n, csvOne(n), "compartment"+n+"_layouts.csv");
+    exportGuard(n, function(){
+      showTextModal("CSV — compartment "+n, csvOne(n), "compartment"+n+"_layouts.csv"); });
   }
-  else if(act==="csv-all"){ showTextModal("CSV — all compartments", csvAll(), "all_layouts.csv"); }
+  else if(act==="csv-all"){
+    exportGuard(undefined, function(){
+      showTextModal("CSV — all compartments", csvAll(), "all_layouts.csv"); });
+  }
   else if(act==="xlsx-one"){
     // "D3" is a fixed sheet name the operator's own upload system expects on
     // every .xlsx it accepts, for any aircraft — confirmed against
     // 6H_A330243_TEMPLATE.xlsx. Not related to compartment numbering.
     var n2 = U.compartments.map(function(c){return c.number;})[U.activeLayoutComp];
-    downloadXlsx("D3", EXPORT_HEADERS, layoutRows(n2), "compartment"+n2+"_layouts.xlsx");
+    exportGuard(n2, function(){
+      downloadXlsx("D3", EXPORT_HEADERS, layoutRows(n2), "compartment"+n2+"_layouts.xlsx"); });
   }
   else if(act==="xlsx-all"){
-    downloadXlsx("D3", EXPORT_HEADERS, allLayoutRows(), "all_layouts.xlsx");
+    exportGuard(undefined, function(){
+      downloadXlsx("D3", EXPORT_HEADERS, allLayoutRows(), "all_layouts.xlsx"); });
   }
+}
+
+/* Nothing to say, nothing to click through: the check only interrupts when
+   it has found something. What it shows is what the file will say, so the
+   operator confirms the numbers rather than the intention. */
+function exportGuard(compNum, run){
+  var issues = exportIssues(compNum);
+  if(!issues.length){ run(); return; }
+  var host = $("modalHost");
+  host.innerHTML = '<div class="modal-back"><div class="modal">'+
+    '<div class="mh"><b>&#9888; Check before exporting</b>'+
+      '<button class="btn small quiet" data-x="close">Close</button></div>'+
+    '<div class="mb">'+
+      '<p class="note" style="margin-top:0">These are the numbers as the file will carry them — '+
+      'rounded to the five decimals the upload takes, and read back from the layouts themselves. '+
+      'Everything downstream places weight on an aircraft from this file.</p>'+
+      '<div class="issuebox"><div class="issue-body" style="padding-top:12px">'+ issueBody(issues) +'</div></div>'+
+      '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center">'+
+        '<button class="btn small primary" data-x="go">&#8595; Export anyway</button>'+
+        '<button class="btn small" data-x="close">Go back and check</button>'+
+        '<span class="note">'+issues.length+' to look at</span>'+
+      '</div>'+
+    '</div></div></div>';
+  host.addEventListener("click", function(e){
+    var t = e.target;
+    var chip = t.closest ? t.closest('[data-act="fix-pos"]') : null;
+    if(chip){                       // straight to the field that produced it
+      host.innerHTML = "";
+      U.step = 1;
+      U.activeComp = +chip.getAttribute("data-c");
+      U.collapsed[chip.getAttribute("data-gid")] = false;
+      uldRender();
+      return;
+    }
+    var btn = t.closest ? t.closest("[data-x]") : null;
+    if(!btn && t !== host.querySelector(".modal-back")) return;
+    var what = btn ? btn.getAttribute("data-x") : "close";
+    host.innerHTML = "";
+    if(what === "go") run();
+  });
 }
 
 $("btnPrev").addEventListener("click", function(){ if(U.step>0){U.step--; uldRender();} });
