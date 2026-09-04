@@ -20,10 +20,22 @@ O que faz: verifica mensagens de telex (PNL, ADL, PSM, MVT, SSM e mais 11 tipos)
 - Escreve a correção ali mesmo, na própria caixa. Não precisas de copiar/colar para outro sítio.
 - Passados menos de 1 segundo depois de parares de escrever, a ferramenta volta a validar sozinha (repara no indicador **"typing…" → "live"** no canto superior direito da secção de resultados).
 
+⚠️ **O `Ctrl+Z` deixa de funcionar depois da primeira validação.** Antes de
+validares, a caixa comporta-se como qualquer campo de texto e o `Ctrl+Z`
+desfaz o que escreveste. A partir do momento em que validas, cada revalidação
+volta a desenhar a caixa para pintar os erros, e isso apaga o histórico de
+escrita do browser — o `Ctrl+Z` fica sem nada para desfazer.
+
+Na prática: se te enganares numa correção, **corrige por cima** em vez de
+tentar desfazer. Se te enganaste a sério e queres o texto original de volta,
+usa **Copy message** antes de começares a mexer, ou volta a carregar o
+exemplo.
+
 ## Outros botões
 
-- **Load example**: carrega uma mensagem de exemplo válida do tipo escolhido na lista (PNL, PSM, MVT…), só para veres como a ferramenta funciona.
-- **Example with errors**: carrega a mesma mensagem, mas com erros propositados — útil para testar/aprender.
+- **Load example**: carrega uma mensagem de exemplo válida, só para veres como a ferramenta funciona.
+- A **lista ao lado do Load example** (PNL, PSM, PTM, PFS, PIL, SOM, SPM, FTL, PRL, ETL, MVT, DIV, SSM, ASM) escolhe o tipo do exemplo — e vale para **os dois** botões de exemplo, não só para o primeiro.
+- **Example with errors**: a mesma mensagem, do mesmo tipo, mas com erros propositados — útil para testar e aprender.
 - **Clear**: apaga tudo e recomeça do zero.
 - **Copy message** (aparece depois de validares): copia o texto atual da mensagem para a área de transferência.
 - **Export report** (aparece depois de validares): descarrega um relatório de texto com todos os problemas encontrados — útil para anexar a um email ou guardar como prova.

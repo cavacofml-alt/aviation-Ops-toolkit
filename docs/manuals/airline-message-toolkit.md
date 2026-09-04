@@ -48,6 +48,12 @@ O que faz: a partir de uma lista de passageiros (ficheiro `.csv` ou `.xlsx`), ge
 
 ### Passo 2 — Carrega a lista de passageiros
 
+> **Começa pelo template.** Na caixa *Passenger-list template* tens
+> **↓ TEMPLATE CSV** e **↓ TEMPLATE EXCEL** — descarrega um deles e trabalha
+> por cima. Já vem com as colunas todas pela ordem certa e com um exemplo
+> preenchido (um passageiro com dois documentos: passaporte e um segundo).
+> Poupa-te a acertar os nomes das colunas à mão.
+
 Clica em **📎 Load passenger list (CSV/XLSX)** e escolhe o ficheiro. Colunas obrigatórias (têm de existir no ficheiro, mesmo que algumas células fiquem em branco):
 
 ```
@@ -70,7 +76,17 @@ Usa **📋 Copy** para copiar o texto, ou **↓ Download PNL.txt** para guardar 
 
 ### Coisas a saber
 
-- Cada passageiro é identificado pela combinação Apelido + Nome próprio + PNR — se dois passageiros tiverem exatamente os três iguais, são tratados como a mesma pessoa.
+- Cada passageiro é identificado pela combinação **Apelido + Nome próprio +
+  PNR + Data de nascimento**. Só se os quatro forem iguais é que duas linhas
+  são tratadas como a mesma pessoa — a data de nascimento entra na conta
+  precisamente para que dois homónimos sem PNR (pai e filho com o mesmo nome,
+  por exemplo) não se fundam num só passageiro.
 - Só é incluído um documento de passaporte por passageiro na linha `.R/DOCS` (o primeiro com `DocumentType = P`); outros documentos (não-passaporte) aparecem em linhas `.R/DOCO` separadas.
+- **Países:** a nacionalidade e o país emissor são convertidos para o código
+  de 2 letras — `PRT` fica `PT`, `USA` fica `US`. A conversão cobre os países
+  mais frequentes (`USA GBR CAN DEU MMR PRT ESP FRA ITA NLD BEL CHE AUT TUR`);
+  **qualquer outro código passa tal e qual como o escreveste**. Se trabalhas
+  com destinos fora desta lista, escreve já o código de 2 letras na tua lista
+  de passageiros — é o mais seguro.
 - Campos como `RecordLocator`, `Seat` ou `BCN`, se estiverem em branco na lista, simplesmente não aparecem nessa linha da mensagem — não ficam pendurados sem valor.
 - **Clear** apaga a lista carregada e o PNL gerado, para recomeçares.
