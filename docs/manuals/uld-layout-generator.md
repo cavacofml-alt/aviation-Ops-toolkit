@@ -63,6 +63,28 @@ Só avanças para o passo seguinte quando todos os grupos tiverem pelo menos 1 p
 
 ### Passo 3 — Layouts (gerar e exportar)
 
+#### Combinar ULDs na mesma posição (caixa por baixo dos botões)
+
+Quando dois tipos diferentes cabem na mesma posição **com o mesmo FWD/AFT,
+o mesmo index e o mesmo peso máximo**, tens duas maneiras de os tratar — e
+a escolha é tua, porque depende do sistema para onde vais importar o ficheiro:
+
+- **Ligada** (por omissão): partilham a mesma posição. Sai um único layout
+  `2LD3/LD2`, e a coluna *Certified ULDs* leva os dois — `"LD3,LA;LD2,LA"`.
+- **Desligada**: cada tipo tem o seu próprio layout, mesmo com os números
+  iguais — `2LD3` e `2LD2` em separado, cada um com o seu tipo na coluna.
+
+A caixa só muda a forma como os layouts são apresentados e exportados; não
+altera nenhum dado que tenhas introduzido. Se já tiveres layouts gerados,
+são recalculados na hora para veres a diferença. A escolha fica guardada com
+o resto do trabalho e vai também no **↓ Export file**.
+
+Isto só se aplica quando os números são **exatamente iguais**. Se o index ou
+o peso da posição diferirem nem que seja num dígito, os tipos ficam sempre
+separados, com a caixa ligada ou desligada.
+
+#### Gerar
+
 1. Clica em **⚡ Generate all layouts**.
 2. Aparece o desenho do avião de lado, com cada compartimento colorido, e por baixo uma tabela por compartimento com todas as combinações válidas encontradas.
 3. Clica num compartimento no desenho (ou nos separadores "Compartment 1", "Compartment 2"…) para ver as suas combinações.
@@ -76,6 +98,22 @@ Só avanças para o passo seguinte quando todos os grupos tiverem pelo menos 1 p
 ### Se aparecer um aviso de "dados alterados"
 
 Se editares qualquer posição depois de já teres gerado os layouts, aparece um aviso amarelo a dizer que os dados mudaram. Basta clicar outra vez em **Generate all layouts** para atualizar tudo.
+
+### Dois avisos que valem uma leitura atenta
+
+Aparecem na caixa amarela "positions worth checking", não bloqueiam nada, e
+cada um tem um botão que salta para o grupo em causa:
+
+- **"another LD3 group describes this bay with different numbers"** — tens
+  dois grupos do mesmo tipo a descrever a mesma baia com index ou peso
+  diferentes. Como o nome do layout é feito do tipo (e dos ULDs ticados),
+  ambos se chamariam `2LD3` e **só um é gerado**. Resolve-se juntando os dois
+  grupos num só, ou desticando cada um até ao seu ULD — aí ficam `2LD3(AKE)`
+  e `2LD3(PKC)`, com nomes diferentes, e os dois são gerados.
+- **"no LD3 left in the ULD catalog"** — apagaste do catálogo (Passo 1) o
+  último ULD de um tipo que ainda tem grupos no Passo 2. Esses grupos deixam
+  de gerar seja o que for e as suas posições não aparecem no export. Volta a
+  criar o ULD no catálogo, ou remove o grupo.
 
 ## Desfazer
 
