@@ -16,7 +16,7 @@ O que faz: pega em ficheiros (ou texto) e devolve-te um `.zip` encriptado com um
    - **Random — letters, digits, symbols**: a mais forte, mas mais difícil de ditar por telefone.
    - **Random — letters and digits only**: forte, mais fácil de escrever.
    - **Words — easier to read aloud**: uma sequência de palavras fáceis de dizer em voz alta (ex: `river-cloud-stone-...-1234`).
-5. Escolhe o **comprimento** da password (16, 24, 32 ou 40 — quanto maior, mais segura).
+5. Escolhe o **comprimento** da password (16, 24, 32 ou 40 — vem 24 por defeito; quanto maior, mais segura).
 6. Clica em **🔒 Encrypt & download**.
 7. Aparece um cartão verde com:
    - O botão para **descarregar o .zip**.
