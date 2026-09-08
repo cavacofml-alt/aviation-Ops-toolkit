@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.167</title>
+<title>Aviation Ops Toolkit v1.2.172</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -511,7 +511,7 @@ button.issue-sum:hover{background:color-mix(in srgb, currentColor 8%, transparen
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.167</span>
+      <span class="build-ver">v1.2.172</span>
     </header>
 
     <main>
@@ -840,7 +840,7 @@ button.issue-sum:hover{background:color-mix(in srgb, currentColor 8%, transparen
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.167 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.172 — Luís Cavaco
     Built 2026-09-08 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -4465,6 +4465,17 @@ var TPL_A330 = {
         {name:"43",fwd:"50.471",aft:"52.011",left:"0",right:"0",index:"0.00596",maxWeight:"3174"},
       ]},
     ]},
+  ],
+  // The operator's own bulk-hold table. Its "Arm" column is not carried —
+  // this tool's index is already the per-kg balancing figure the table's
+  // own "Index" column gives directly, and there is nowhere in the data
+  // model (compartment positions included) that a separate arm value goes.
+  bulk:[
+    {number:5, positions:[
+      {name:"51", fwd:"52.315", aft:"53.195", left:"2.82", right:"0",    index:"0.00656", volume:"0", maxWeight:"339"},
+      {name:"52", fwd:"52.315", aft:"54.255", left:"0",    right:"2.82", index:"0.00677", volume:"0", maxWeight:"1413"},
+      {name:"53", fwd:"54.305", aft:"56.354", left:"0",    right:"0",    index:"0.00759", volume:"0", maxWeight:"1716"},
+    ]}
   ]
 };
 
@@ -4994,8 +5005,8 @@ var TPL_B777_300 = {
   // own system computes the per-hold maximum downstream.
   bulk:[
     {number:5, positions:[
-      {name:"51", fwd:"2069.5", aft:"2150.0", index:"0.002808", volume:"6.23",  maxWeight:"1701"},
-      {name:"52", fwd:"2150.0", aft:"2220.0", index:"0.003087", volume:"10.76", maxWeight:"2776"},
+      {name:"51", fwd:"2069.5", aft:"2150.0", left:"0", right:"0", index:"0.002808", volume:"6.23",  maxWeight:"1701"},
+      {name:"52", fwd:"2150.0", aft:"2220.0", left:"0", right:"0", index:"0.003087", volume:"10.76", maxWeight:"2776"},
     ]}
   ]
 };
@@ -6510,7 +6521,7 @@ function emptyPos(name){
   return { name:name||"", fwd:"", aft:"", left:"0", right:"0", index:"", maxWeight:"" };
 }
 function emptyBulkPos(){
-  return { name:"", fwd:"", aft:"", index:"", volume:"", maxWeight:"" };
+  return { name:"", fwd:"", aft:"", left:"0", right:"0", index:"", volume:"", maxWeight:"" };
 }
 /* At least one bulk hold, with at least one position, is mandatory before
    the combined export — the system this feeds always expects a BULK row,
@@ -6713,10 +6724,12 @@ function bulkSection(){
   var holdBoxes = holds.map(function(h, hi){
     var posRows = (h.positions||[]).map(function(p, pi){
       var warn = p.index ? validateIndex(p.index, p.fwd, U.refStation) : null;
-      return '<div class="posrow" style="grid-template-columns:1fr .9fr .9fr 1.1fr .9fr 1fr auto">'+
+      return '<div class="posrow" style="grid-template-columns:1fr .9fr .9fr .7fr .7fr 1.1fr .9fr 1fr auto">'+
         bulkInp(hi,pi,"name",p.name,"text","51")+
         bulkInp(hi,pi,"fwd",p.fwd,"number","FWD")+
         bulkInp(hi,pi,"aft",p.aft,"number","AFT")+
+        bulkInp(hi,pi,"left",p.left,"number","0")+
+        bulkInp(hi,pi,"right",p.right,"number","0")+
         bulkInp(hi,pi,"index",p.index,"number","0.00500",warn)+
         bulkInp(hi,pi,"volume",p.volume,"number","m3")+
         bulkInp(hi,pi,"maxWeight",p.maxWeight,"number","kg")+
@@ -6725,8 +6738,8 @@ function bulkSection(){
       '</div>';
     }).join("");
     var colHead = (h.positions||[]).length
-      ? '<div class="posrow" style="grid-template-columns:1fr .9fr .9fr 1.1fr .9fr 1fr auto;margin-bottom:2px">'+
-        ["Position","FWD stat","AFT stat","Index","Volume (m³)","Max wt (kg)"].map(function(lbl){
+      ? '<div class="posrow" style="grid-template-columns:1fr .9fr .9fr .7fr .7fr 1.1fr .9fr 1fr auto;margin-bottom:2px">'+
+        ["Position","FWD stat","AFT stat","Left","Right","Index","Volume (m³)","Max wt (kg)"].map(function(lbl){
           return '<div style="font-family:var(--mono);font-size:9px;letter-spacing:1.2px;'+
             'text-transform:uppercase;color:var(--dim)">'+esc(lbl)+'</div>'; }).join("")+
         '<div></div></div>'
@@ -7607,7 +7620,10 @@ function bulkRows(){
   var out = [];
   (U.bulk||[]).forEach(function(h){
     (h.positions||[]).forEach(function(p){
-      out.push([h.number, "BULK", p.name, "", +p.fwd, +p.aft, "", "", exportIndex(p.index), +p.volume, +p.maxWeight]);
+      out.push([h.number, "BULK", p.name, "", +p.fwd, +p.aft,
+        (p.left===""||p.left==null)?0:+p.left,
+        (p.right===""||p.right==null)?0:+p.right,
+        exportIndex(p.index), +p.volume, +p.maxWeight]);
     });
   });
   return out;

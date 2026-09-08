@@ -615,11 +615,12 @@ if(inBuild("uld")) try {
   ok("the templates only warn where the manual really does exceed the ULD, or no bulk hold ships with it",
      tplIssues.every(t => t.kinds.every(k => k === "Above the ULD's own rating" || k === "No bulk hold defined")),
      JSON.stringify(tplIssues));
-  // Only the B777-300 ships its own bulk hold; the rest need one added
-  // before the combined export, and are told so here.
-  ok("every template but the B777-300 is missing its bulk hold",
-     tplIssues.filter(t => t.kinds.includes("No bulk hold defined")).length === 5 &&
-     !tplIssues.filter(t => t.name === "Boeing 777-300")[0].kinds.includes("No bulk hold defined"),
+  // The B777-300 and A330-300 ship their own bulk hold; the rest need one
+  // added before the combined export, and are told so here.
+  const hasOwnBulk = ["Boeing 777-300", "Airbus A330-300"];
+  ok("every template but the B777-300 and A330-300 is missing its bulk hold",
+     tplIssues.filter(t => t.kinds.includes("No bulk hold defined")).length === 4 &&
+     hasOwnBulk.every(n => !tplIssues.filter(t => t.name === n)[0].kinds.includes("No bulk hold defined")),
      JSON.stringify(tplIssues.map(t => t.name + ":" + t.kinds.includes("No bulk hold defined"))));
 
   // That loop left U.bulk as whichever template came last in TEMPLATES —
@@ -1086,7 +1087,7 @@ if(inBuild("uld")) try {
      !(function(){ ULD.U.bulk.push({number:6, positions:[]}); return ULD.bulkMissing(); })());
 
   ok("a freshly added bulk position carries every field the editor writes",
-     Object.keys(ULD.emptyBulkPos()).sort().join(",") === "aft,fwd,index,maxWeight,name,volume");
+     Object.keys(ULD.emptyBulkPos()).sort().join(",") === "aft,fwd,index,left,maxWeight,name,right,volume");
 
   /* The mandatory bulk check is a hard, non-dismissable gate at export time
      (bulkRequiredModal, in the click handler — not exercised here, this
@@ -1101,6 +1102,24 @@ if(inBuild("uld")) try {
   ok("the mandatory bulk gate is never one of the dismissable export findings",
      !ULD.exportIssues().some(i => i.kind === "No bulk hold defined"),
      JSON.stringify(ULD.exportIssues().map(i => i.kind)));
+
+  /* The A330-300's own bulk-hold table (51/52/53), matching the operator's
+     own YU_A330323_TEMPLATE.xlsx byte for byte — left/right included, since
+     51 and 52 share fwd/aft but sit either side of the aircraft centreline. */
+  const a3tpl = ULD.TEMPLATES.filter(t => t.name === "Airbus A330-300")[0];
+  ULD.U.ulds = JSON.parse(JSON.stringify(a3tpl.ulds));
+  ULD.U.compartments = JSON.parse(JSON.stringify(a3tpl.compartments));
+  ULD.U.bulk = JSON.parse(JSON.stringify(a3tpl.bulk||[]));
+  ULD.U.refStation = a3tpl.refStation;
+  ULD.generateLayouts();
+  const a3bulkCsv = ULD.csvAll().split("\n").filter(l => l.indexOf(",BULK,") >= 0);
+  ok("A330-300 bulk hold matches the operator's own template file",
+     a3bulkCsv.join("\n") === [
+       '5,BULK,51,"",52.315,53.195,2.82,0,0.00656,0,339',
+       '5,BULK,52,"",52.315,54.255,0,2.82,0.00677,0,1413',
+       '5,BULK,53,"",54.305,56.354,0,0,0.00759,0,1716'
+     ].join("\n"),
+     a3bulkCsv.join(" | "));
 
 } catch(e){ ok("ULD module loads", false, e.message); }
 

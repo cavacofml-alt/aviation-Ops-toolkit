@@ -248,6 +248,17 @@ var TPL_A330 = {
         {name:"43",fwd:"50.471",aft:"52.011",left:"0",right:"0",index:"0.00596",maxWeight:"3174"},
       ]},
     ]},
+  ],
+  // The operator's own bulk-hold table. Its "Arm" column is not carried —
+  // this tool's index is already the per-kg balancing figure the table's
+  // own "Index" column gives directly, and there is nowhere in the data
+  // model (compartment positions included) that a separate arm value goes.
+  bulk:[
+    {number:5, positions:[
+      {name:"51", fwd:"52.315", aft:"53.195", left:"2.82", right:"0",    index:"0.00656", volume:"0", maxWeight:"339"},
+      {name:"52", fwd:"52.315", aft:"54.255", left:"0",    right:"2.82", index:"0.00677", volume:"0", maxWeight:"1413"},
+      {name:"53", fwd:"54.305", aft:"56.354", left:"0",    right:"0",    index:"0.00759", volume:"0", maxWeight:"1716"},
+    ]}
   ]
 };
 
@@ -777,8 +788,8 @@ var TPL_B777_300 = {
   // own system computes the per-hold maximum downstream.
   bulk:[
     {number:5, positions:[
-      {name:"51", fwd:"2069.5", aft:"2150.0", index:"0.002808", volume:"6.23",  maxWeight:"1701"},
-      {name:"52", fwd:"2150.0", aft:"2220.0", index:"0.003087", volume:"10.76", maxWeight:"2776"},
+      {name:"51", fwd:"2069.5", aft:"2150.0", left:"0", right:"0", index:"0.002808", volume:"6.23",  maxWeight:"1701"},
+      {name:"52", fwd:"2150.0", aft:"2220.0", left:"0", right:"0", index:"0.003087", volume:"10.76", maxWeight:"2776"},
     ]}
   ]
 };
