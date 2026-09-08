@@ -108,7 +108,8 @@ $("hdrHome").addEventListener("click", function(){ openTool("home"); });
 
 /* ---------- theme ---------- */
 /* Not persisted: artifact sandboxes block browser storage, so the choice lasts
-   for the session. Honours the operating system preference on first load. */
+   for the session. Dark by default regardless of the OS preference — the
+   toggle is one click away for anyone who wants daylight instead. */
 function applyTheme(mode){
   document.documentElement.setAttribute("data-theme", mode);
   var b = $("themeBtn");
@@ -117,9 +118,7 @@ function applyTheme(mode){
     b.title = mode === "light" ? "Switch to dark" : "Switch to daylight";
   }
 }
-var prefersLight = false;
-try { prefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches; } catch(e){}
-applyTheme(prefersLight ? "light" : "dark");
+applyTheme("dark");
 $("themeBtn").addEventListener("click", function(){
   var now = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
   applyTheme(now);
