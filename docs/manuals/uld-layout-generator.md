@@ -151,8 +151,11 @@ Só avanças quando todos os grupos tiverem pelo menos 1 posição.
 
 No fundo deste passo, sempre visível (mesmo sem nenhum compartimento criado),
 está a secção **Bulk holds — loose cargo, no ULDs**. É onde entra a carga
-solta, sem contentores: os campos são **Position, FWD stat, AFT stat, Index,
-Volume (m³) e Max wt (kg)** — sem left/right, sem tipo de ULD, sem grupo.
+solta, sem contentores: os campos são **Position, FWD stat, AFT stat, Left,
+Right, Index, Volume (m³) e Max wt (kg)** — sem tipo de ULD, sem grupo. O
+Left/Right serve para quando o porão tem duas sub-baias lado a lado, uma de
+cada lado do eixo do avião (como o 51/52 do A330-300 — mesmo FWD/AFT, cada
+uma com o seu braço lateral); numa baia ao centro, deixa os dois a `0`.
 
 1. **+ BULK HOLD** cria um porão novo; dá-lhe o número em **Hold number**.
 2. Dentro dele, **+ POSITION** por cada sub-baia (ex: `51`, `52`).
@@ -174,9 +177,9 @@ secção vazia — a verificação antes de exportar avisa que esse peso não é
 utilizável (não bloqueia), mas o requisito de "existe pelo menos um porão"
 fica satisfeito.
 
-**Os cinco templates que não são o B777-300 não trazem porão bulk.** Não
-inventámos números — carrega o template, vem com o aviso ativo, e adicionas
-tu os dados reais do avião antes de exportares.
+**Só o B777-300 e o A330-300 trazem porão bulk de origem.** Os outros quatro
+templates não — não inventámos números; carregam com o aviso ativo, e
+adicionas tu os dados reais do avião antes de exportares.
 
 ---
 

@@ -103,7 +103,7 @@ function emptyPos(name){
   return { name:name||"", fwd:"", aft:"", left:"0", right:"0", index:"", maxWeight:"" };
 }
 function emptyBulkPos(){
-  return { name:"", fwd:"", aft:"", index:"", volume:"", maxWeight:"" };
+  return { name:"", fwd:"", aft:"", left:"0", right:"0", index:"", volume:"", maxWeight:"" };
 }
 /* At least one bulk hold, with at least one position, is mandatory before
    the combined export — the system this feeds always expects a BULK row,
@@ -306,10 +306,12 @@ function bulkSection(){
   var holdBoxes = holds.map(function(h, hi){
     var posRows = (h.positions||[]).map(function(p, pi){
       var warn = p.index ? validateIndex(p.index, p.fwd, U.refStation) : null;
-      return '<div class="posrow" style="grid-template-columns:1fr .9fr .9fr 1.1fr .9fr 1fr auto">'+
+      return '<div class="posrow" style="grid-template-columns:1fr .9fr .9fr .7fr .7fr 1.1fr .9fr 1fr auto">'+
         bulkInp(hi,pi,"name",p.name,"text","51")+
         bulkInp(hi,pi,"fwd",p.fwd,"number","FWD")+
         bulkInp(hi,pi,"aft",p.aft,"number","AFT")+
+        bulkInp(hi,pi,"left",p.left,"number","0")+
+        bulkInp(hi,pi,"right",p.right,"number","0")+
         bulkInp(hi,pi,"index",p.index,"number","0.00500",warn)+
         bulkInp(hi,pi,"volume",p.volume,"number","m3")+
         bulkInp(hi,pi,"maxWeight",p.maxWeight,"number","kg")+
@@ -318,8 +320,8 @@ function bulkSection(){
       '</div>';
     }).join("");
     var colHead = (h.positions||[]).length
-      ? '<div class="posrow" style="grid-template-columns:1fr .9fr .9fr 1.1fr .9fr 1fr auto;margin-bottom:2px">'+
-        ["Position","FWD stat","AFT stat","Index","Volume (m³)","Max wt (kg)"].map(function(lbl){
+      ? '<div class="posrow" style="grid-template-columns:1fr .9fr .9fr .7fr .7fr 1.1fr .9fr 1fr auto;margin-bottom:2px">'+
+        ["Position","FWD stat","AFT stat","Left","Right","Index","Volume (m³)","Max wt (kg)"].map(function(lbl){
           return '<div style="font-family:var(--mono);font-size:9px;letter-spacing:1.2px;'+
             'text-transform:uppercase;color:var(--dim)">'+esc(lbl)+'</div>'; }).join("")+
         '<div></div></div>'
@@ -1200,7 +1202,10 @@ function bulkRows(){
   var out = [];
   (U.bulk||[]).forEach(function(h){
     (h.positions||[]).forEach(function(p){
-      out.push([h.number, "BULK", p.name, "", +p.fwd, +p.aft, "", "", exportIndex(p.index), +p.volume, +p.maxWeight]);
+      out.push([h.number, "BULK", p.name, "", +p.fwd, +p.aft,
+        (p.left===""||p.left==null)?0:+p.left,
+        (p.right===""||p.right==null)?0:+p.right,
+        exportIndex(p.index), +p.volume, +p.maxWeight]);
     });
   });
   return out;
