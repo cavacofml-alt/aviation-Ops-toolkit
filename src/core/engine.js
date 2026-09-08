@@ -220,15 +220,10 @@ function validate(raw){
       add(r.line,r.col,r.len,"warn",`SSR <b>${r.code}</b> in group <b>-${r.grp}</b> without the blocked-seats Name Element — missing <b>nZZ/${r.code}-${r.grp}</b> under the Totals by Destination.`,REF.group);
   });
 
-  // ---- passageiro listado duas vezes no mesmo destino ----
-  if(shared.paxNames) Object.entries(shared.paxNames).forEach(([k,list])=>{
-    if(list.length<2) return;
-    const dest=(k.split("|")[1]||"")+"/"+(k.split("|")[2]||"");
-    list.forEach((p,i)=>add(p.line,p.col,p.len,"warn",
-      i===0 ? `Passenger <b>${p.label}</b> listed ${list.length} times in the same destination/class (${dest}) — check whether it is a duplicate or a namesake.`
-            : `Passenger <b>${p.label}</b> repeated in the same destination (see first occurrence).`,
-      REF.name, i===0?undefined:{dup:true}));
-  });
+  // Two passengers with the same name in the same destination — even in the
+  // same PNR — is ordinary (family members, a common name), not a signal of
+  // anything wrong with the message. No rule in RP 1708 treats it as one,
+  // so it was never flagged here.
 
   // ---- coerência CFG × RBD × Totals ----
   if(shared.cfg){
@@ -694,14 +689,6 @@ function validateBlock(lines, block, isLastBlock, add, shared){
       if(namePart.startsWith("ZZ/")||namePart==="ZZ"){
         const zcode=namePart.split("/")[1]||"";
         if(grpId){ (shared.zz=shared.zz||{}); (shared.zz[grpId]=shared.zz[grpId]||new Set()).add(zcode); }
-      } else if(namePart!=="NONAMES"){
-        // registo de nomes por destino (deteção de duplicados)
-        const sg=namePart.split("/");
-        sg.slice(1).forEach(g=>{
-          const key=(currentKey||"?")+"|"+sg[0]+"/"+stripTitle(g);
-          shared.paxNames=shared.paxNames||{};
-          (shared.paxNames[key]=shared.paxNames[key]||[]).push({line:n,col:1,len:nm.length,label:sg[0]+"/"+g});
-        });
       }
       if(namePart!=="NONAMES" && !namePart.startsWith("ZZ/")){
         const segs=namePart.split("/");
