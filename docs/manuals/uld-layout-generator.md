@@ -147,6 +147,37 @@ Só avanças quando todos os grupos tiverem pelo menos 1 posição.
 > os sinais dos index são verificados. Muda-a e o desenho do avião atualiza-se
 > logo.
 
+### Bulk holds — obrigatório
+
+No fundo deste passo, sempre visível (mesmo sem nenhum compartimento criado),
+está a secção **Bulk holds — loose cargo, no ULDs**. É onde entra a carga
+solta, sem contentores: os campos são **Position, FWD stat, AFT stat, Index,
+Volume (m³) e Max wt (kg)** — sem left/right, sem tipo de ULD, sem grupo.
+
+1. **+ BULK HOLD** cria um porão novo; dá-lhe o número em **Hold number**.
+2. Dentro dele, **+ POSITION** por cada sub-baia (ex: `51`, `52`).
+3. Preenche os campos de cada uma.
+
+⚠️ **É obrigatório ter pelo menos um porão bulk com pelo menos uma posição
+antes de exportares o ficheiro combinado** (↓ Export all / CSV all) — o
+sistema para onde exportas espera sempre uma linha `BULK`, seja qual for o
+avião. Sem isso, aparece uma janela vermelha a bloquear o export, sem opção
+de ignorar; tens mesmo de voltar aqui e adicionar o porão.
+
+Isto **não** bloqueia o export por compartimento (Excel/CSV de um só
+compartimento) — esses ficheiros nunca levam linhas bulk, com ou sem porão
+definido, por isso a exigência não se aplica a eles.
+
+Se o avião não tiver, na prática, nenhuma capacidade de carga solta, cria o
+porão na mesma e dá à posição um **Max wt (kg)** de `0`, em vez de deixar a
+secção vazia — a verificação antes de exportar avisa que esse peso não é
+utilizável (não bloqueia), mas o requisito de "existe pelo menos um porão"
+fica satisfeito.
+
+**Os cinco templates que não são o B777-300 não trazem porão bulk.** Não
+inventámos números — carrega o template, vem com o aviso ativo, e adicionas
+tu os dados reais do avião antes de exportares.
+
 ---
 
 ## Passo 3 — Layouts
@@ -263,13 +294,13 @@ O que é verificado:
 
 ### Porões bulk
 
-Os porões de carga solta (sem ULDs) aparecem no desenho e saem no export
+Os porões de carga solta (sem ULDs) editam-se no **Passo 2**, na secção
+*Bulk holds* — ver acima. Aparecem no desenho do avião e saem no export
 combinado como linhas `BULK`, mas **não passam pela geração de layouts** —
 não têm combinações a calcular. Consequência prática: a verificação antes de
-exportar é **o único sítio** onde o index e o peso deles são vistos.
-
-Vêm dos templates ou de um ficheiro importado; não há campos para os editar
-no ecrã.
+exportar é **o único sítio** onde o index e o peso deles são vistos, e é
+também por isso que pelo menos um é **obrigatório** antes do export
+combinado (ver Passo 2).
 
 ---
 

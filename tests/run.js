@@ -296,7 +296,7 @@ if(inBuild("uld")) try {
   const uld = uldAll.split("/* ---------- events ---------- */")[0];
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
        ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines, csvAll, " +
-       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, pairAtBase, pairOffsetOf, clampDecimals, exportIndex, uldBase, groupLabel, maxWeightIssue, pushUndo, undoLast, issueBody, exportIssues};");
+       "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, pairAtBase, pairOffsetOf, clampDecimals, exportIndex, uldBase, groupLabel, maxWeightIssue, pushUndo, undoLast, issueBody, exportIssues, bulkMissing, emptyBulkPos};");
   ok("all aircraft templates load", ULD.TEMPLATES.length === 6);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
@@ -599,17 +599,37 @@ if(inBuild("uld")) try {
   // Overlapping positions inside one group are normal in these manuals (the
   // A330-300's 32P and 33P overlap by 18 cm) — flagging them was a false
   // positive on the operator's own data.
+  // U.bulk carries its own field per template — left over from an earlier
+  // fixture, it would silently satisfy the mandatory-bulk check for every
+  // template regardless of what that template actually ships with.
   const tplIssues = ULD.TEMPLATES.map(t => {
     ULD.U.ulds = JSON.parse(JSON.stringify(t.ulds));
     ULD.U.compartments = JSON.parse(JSON.stringify(t.compartments));
+    ULD.U.bulk = JSON.parse(JSON.stringify(t.bulk||[]));
     ULD.U.refStation = t.refStation;
     const i = ULD.indexIssues();
-    return { name:t.name, hard:i.hard.length, warn:i.warn.length };
+    return { name:t.name, hard:i.hard.length, warn:i.warn.length, kinds:i.warn.map(x => x.kind) };
   });
   ok("no shipped template is blocked by the gate",
      tplIssues.every(t => t.hard === 0), JSON.stringify(tplIssues));
-  ok("the templates only warn where the manual really does exceed the ULD",
-     tplIssues.every(t => t.warn === 0 || /787|777-300/.test(t.name)), JSON.stringify(tplIssues));
+  ok("the templates only warn where the manual really does exceed the ULD, or no bulk hold ships with it",
+     tplIssues.every(t => t.kinds.every(k => k === "Above the ULD's own rating" || k === "No bulk hold defined")),
+     JSON.stringify(tplIssues));
+  // Only the B777-300 ships its own bulk hold; the rest need one added
+  // before the combined export, and are told so here.
+  ok("every template but the B777-300 is missing its bulk hold",
+     tplIssues.filter(t => t.kinds.includes("No bulk hold defined")).length === 5 &&
+     !tplIssues.filter(t => t.name === "Boeing 777-300")[0].kinds.includes("No bulk hold defined"),
+     JSON.stringify(tplIssues.map(t => t.name + ":" + t.kinds.includes("No bulk hold defined"))));
+
+  // That loop left U.bulk as whichever template came last in TEMPLATES —
+  // restore the B777-300's own state before the tests below, which still
+  // assume it (and its bulk hold), carries on.
+  ULD.U.ulds = JSON.parse(JSON.stringify(b3.ulds));
+  ULD.U.compartments = JSON.parse(JSON.stringify(b3.compartments));
+  ULD.U.bulk = JSON.parse(JSON.stringify(b3.bulk));
+  ULD.U.refStation = b3.refStation;
+  ULD.generateLayouts();
 
   // The operator's system carries 5 decimal places; the manuals print 6. The
   // editor keeps the manual's value, the export rounds it on the way out.
@@ -873,8 +893,11 @@ if(inBuild("uld")) try {
      !orphan.some(x => x.type === "LD2"));
   /* One problem across four bays is one problem, not four: the box groups
      the issues by what is wrong, so every issue has to carry a kind, and
-     each kind is stated once with the positions as chips under it. */
+     each kind is stated once with the positions as chips under it. A bulk
+     hold is defined here purely so this fixture — about a different kind
+     of issue entirely — is not also carrying the "no bulk hold" warning. */
   ULD.U.ulds = [{id:"u1",uldType:"LD3",iata:"AKE",maxWeight:1587,tare:65}];
+  ULD.U.bulk = [{number:5, positions:[{name:"51",fwd:"1",aft:"2",index:"0.001",volume:"6",maxWeight:"100"}]}];
   ULD.U.compartments = [{id:"c1",number:1,uldGroups:[
     {id:"g1",uldType:"LD3",iata:"AKE",positions:[
       mkPos("11L","201.1","261.7","0","48","-0.00342","1587"),
@@ -1046,6 +1069,38 @@ if(inBuild("uld")) try {
      ULD.U.layouts[1].length === 1 &&
      ULD.U.layouts[1][0].positions[0].name === "11L",
      JSON.stringify(ULD.U.layouts[1].map(l => l.name)));
+
+  /* At least one bulk hold, with at least one position, is mandatory before
+     the combined export. A hold that exists but carries no positions is the
+     same absence as no hold at all — an empty shell satisfies nothing on
+     the far end. This whole block runs last: it is the freest to reset
+     U.bulk/U.compartments without worrying what a later assertion expected
+     them to still hold. */
+  ULD.U.bulk = [];
+  ok("an empty bulk list is missing", ULD.bulkMissing());
+  ULD.U.bulk = [{number:5, positions:[]}];
+  ok("a hold with no positions is still missing", ULD.bulkMissing());
+  ULD.U.bulk = [{number:5, positions:[{name:"51",fwd:"1",aft:"2",index:"0.001",volume:"6",maxWeight:"100"}]}];
+  ok("a hold with a position is not missing", !ULD.bulkMissing());
+  ok("a second, empty hold doesn't undo a first one that has a position",
+     !(function(){ ULD.U.bulk.push({number:6, positions:[]}); return ULD.bulkMissing(); })());
+
+  ok("a freshly added bulk position carries every field the editor writes",
+     Object.keys(ULD.emptyBulkPos()).sort().join(",") === "aft,fwd,index,maxWeight,name,volume");
+
+  /* The mandatory bulk check is a hard, non-dismissable gate at export time
+     (bulkRequiredModal, in the click handler — not exercised here, this
+     runs without a DOM) — never folded into the dismissable review list
+     that exportIssues() feeds. Confirmed the two stay separate. */
+  const b767early = ULD.TEMPLATES.filter(t => t.name === "Boeing 767-300ER")[0];
+  ULD.U.ulds = JSON.parse(JSON.stringify(b767early.ulds));
+  ULD.U.compartments = JSON.parse(JSON.stringify(b767early.compartments));
+  ULD.U.bulk = JSON.parse(JSON.stringify(b767early.bulk||[]));   // ships with none of its own
+  ULD.U.refStation = b767early.refStation;
+  ULD.generateLayouts();
+  ok("the mandatory bulk gate is never one of the dismissable export findings",
+     !ULD.exportIssues().some(i => i.kind === "No bulk hold defined"),
+     JSON.stringify(ULD.exportIssues().map(i => i.kind)));
 
 } catch(e){ ok("ULD module loads", false, e.message); }
 

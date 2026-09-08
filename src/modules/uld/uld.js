@@ -102,6 +102,16 @@ var U = { step:0, ulds:[], compartments:[], bulk:[], refStation:"", activeComp:0
 function emptyPos(name){
   return { name:name||"", fwd:"", aft:"", left:"0", right:"0", index:"", maxWeight:"" };
 }
+function emptyBulkPos(){
+  return { name:"", fwd:"", aft:"", index:"", volume:"", maxWeight:"" };
+}
+/* At least one bulk hold, with at least one position, is mandatory before
+   the combined export — the system this feeds always expects a BULK row,
+   whatever the aircraft. Checked as a fact about the data, not a count: a
+   hold with no positions is the same as no hold at all. */
+function bulkMissing(){
+  return !(U.bulk||[]).some(function(h){ return (h.positions||[]).length > 0; });
+}
 
 /* index sanity check — mirrors the reference station convention.
    Faithful to the original rules, including the zero case and the
@@ -250,7 +260,8 @@ function fieldSel(id,label,val){
 function viewStep2(){
   if(!U.compartments.length){
     return '<div class="empty">No compartments yet.</div>'+
-      '<button class="btn primary" data-act="add-comp">+ Compartment</button>';
+      '<button class="btn primary" data-act="add-comp">+ Compartment</button>'+
+      bulkSection();
   }
   if(U.activeComp >= U.compartments.length) U.activeComp = 0;
   var comp = U.compartments[U.activeComp];
@@ -282,7 +293,65 @@ function viewStep2(){
           return '<option value="'+esc(t)+'">'+esc(ULD_TYPE_LABELS[t]||t)+'</option>'; }).join("")+'</select></div>'+
         '<button class="btn small" data-act="add-group">+ Add group</button></div>'
         : '<div class="note" style="margin-top:12px">All ULD types available have already been added.</div>')+
-    '</div>'+ (groups || '');
+    '</div>'+ (groups || '') + bulkSection();
+}
+
+/* ---------- bulk holds: loose cargo, no ULDs, no compartment of their own ----
+   Kept separate from the numbered compartments above — a bulk hold is not a
+   place ULDs are combined into layouts, it is one static row the combined
+   export always carries. Shown once, not per compartment, so it survives
+   even a setup with no compartments at all. */
+function bulkSection(){
+  var holds = U.bulk || [];
+  var holdBoxes = holds.map(function(h, hi){
+    var posRows = (h.positions||[]).map(function(p, pi){
+      var warn = p.index ? validateIndex(p.index, p.fwd, U.refStation) : null;
+      return '<div class="posrow" style="grid-template-columns:1fr .9fr .9fr 1.1fr .9fr 1fr auto">'+
+        bulkInp(hi,pi,"name",p.name,"text","51")+
+        bulkInp(hi,pi,"fwd",p.fwd,"number","FWD")+
+        bulkInp(hi,pi,"aft",p.aft,"number","AFT")+
+        bulkInp(hi,pi,"index",p.index,"number","0.00500",warn)+
+        bulkInp(hi,pi,"volume",p.volume,"number","m3")+
+        bulkInp(hi,pi,"maxWeight",p.maxWeight,"number","kg")+
+        '<button class="btn small danger" data-act="del-bulk-pos" data-h="'+hi+'" data-p="'+pi+'" '+
+          'style="align-self:start;margin-top:1px">&times;</button>'+
+      '</div>';
+    }).join("");
+    var colHead = (h.positions||[]).length
+      ? '<div class="posrow" style="grid-template-columns:1fr .9fr .9fr 1.1fr .9fr 1fr auto;margin-bottom:2px">'+
+        ["Position","FWD stat","AFT stat","Index","Volume (m³)","Max wt (kg)"].map(function(lbl){
+          return '<div style="font-family:var(--mono);font-size:9px;letter-spacing:1.2px;'+
+            'text-transform:uppercase;color:var(--dim)">'+esc(lbl)+'</div>'; }).join("")+
+        '<div></div></div>'
+      : '';
+    return '<div class="card" style="margin-top:10px">'+
+      '<div class="gh" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div class="field" style="max-width:140px;margin:0"><label>Hold number</label>'+
+          '<input type="number" value="'+esc(h.number)+'" data-bulkh="'+hi+'" data-bulkk="number"></div>'+
+        '<button class="btn small danger" data-act="del-bulk" data-h="'+hi+'">&times; Remove hold</button>'+
+      '</div>'+
+      colHead + posRows +
+      '<button class="btn small" data-act="add-bulk-pos" data-h="'+hi+'" style="margin-top:8px">+ Position</button>'+
+    '</div>';
+  }).join("");
+
+  return '<div class="card" style="margin-top:16px">'+
+    '<div class="gh" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
+      '<h3 style="margin:0">Bulk holds <span class="note" style="font-weight:400">— loose cargo, no ULDs</span></h3>'+
+      '<button class="btn small" data-act="add-bulk">+ Bulk hold</button>'+
+    '</div>'+
+    '<div class="note" style="margin-top:8px">Required before exporting the combined file, whatever the aircraft — '+
+      'the system this feeds always expects a BULK row. A hold with no capacity here is still an entry: give it a '+
+      'position with a max weight of 0 rather than leaving the list empty.</div>'+
+    (holdBoxes || '<div class="empty" style="margin-top:10px">No bulk hold defined yet.</div>')+
+  '</div>';
+}
+function bulkInp(hi,pi,key,val,type,ph,err){
+  return '<div class="field"><input type="'+type+'" value="'+esc(val)+'" '+
+    (err?'class="bad" ':'')+
+    'placeholder="'+esc(ph||"")+'" data-bulkpos="1" data-h="'+hi+'" data-p="'+pi+'" data-k="'+key+'">'+
+    '<span class="fielderr" data-bulkwarn="'+hi+'-'+pi+'-'+key+'"'+(err?'':' style="display:none"')+'>'+
+      (err? esc(err) : '')+'</span></div>';
 }
 
 /* group box — header, column titles, position rows, L/R pair form */
@@ -633,6 +702,12 @@ function indexIssues(){
     });
     nameCollisions(c, ci).forEach(function(w){ warn.push(w); });
   });
+  // Mandatory before the combined export, but only enforced (hard, with no
+  // override) at that moment — surfaced here too, a step earlier, so it is
+  // not a surprise reached for the first time on the way out.
+  if(bulkMissing())
+    warn.push({ kind:"No bulk hold defined", comp:"—", ci:null, gid:null, name:"all", type:"BULK",
+      reason:"the combined export needs at least one bulk hold, and none is defined" });
   return { hard:hard, sign:sign, warn:warn };
 }
 
@@ -709,7 +784,10 @@ var ISSUE_HELP = {
     "too many, or one too few.",
   "Generated before the last edit":
     "Positions were edited after these layouts were computed, so the file would describe numbers the editor no "+
-    "longer holds. Go back and generate again before exporting."
+    "longer holds. Go back and generate again before exporting.",
+  "No bulk hold defined":
+    "Add one under Compartments & Zones, in the Bulk holds section at the bottom of the page — the combined "+
+    "export is blocked until at least one hold has at least one position."
 };
 /* Enough chips to see the shape of the problem; past that the count says
    the rest, and the group is one click away anyway. */
@@ -1375,6 +1453,29 @@ function bindStep(){
       }
     });
   });
+  // bulk hold number, and its positions — kept apart from data-pos above,
+  // which reaches into U.compartments[U.activeComp] and has no compartment
+  // to find a bulk hold inside of
+  Array.prototype.forEach.call(host.querySelectorAll('input[data-bulkh]'), function(inp){
+    inp.addEventListener("input", function(){
+      var h = +inp.getAttribute("data-bulkh");
+      if(!U.bulk[h]) return;
+      U.bulk[h].number = inp.value;
+      if(typeof uldTouch === "function") uldTouch();
+    });
+  });
+  Array.prototype.forEach.call(host.querySelectorAll('input[data-bulkpos]'), function(inp){
+    inp.addEventListener("input", function(){
+      var h = +inp.getAttribute("data-h"), p = +inp.getAttribute("data-p"), k = inp.getAttribute("data-k");
+      if(!U.bulk[h] || !U.bulk[h].positions[p]) return;
+      if(k === "index"){
+        var capped = clampDecimals(inp.value, MAX_INDEX_DECIMALS);
+        if(capped !== inp.value) inp.value = capped;
+      }
+      U.bulk[h].positions[p][k] = inp.value;
+      if(typeof uldTouch === "function") uldTouch();
+    });
+  });
   // live preview of the L/R pair being created
   Array.prototype.forEach.call(host.querySelectorAll('input[data-pair]'), function(inp){
     inp.addEventListener("input", function(){
@@ -1555,6 +1656,30 @@ function onUldClick(e){
     pushUndo("removed position "+((gp2&&gp2.name)||""));
     comp.uldGroups[+b.getAttribute("data-g")].positions.splice(+b.getAttribute("data-p"),1); uldRender();
   }
+  else if(act==="add-bulk"){
+    U.bulk = U.bulk || [];
+    var nextNum = U.compartments.length;
+    U.bulk.forEach(function(h){ nextNum = Math.max(nextNum, parseInt(h.number,10)||0); });
+    U.bulk.push({ id:uid(), number:nextNum+1, positions:[] });
+    uldRender();
+  }
+  else if(act==="del-bulk"){
+    var goneH = (U.bulk||[])[+b.getAttribute("data-h")];
+    pushUndo("removed bulk hold "+((goneH&&goneH.number)||""));
+    U.bulk.splice(+b.getAttribute("data-h"),1); uldRender();
+  }
+  else if(act==="add-bulk-pos"){
+    var hAdd = U.bulk[+b.getAttribute("data-h")];
+    if(hAdd) hAdd.positions.push(emptyBulkPos());
+    uldRender();
+  }
+  else if(act==="del-bulk-pos"){
+    var hDel = U.bulk[+b.getAttribute("data-h")];
+    if(!hDel) return;
+    var goneBP = hDel.positions[+b.getAttribute("data-p")];
+    pushUndo("removed bulk position "+((goneBP&&goneBP.name)||""));
+    hDel.positions.splice(+b.getAttribute("data-p"),1); uldRender();
+  }
   else if(act==="generate"){
     var iss2 = indexIssues();
     if(iss2.hard.length || (iss2.sign.length && !U.signAck)) return;   // gate, belt and braces
@@ -1588,11 +1713,11 @@ function onUldClick(e){
   }
   else if(act==="csv-one"){
     var n = U.compartments.map(function(c){return c.number;})[U.activeLayoutComp];
-    exportGuard(n, function(){
+    exportGuard(n, false, function(){
       showTextModal("CSV — compartment "+n, csvOne(n), "compartment"+n+"_layouts.csv"); });
   }
   else if(act==="csv-all"){
-    exportGuard(undefined, function(){
+    exportGuard(undefined, true, function(){
       showTextModal("CSV — all compartments", csvAll(), "all_layouts.csv"); });
   }
   else if(act==="xlsx-one"){
@@ -1600,19 +1725,26 @@ function onUldClick(e){
     // every .xlsx it accepts, for any aircraft — confirmed against
     // 6H_A330243_TEMPLATE.xlsx. Not related to compartment numbering.
     var n2 = U.compartments.map(function(c){return c.number;})[U.activeLayoutComp];
-    exportGuard(n2, function(){
+    exportGuard(n2, false, function(){
       downloadXlsx("D3", EXPORT_HEADERS, layoutRows(n2), "compartment"+n2+"_layouts.xlsx"); });
   }
   else if(act==="xlsx-all"){
-    exportGuard(undefined, function(){
+    exportGuard(undefined, true, function(){
       downloadXlsx("D3", EXPORT_HEADERS, allLayoutRows(), "all_layouts.xlsx"); });
   }
 }
 
 /* Nothing to say, nothing to click through: the check only interrupts when
    it has found something. What it shows is what the file will say, so the
-   operator confirms the numbers rather than the intention. */
-function exportGuard(compNum, run){
+   operator confirms the numbers rather than the intention.
+
+   requireBulk is true only for the combined export — a per-compartment file
+   never carries bulk rows at all (see layoutRows), so demanding one there
+   would block a file the missing hold could not possibly affect. Where it
+   does apply, it is not part of the dismissable review below: the operator
+   chose to make this one non-negotiable, so there is no "export anyway". */
+function exportGuard(compNum, requireBulk, run){
+  if(requireBulk && bulkMissing()){ bulkRequiredModal(); return; }
   var issues = exportIssues(compNum);
   if(!issues.length){ run(); return; }
   var host = $("modalHost");
@@ -1646,6 +1778,33 @@ function exportGuard(compNum, run){
     var what = btn ? btn.getAttribute("data-x") : "close";
     host.innerHTML = "";
     if(what === "go") run();
+  });
+}
+
+/* No "export anyway": this one is mandatory, on request, because the
+   combined file always needs a BULK row for the system it feeds — an
+   absent hold is not a figure to confirm and override, it is a hold that
+   was never added. */
+function bulkRequiredModal(){
+  var host = $("modalHost");
+  host.innerHTML = '<div class="modal-back"><div class="modal">'+
+    '<div class="mh"><b style="color:var(--red)">&#9888; No bulk hold defined</b>'+
+      '<button class="btn small quiet" data-x="close">Close</button></div>'+
+    '<div class="mb">'+
+      '<p class="note" style="margin-top:0;color:var(--red)">The combined export always needs at least one '+
+      'bulk hold with at least one position — the system this feeds expects a BULK row in every file it '+
+      'receives, whatever the aircraft.</p>'+
+      '<div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">'+
+        '<button class="btn small primary" data-x="go-bulk">Go add a bulk hold</button>'+
+        '<button class="btn small" data-x="close">Close</button>'+
+      '</div>'+
+    '</div></div></div>';
+  host.addEventListener("click", function(e){
+    var btn = e.target.closest ? e.target.closest("[data-x]") : null;
+    if(!btn && e.target !== host.querySelector(".modal-back")) return;
+    var what = btn ? btn.getAttribute("data-x") : "close";
+    host.innerHTML = "";
+    if(what === "go-bulk"){ U.step = 1; uldRender(); }
   });
 }
 
