@@ -10,24 +10,24 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.174</title>
+<title>Aviation Ops Toolkit v1.2.176</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
    red = warning · amber = caution · cyan = advisory · green = normal
    ============================================================================ */
 :root{
-  --bg:#060a10; --panel:#0c131c; --panel2:#0a1017; --line:#1c2836; --line-2:#2b3d52;
-  --text:#c9d8e6; --dim:#5d7186; --faint:#33475c;
-  --green:#22d07a; --cyan:#25c6e8; --amber:#ffb02e; --red:#ff4f4f; --magenta:#e264dc; --teal:#12b5a5;
-  --green-soft:rgba(34,208,122,.10); --cyan-soft:rgba(37,198,232,.10);
-  --amber-soft:rgba(255,176,46,.10); --red-soft:rgba(255,79,79,.10); --teal-soft:rgba(18,181,165,.10);
-  --magenta-soft:rgba(226,92,220,.10);
-  --term-bg:#0a1017; --term-fg:#c9d8e6; --input-bg:#0a1017; --hover:rgba(255,255,255,.04);
-  --radius:10px; --radius-sm:8px; --shadow:0 1px 2px rgba(0,0,0,.25);
-  --head-bg:#0c131c; --head-sub:#7f93ab;
-  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
-  --sans:'Barlow Semi Condensed','Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --bg:#08111d; --panel:#0e1b2a; --panel2:#0a1624; --line:#20344a; --line-2:#31506d;
+  --text:#e9f3fb; --dim:#8da4b8; --faint:#526b82;
+  --green:#48e39a; --cyan:#55c9ff; --amber:#ffc857; --red:#ff6675; --magenta:#d58cff; --teal:#42d8c6;
+  --green-soft:rgba(72,227,154,.11); --cyan-soft:rgba(85,201,255,.11);
+  --amber-soft:rgba(255,200,87,.11); --red-soft:rgba(255,102,117,.11); --teal-soft:rgba(66,216,198,.11);
+  --magenta-soft:rgba(213,140,255,.11);
+  --term-bg:#07111c; --term-fg:#dcecf7; --input-bg:#091624; --hover:rgba(110,190,255,.07);
+  --radius:14px; --radius-sm:10px; --shadow:0 14px 40px rgba(0,0,0,.22);
+  --head-bg:#102a3e; --head-sub:#7f93ab;
+  --mono:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+  --sans:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 /* Daylight theme — for bright ramp offices and printing.
    Accents are darkened so they keep contrast on white. */
@@ -476,6 +476,381 @@ button.issue-sum:hover{background:color-mix(in srgb, currentColor 8%, transparen
   .tool-panel{padding:16px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- refined dark visual direction ----------
+   Deeper panels, softer glows, Inter/system-ui in place of Barlow — dark only,
+   guarded by :not([data-theme="light"]) since it hardcodes dark-mode hex rather
+   than reading the theme variables. The daylight theme above is untouched. */
+html:not([data-theme="light"]){
+  background:
+    radial-gradient(circle at 85% 0%,rgba(49,151,255,.10),transparent 32%),
+    radial-gradient(circle at 15% 100%,rgba(72,227,154,.055),transparent 28%),
+    var(--bg);
+}
+html:not([data-theme="light"]) body{
+  background:transparent;
+  color:var(--text);
+  font-family:var(--sans);
+  letter-spacing:.01em;
+}
+html:not([data-theme="light"]) .app{height:100vh}
+/* ---------- navigation ---------- */
+html:not([data-theme="light"]) .sidebar{
+  width:272px;
+  background:linear-gradient(180deg,#0b1827 0%,#08131f 100%);
+  border-right:1px solid #213a52;
+  box-shadow:16px 0 45px rgba(0,0,0,.12);
+}
+html:not([data-theme="light"]) .sb-brand{
+  padding:22px 21px 20px !important;
+  border-bottom:1px solid #20364b !important;
+}
+html:not([data-theme="light"]) .sb-brand .dia{
+  color:var(--cyan);
+  font-size:18px;
+  text-shadow:0 0 18px rgba(85,201,255,.65);
+}
+html:not([data-theme="light"]) .sb-brand .name{
+  font-size:16px;
+  letter-spacing:2px;
+  font-weight:750;
+}
+html:not([data-theme="light"]) .sb-brand .sub{
+  color:#5f819d;
+  letter-spacing:1.8px;
+  margin-top:8px;
+}
+html:not([data-theme="light"]) .sb-nav{padding:18px 10px 8px}
+html:not([data-theme="light"]) .sb-label{
+  padding:0 12px 9px;
+  color:#55728c;
+  font-size:9px;
+}
+html:not([data-theme="light"]) .sb-item{
+  margin:3px 0;
+  width:100%;
+  border:1px solid transparent;
+  border-left:3px solid transparent;
+  border-radius:10px;
+  padding:11px 12px;
+  gap:11px;
+  color:#8da4b8;
+}
+html:not([data-theme="light"]) .sb-item:hover{
+  background:rgba(85,201,255,.055);
+  border-color:#1d3850;
+  color:#dcebf5;
+}
+html:not([data-theme="light"]) .sb-item[aria-current="page"]{
+  background:linear-gradient(90deg,rgba(85,201,255,.13),rgba(85,201,255,.035));
+  border-color:#24435d;
+  box-shadow:inset 0 0 24px rgba(85,201,255,.035);
+}
+html:not([data-theme="light"]) .sb-item .code{
+  min-width:44px;
+  border-radius:7px;
+  background:#0a1725;
+}
+html:not([data-theme="light"]) .sb-foot{
+  padding:16px 20px;
+  border-top:1px solid #20364b;
+  color:#526d84;
+}
+/* ---------- top command bar ---------- */
+html:not([data-theme="light"]) .topbar{
+  height:68px;
+  padding:0 28px;
+  background:rgba(7,16,27,.84);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid #20364b;
+}
+html:not([data-theme="light"]) .topbar .title{
+  font-size:16px;
+  letter-spacing:1.4px;
+  font-weight:750;
+}
+html:not([data-theme="light"]) .topbar .badge{
+  padding:4px 8px;
+  border-radius:6px;
+  font-size:9px;
+  background:rgba(85,201,255,.05);
+}
+html:not([data-theme="light"]) .homebtn{
+  width:34px;
+  height:34px;
+  border-radius:9px;
+  background:#0a1725;
+  border-color:#27445d;
+}
+html:not([data-theme="light"]) .homebtn:hover{
+  background:rgba(85,201,255,.10);
+}
+html:not([data-theme="light"]) .topbar .sys{
+  color:var(--green);
+  padding:7px 10px;
+  border:1px solid rgba(72,227,154,.20);
+  border-radius:999px;
+  background:rgba(72,227,154,.045);
+}
+html:not([data-theme="light"]) .build-ver{
+  color:#58748b;
+  margin-left:0;
+}
+/* ---------- main workspace ---------- */
+html:not([data-theme="light"]) main{
+  max-width:1440px;
+  padding:30px 34px 40px;
+  background:
+    linear-gradient(rgba(255,255,255,.012) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px);
+  background-size:36px 36px;
+}
+html:not([data-theme="light"]) .tool-blurb{
+  max-width:780px;
+  margin:0 0 20px 2px;
+  color:#8ea7bc;
+  font-size:13.5px;
+}
+html:not([data-theme="light"]) .tool-panel{
+  border:1px solid #213b53;
+  border-radius:18px;
+  padding:26px;
+  background:linear-gradient(145deg,rgba(15,29,44,.96),rgba(8,20,32,.96));
+  box-shadow:var(--shadow);
+  overflow:visible;
+}
+html:not([data-theme="light"]) .tool-panel>.br{
+  width:14px;
+  height:14px;
+  border-color:var(--cyan);
+}
+html:not([data-theme="light"]) .tool-panel[data-accent="green"]>.br{border-color:var(--green)}
+html:not([data-theme="light"]) .tool-panel[data-accent="magenta"]>.br{border-color:var(--magenta)}
+/* ---------- home/dashboard ---------- */
+html:not([data-theme="light"]) .home-hero{
+  position:relative;
+  padding:18px 6px 30px;
+  margin-bottom:28px;
+  border-bottom:1px solid #21394f;
+}
+html:not([data-theme="light"]) .home-over{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  color:var(--cyan);
+  letter-spacing:2.3px;
+  font-weight:700;
+}
+html:not([data-theme="light"]) .home-over:before{
+  content:"";
+  width:7px;height:7px;border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 14px var(--green);
+}
+html:not([data-theme="light"]) .home-title{
+  max-width:850px;
+  margin-top:13px;
+  font-size:clamp(28px,4.2vw,46px);
+  line-height:1.08;
+  letter-spacing:-.8px;
+  text-transform:none;
+  font-weight:760;
+}
+html:not([data-theme="light"]) .home-lead{
+  max-width:720px;
+  margin-top:17px;
+  color:#8fa9bd;
+  font-size:15px;
+}
+html:not([data-theme="light"]) .home-grid{
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:15px;
+}
+html:not([data-theme="light"]) .home-card{
+  min-height:190px;
+  border:1px solid #213b53;
+  border-radius:14px;
+  background:
+    linear-gradient(145deg,rgba(18,35,52,.92),rgba(8,20,32,.96));
+  padding:21px;
+  box-shadow:0 8px 25px rgba(0,0,0,.12);
+  transition:transform .18s,border-color .18s,box-shadow .18s;
+}
+html:not([data-theme="light"]) .home-card:hover{
+  transform:translateY(-4px);
+  border-color:#3d6887;
+  box-shadow:0 15px 35px rgba(0,0,0,.24);
+}
+html:not([data-theme="light"]) .home-card .hc-code{
+  font-size:9px;
+  letter-spacing:2px;
+  opacity:.9;
+}
+html:not([data-theme="light"]) .home-card .hc-name{
+  font-size:20px;
+  letter-spacing:.1px;
+  text-transform:none;
+  margin-top:3px;
+}
+html:not([data-theme="light"]) .home-card .hc-blurb{
+  color:#8da5b9;
+  font-size:13px;
+}
+html:not([data-theme="light"]) .home-card .hc-foot{
+  margin-top:18px;
+  padding-top:13px;
+}
+html:not([data-theme="light"]) .home-card .hc-go{
+  padding:6px 10px;
+  border:1px solid currentColor;
+  border-radius:7px;
+  font-size:10px;
+  letter-spacing:1.5px;
+}
+html:not([data-theme="light"]) .home-foot{
+  color:#58728a;
+}
+/* ---------- universal controls ---------- */
+html:not([data-theme="light"]) .btn{
+  border-radius:9px;
+  border-color:#29465e;
+  background:#0a1725;
+  padding:9px 16px;
+  font-size:12px;
+  letter-spacing:1px;
+}
+html:not([data-theme="light"]) .btn:hover{
+  background:#102335;
+  border-color:#416781;
+}
+html:not([data-theme="light"]) .btn.primary{
+  background:linear-gradient(135deg,rgba(72,227,154,.17),rgba(72,227,154,.055));
+  border-color:#3bcf8b;
+  box-shadow:0 0 18px rgba(72,227,154,.06);
+}
+html:not([data-theme="light"]) .btn.small{padding:7px 12px}
+html:not([data-theme="light"]) .field input, html:not([data-theme="light"]) .field select{
+  background:#091624;
+  border-color:#29465e;
+  border-radius:9px;
+  padding:8px 10px;
+}
+html:not([data-theme="light"]) .field input:focus, html:not([data-theme="light"]) .field select:focus{
+  border-color:var(--cyan);
+  box-shadow:0 0 0 3px rgba(85,201,255,.08);
+}
+html:not([data-theme="light"]) .sec{
+  color:#6f8ba1;
+  font-size:9px;
+  letter-spacing:2.4px;
+  font-weight:700;
+}
+html:not([data-theme="light"]) .card, html:not([data-theme="light"]) .result-box, html:not([data-theme="light"]) .msg-col{
+  border-color:#213b53;
+  border-radius:12px;
+  background:rgba(9,23,36,.78);
+  box-shadow:none;
+}
+/* ---------- validator ---------- */
+html:not([data-theme="light"]) .msg-split{gap:16px}
+html:not([data-theme="light"]) .msg-col{
+  padding:18px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.015);
+}
+html:not([data-theme="light"]) #msgInput, html:not([data-theme="light"]) #reconInput{
+  background:#06111c;
+  border-color:#1e394f;
+  border-radius:10px;
+}
+html:not([data-theme="light"]) .telex{
+  background:#06111c;
+  border-color:#1e394f;
+  border-radius:10px;
+}
+html:not([data-theme="light"]) .findings{
+  border-color:#213b53;
+  border-radius:10px;
+}
+/* ---------- ULD ---------- */
+html:not([data-theme="light"]) .uld-head{
+  border:1px solid #2b4b65;
+  border-radius:14px;
+  background:linear-gradient(120deg,#102a3e,#0c1c2c);
+  box-shadow:0 12px 30px rgba(0,0,0,.16);
+}
+html:not([data-theme="light"]) .stepbar .st .num{
+  width:36px;height:36px;
+  border:1px solid #2c4961;
+  background:#0b1b2a;
+}
+html:not([data-theme="light"]) .stepbar .st[data-on="1"] .num{
+  background:var(--cyan);
+  box-shadow:0 0 20px rgba(85,201,255,.20);
+}
+html:not([data-theme="light"]) .stepbar .st[data-done="1"] .num{
+  background:var(--green);
+  box-shadow:0 0 18px rgba(72,227,154,.15);
+}
+html:not([data-theme="light"]) .group-box{
+  border-width:1px;
+  border-radius:12px;
+  box-shadow:0 7px 22px rgba(0,0,0,.10);
+}
+html:not([data-theme="light"]) .group-box .gh{
+  padding:12px 15px;
+  border-radius:11px 11px 0 0;
+}
+html:not([data-theme="light"]) .stat{
+  border-radius:10px;
+  background:#0a1928;
+}
+html:not([data-theme="light"]) .stat .v{font-size:24px}
+/* ---------- AHM ---------- */
+html:not([data-theme="light"]) .ahm-card{
+  max-width:520px;
+  border-radius:16px;
+  background:linear-gradient(145deg,#102235,#0a1725);
+  border-color:#2b4b65;
+  box-shadow:var(--shadow);
+}
+html:not([data-theme="light"]) .ahm-mark{
+  border-radius:12px;
+}
+/* ---------- tables ---------- */
+html:not([data-theme="light"]) table{
+  border:1px solid #213b53;
+  border-radius:10px;
+  overflow:hidden;
+}
+html:not([data-theme="light"]) thead th{
+  background:#0b1b2a;
+  color:#7290a6;
+}
+html:not([data-theme="light"]) tbody td{border-bottom-color:#1b3247}
+html:not([data-theme="light"]) tbody tr:nth-child(even){background:rgba(11,27,42,.55)}
+/* ---------- responsive ---------- */
+@media (max-width:1100px){
+html:not([data-theme="light"]) main{padding:24px}
+}
+@media (max-width:860px){
+html:not([data-theme="light"]) .sidebar{
+    background:#081522;
+  }
+html:not([data-theme="light"]) main{padding:18px}
+html:not([data-theme="light"]) .tool-panel{
+    padding:18px;
+    border-radius:14px;
+  }
+html:not([data-theme="light"]) .topbar{
+    height:60px;
+    padding:0 16px;
+  }
+}
+@media (max-width:560px){
+html:not([data-theme="light"]) .home-title{font-size:29px}
+html:not([data-theme="light"]) .home-card{min-height:170px}
+html:not([data-theme="light"]) .tool-panel{padding:14px}
+}
 </style>
 </head>
 <body>
@@ -511,7 +886,7 @@ button.issue-sum:hover{background:color-mix(in srgb, currentColor 8%, transparen
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.174</span>
+      <span class="build-ver">v1.2.176</span>
     </header>
 
     <main>
@@ -840,8 +1215,8 @@ button.issue-sum:hover{background:color-mix(in srgb, currentColor 8%, transparen
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.174 — Luís Cavaco
-    Built 2026-09-08 from the source tree; see build.manifest.json.
+/*! Aviation Ops Toolkit v1.2.176 — Luís Cavaco
+    Built 2026-09-09 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
 
