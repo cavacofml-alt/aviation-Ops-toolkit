@@ -150,8 +150,8 @@ function szMakeZip(){
 /* ---------- events ---------- */
 var SZ_MAX_FILE = 64 * 1024 * 1024;    // per file
 var SZ_MAX_TOTAL = 128 * 1024 * 1024;  // whole archive — everything is held in RAM
-$("szFiles").addEventListener("change", function(e){
-  var files = Array.prototype.slice.call(e.target.files || []);
+function szHandleFiles(fileList){
+  var files = Array.prototype.slice.call(fileList || []);
   if(!files.length) return;
   var current = SZ.files.reduce(function(s,f){ return s + f.data.length; }, 0);
   var incoming = files.reduce(function(s,f){ return s + f.size; }, 0);
@@ -164,9 +164,9 @@ $("szFiles").addEventListener("change", function(e){
   if(current + incoming > SZ_MAX_TOTAL){
     alert("That would exceed the total limit of "+fmtSize(SZ_MAX_TOTAL)+
       ". Encryption runs entirely in memory, so very large archives can crash the tab.");
-    e.target.value = ""; return;
+    return;
   }
-  if(!files.length){ e.target.value = ""; return; }
+  if(!files.length) return;
   var pending = files.length;
   files.forEach(function(file){
     var r = new FileReader();
@@ -177,8 +177,24 @@ $("szFiles").addEventListener("change", function(e){
     r.onerror = function(){ if(--pending === 0) szRender(); };
     r.readAsArrayBuffer(file);
   });
+}
+$("szFiles").addEventListener("change", function(e){
+  szHandleFiles(e.target.files);
   e.target.value = "";
 });
+(function(){
+  var drop = $("szDrop");
+  ["dragenter","dragover"].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add("dragover"); });
+  });
+  ["dragleave","dragend","drop"].forEach(function(ev){
+    drop.addEventListener(ev, function(){ drop.classList.remove("dragover"); });
+  });
+  drop.addEventListener("drop", function(e){
+    e.preventDefault();
+    szHandleFiles(e.dataTransfer.files);
+  });
+})();
 $("btnSzAddText").addEventListener("click", function(){
   var text = $("szText").value;
   if(!text.trim()){ alert("Nothing to add — paste some text first."); return; }
