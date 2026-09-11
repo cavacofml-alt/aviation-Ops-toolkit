@@ -59,25 +59,34 @@ function xlsxColLetter(n){
   while(n > 0){ var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
   return s;
 }
-function xlsxCell(val, colIdx, rowIdx){
+/* Excel's day-zero, including the historical fake 1900 leap day — the
+   standard serial-date trick, safe for any real-world (post-1900) date. */
+function excelSerialDate(y, m, d){
+  return Math.round((Date.UTC(y, m-1, d) - Date.UTC(1899, 11, 30)) / 86400000);
+}
+function xlsxCell(val, colIdx, rowIdx, dateCols){
   var ref = xlsxColLetter(colIdx + 1) + rowIdx;
-  if(typeof val === "number" && isFinite(val)) return '<c r="'+ref+'"><v>'+val+'</v></c>';
+  if(typeof val === "number" && isFinite(val))
+    return '<c r="'+ref+'"'+(dateCols && dateCols.indexOf(colIdx)>=0 ? ' s="1"' : '')+'><v>'+val+'</v></c>';
   var s = val == null ? "" : String(val);
   return '<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+xlsxEsc(s)+'</t></is></c>';
 }
-function xlsxSheetXml(headers, rows){
+function xlsxSheetXml(headers, rows, dateCols){
   var xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
   var r = 1;
   xml += '<row r="'+r+'">' + headers.map(function(h,i){ return xlsxCell(h,i,r); }).join("") + '</row>';
   rows.forEach(function(row){
     r++;
-    xml += '<row r="'+r+'">' + row.map(function(v,i){ return xlsxCell(v,i,r); }).join("") + '</row>';
+    xml += '<row r="'+r+'">' + row.map(function(v,i){ return xlsxCell(v,i,r,dateCols); }).join("") + '</row>';
   });
   xml += '</sheetData></worksheet>';
   return xml;
 }
-function buildXlsxFile(sheetName, headers, rows){
+/* dateCols: 0-based column indices whose numeric values are Excel date
+   serials (from excelSerialDate) rather than plain numbers — they get the
+   "d-mmm-yy" style below instead of the default General one. */
+function buildXlsxFile(sheetName, headers, rows, dateCols){
   var contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
     '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
     '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
@@ -101,14 +110,18 @@ function buildXlsxFile(sheetName, headers, rows){
     '</Relationships>';
   var styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+    '<numFmts count="1"><numFmt numFmtId="164" formatCode="d-mmm-yy"/></numFmts>'+
     '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'+
     '<fills count="1"><fill><patternFill patternType="none"/></fill></fills>'+
     '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'+
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
-    '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>'+
+    '<cellXfs count="2">'+
+      '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'+
+      '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'+
+    '</cellXfs>'+
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'+
     '</styleSheet>';
-  var sheet = xlsxSheetXml(headers, rows);
+  var sheet = xlsxSheetXml(headers, rows, dateCols);
 
   var entries = [
     { name:"[Content_Types].xml", data:utf8(contentTypes) },
@@ -120,7 +133,7 @@ function buildXlsxFile(sheetName, headers, rows){
   ];
   return buildPlainZip(entries);
 }
-function downloadXlsx(sheetName, headers, rows, filename){
-  downloadBytes(buildXlsxFile(sheetName, headers, rows), filename,
+function downloadXlsx(sheetName, headers, rows, filename, dateCols){
+  downloadBytes(buildXlsxFile(sheetName, headers, rows, dateCols), filename,
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 }
