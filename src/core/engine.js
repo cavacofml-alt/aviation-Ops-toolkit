@@ -650,7 +650,7 @@ function validateBlock(lines, block, isLastBlock, add, shared){
           lastGroupObj.pnrs.add(pnr.split("/")[0]);
         });
       }
-      validateDotElements(rawLine, n, 0, add, {standalone:true, lastWasR, elemCount:lastNameCount, msgType, paxCtx, rnNext:U[idx+1]});
+      validateDotElements(rawLine, n, 0, add, {standalone:true, lastWasR, elemCount:lastNameCount, msgType, paxCtx, rnNext:U[idx+1], rnChain:collectRNChain(U, idx+1, scopeEnd)});
       if(/^\.RN\//.test(line)){
         if(!lastWasR) add(n,1,4,"err",".RN/ (remarks continuation) without a .R/ element immediately before.",REF.rn);
       } else {
@@ -752,7 +752,7 @@ function validateBlock(lines, block, isLastBlock, add, shared){
               REF.name);
           } else if(!rest.startsWith(" ."))
             add(n,nmMatch[0].length+1,rest.length,"err","After the name, .X/ elements are separated by a space.",REF.name);
-          validateDotElements(rawLine, n, nmMatch[0].length, add, {standalone:false, elemCount:count, msgType, paxCtx, rnNext:U[idx+1]});
+          validateDotElements(rawLine, n, nmMatch[0].length, add, {standalone:false, elemCount:count, msgType, paxCtx, rnNext:U[idx+1], rnChain:collectRNChain(U, idx+1, scopeEnd)});
         }
       }
       lastNameCount=count;
@@ -1122,22 +1122,31 @@ const RX={
 };
 const PAXID=/-\d{0,2}[A-Z]+(\/[A-Z]*)*\s*$/; // associação -1NOME/APELIDO no fim (/ final aceite — given name pode continuar no .RN/)
 
-// Devolve o texto inicial de uma linha .RN/ até ao próximo elemento .XX/ (ou
-// fim de linha). Usado para "espreitar" a continuação ao validar um campo do
-// .R/ anterior que pode ter sido cortado a meio (ex.: uma data DDMMMYY
-// partida entre a linha .R/DOCS e a .RN/ seguinte). Não consome nem marca a
-// linha — esta continua a ser processada normalmente pelo loop principal.
-function firstRNChunk(nextRawLine){
-  if(!nextRawLine) return "";
-  const l = nextRawLine.toUpperCase().replace(/\s+$/,"");
+// Devolve o texto reunido de uma ou mais linhas .RN/ seguidas, até ao
+// primeiro elemento .XX/ que já não seja .RN/ (ou uma linha que já não
+// comece por .RN/). Usado para "espreitar" a continuação ao validar um
+// campo do .R/ anterior que pode ter sido cortado a meio (ex.: uma data
+// DDMMMYY partida entre ".R/DOCS …/F/11OCT" e ".RN/27/…") — ou, no caso
+// mais raro mas real, quando o .R/DOCS fica inteiramente vazio e o estado
+// e todos os campos vêm em duas ou mais linhas .RN/ encadeadas. Não
+// consome nem marca nenhuma linha — todas continuam a ser processadas
+// normalmente, uma a uma, pelo loop principal.
+function collectRNChain(U, fromIdx, limit){
+  let out = "";
   const re=/\.(RN|RG1|RG2|ID1|ID2|DG1|DG2|DBC|BG|SN|WL|O[2-9]?|[A-Z])(\/)?/g;
-  const m0=re.exec(l);
-  if(!m0 || m0[1]!=="RN" || !m0[2]) return "";
-  const start=m0.index+m0[0].length;
-  re.lastIndex=start;
-  const m1=re.exec(l);
-  const end=m1?m1.index:l.length;
-  return l.slice(start,end).replace(/\s+$/,"");
+  for(let i=fromIdx; i<limit; i++){
+    const l = (U[i]||"").toUpperCase().replace(/\s+$/,"");
+    re.lastIndex = 0;
+    const m0=re.exec(l);
+    if(!m0 || m0.index!==0 || m0[1]!=="RN" || !m0[2]) break;
+    const start=m0.index+m0[0].length;
+    re.lastIndex=start;
+    const m1=re.exec(l);
+    const end=m1?m1.index:l.length;
+    out += l.slice(start,end).replace(/\s+$/,"");
+    if(m1) break;   // another element follows on this same .RN/ line — stop here
+  }
+  return out;
 }
 
 function stripPax(s){ return s.replace(PAXID,"").replace(/\s+$/,""); }
@@ -1197,7 +1206,7 @@ function validateDotElements(rawLine, n, fromIdx, add, opts){
     }
 
     switch(true){
-      case tag==="R": validateRemark(content,n,start,add,opts&&opts.elemCount,opts&&opts.msgType,opts&&opts.paxCtx,opts&&opts.rnNext); break;
+      case tag==="R": validateRemark(content,n,start,add,opts&&opts.elemCount,opts&&opts.msgType,opts&&opts.paxCtx,opts&&opts.rnNext,opts&&opts.rnChain); break;
       case tag==="RN": {
         checkHyphens(content,n,start,add,null);
         const pc=opts&&opts.paxCtx;
@@ -1459,7 +1468,7 @@ function checkPaxCoherence(pax,add,flightDate){
 }
 
 /* .R/ Remarks (RP1707b §3.24 + RP1708 §2.12) */
-function validateRemark(content,n,start,add,elemCount,msgType,paxCtx,rnNext){
+function validateRemark(content,n,start,add,elemCount,msgType,paxCtx,rnNext,rnChain){
   const nextIsRN=/^\s*\.RN\//i.test(rnNext||"");
   const mm=content.match(/^(\d{1,2})?([A-Z]+)/);
   if(!mm){
@@ -1597,17 +1606,29 @@ function validateRemark(content,n,start,add,elemCount,msgType,paxCtx,rnNext){
       add(n,start+1+(p>=0?p:0),disp.length,"err",`TKNE with invalid ticket <b>${disp}</b> — ticket number (13–14 digits) optionally /coupon (e.g. 0122106026463/2).`,REF.remarks);
     }
   }
-  if(code==="DOCS" && free){
-    if(!/^\//.test(free))
-      add(n,start+1+content.indexOf(free),free.length,"err","Malformed DOCS — document fields start with / after the status (e.g. /P/CA/939822373/…).",REF.remarks);
+  // Fully bare ".R/DOCS": the status and every field live entirely in the
+  // .RN/ continuation(s) that follow — a rarer but real format. deferredToRN
+  // already knows this is the case (nothing at all after the code, and the
+  // next line picks it up); the only thing missing was actually validating
+  // that deferred text instead of silently skipping it.
+  const bareDeferred = code==="DOCS" && deferredToRN;
+  if(code==="DOCS" && (free || bareDeferred)){
+    // Bare case: strip a leading status token (HK1, KK1…) the way it would
+    // have been read had it sat on this line, then treat what remains
+    // exactly like an ordinary field list.
+    const effFree = bareDeferred ? (rnChain||"").replace(/^[A-Z]{1,2}\d{1,3}/,"") : free;
+    if(!/^\//.test(effFree))
+      add(n,start+1+content.indexOf(free),Math.max(effFree.length,1),"err","Malformed DOCS — document fields start with / after the status (e.g. /P/CA/939822373/…).",REF.remarks);
     else{
       // RP1707b: a continuação .RN/ retoma exactamente onde o elemento foi
       // cortado — incluindo a meio de um campo (ex.: validade DDMMMYY partida
-      // entre ".R/DOCS …/F/11OCT" e ".RN/27/…"). Para validar os campos
-      // correctamente juntamos aqui o início da continuação; isto NÃO afecta
-      // rec.raw/rec.assoc, que continuam a ser preenchidos normalmente quando
-      // essa linha .RN/ for processada por si própria mais abaixo no loop.
-      const freeFull = nextIsRN ? free+firstRNChunk(rnNext) : free;
+      // entre ".R/DOCS …/F/11OCT" e ".RN/27/…"), ou, no caso bareDeferred,
+      // logo a seguir ao estado. Para validar os campos correctamente
+      // juntamos aqui o resto da(s) continuação(ões); isto NÃO afecta
+      // rec.raw/rec.assoc, que continuam a ser preenchidos normalmente à
+      // medida que essas linhas .RN/ forem processadas por si mesmas mais
+      // abaixo no loop, uma de cada vez, como já acontecia antes.
+      const freeFull = bareDeferred ? effFree : (nextIsRN ? free+(rnChain||"") : free);
       const f=freeFull.split("/");
       // Ordem oficial (AIRIMP §3.13.2 — Construction Rules and Sequence of Components):
       // [1]=tipo [2]=país emissor [3]=nº documento [4]=nacionalidade [5]=nascimento
