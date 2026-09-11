@@ -186,26 +186,6 @@ function jumpToTelex(f){
     tel.scrollLeft = Math.max(0, mk.offsetLeft - tel.clientWidth/2);
   }
 }
-function jumpToFinding(idx){
-  var f = lastFindings[idx];
-  if(!f) return;
-  if(f.dup){
-    // Deduped marks are not listed on their own. Tagged families (unknown SSR,
-    // unknown element, trailing spaces…) collapse into one entry we can point at;
-    // the aggregate checks (duplicate seat, reused group, repeated passenger)
-    // carry no tag, so there is nothing reliable to jump to — the tooltip already
-    // carries the full text.
-    if(!f.tag) return;
-    var principal = lastFindings.filter(function(x){
-      return !x.dup && x.tag===f.tag && x.code===f.code; })[0];
-    if(!principal) return;
-    f = principal;
-  }
-  if(sevFilter !== "all" && sevFilter !== f.sev){ sevFilter = "all"; renderSummary(); renderFindings(); }
-  var row = $("findings").querySelector('.finding[data-f="'+f._i+'"]');
-  if(row){ row.scrollIntoView({block:"center", behavior:"smooth"}); flash(row); }
-}
-
 /* ---------- tooltip that also works on touch ---------- */
 var tipEl = null;
 function showTip(target, text){
@@ -252,12 +232,10 @@ $("findings").addEventListener("click", function(e){
 $("telex").addEventListener("click", function(e){
   var mk = e.target.closest ? e.target.closest("mark") : null;
   if(!mk) return;
+  // Clicking a highlighted character shows its tooltip and places the caret
+  // right there to type the fix — it no longer scrolls the page down to the
+  // matching entry in the findings list below.
   showTip(mk, mk.getAttribute("data-tip") || "");
-  var idx = mk.getAttribute("data-f");
-  if(idx !== "" && idx != null){
-    jumpToFinding(+idx);
-    // No longer redirect focus to msgInput — the telex is editable directly.
-  }
 });
 $("telex").addEventListener("mouseover", function(e){
   var mk = e.target.closest ? e.target.closest("mark") : null;
