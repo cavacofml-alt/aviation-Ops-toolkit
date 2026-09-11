@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-11 — PR #101
+No tema claro, os títulos pequenos (ex.: "1. FLIGHT AND PASSENGER DATA", "AIRLINE *") estavam quase ilegíveis — a cor ficou mais escura em todas as ferramentas. O tema escuro não mudou.
+
 ## 2026-09-11 — PR #99
 Corrigido: um ficheiro exportado do PRL Parser não conseguia ser carregado no PNL Builder para gerar o PNL (dava erro de "colunas em falta"). Agora funciona diretamente, sem precisar de renomear nada.
 
