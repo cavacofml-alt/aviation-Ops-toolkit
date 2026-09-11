@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-11 — PR #75
+Adicionado o ficheiro `CLAUDE.md` com as regras de trabalho do projeto (quando mergear sozinho, quando esperar aprovação, e como registar alterações), para ficarem guardadas junto do código.
+
 ## 2026-09-11 — PR #73
 Corrigido falso erro "Malformed DOCS" quando a primeira linha `.RN/` de um `.R/DOCS` em branco tinha um espaço logo a seguir à barra — um formato real que ficava mal interpretado.
 
