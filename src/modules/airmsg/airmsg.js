@@ -39,8 +39,17 @@ function pnlTemplateRows(){ return parseDelimited(PNL_TEMPLATE_CSV); }
    Reads a PSCRM PRL message: one passenger header line ending in ".L/<PNR>",
    followed by .R/SEAT, .R/DOCO and one or more .R/DOCS lines (each DOCS
    line is one travel document) and an optional .RN/ override name. */
-var prlHeaders = ["ReservationName","RecordLocator","Seat","Status","DocumentType","Nationality",
-  "DocumentNumber","IssueCountry","DateOfBirth","Gender","ExpiryDate","DOCO"];
+var prlHeaders = ["ReservationName","RecordLocator","Seat","LASTNAME","GIVENNAME","Status","DocumentType",
+  "Nationality","DocumentNumber","IssueCountry","DateOfBirth","Gender","ExpiryDate","DOCO"];
+var AM_NAME_TITLES = ["MSTR","MISS","INFT","INF","CHD","MRS","MR","MS","DR"];
+function amStripNameTitle(s){
+  s = amClean(s).toUpperCase();
+  for(var i=0;i<AM_NAME_TITLES.length;i++){
+    var t = AM_NAME_TITLES[i];
+    if(s.length>t.length && s.slice(-t.length)===t) return s.slice(0,-t.length);
+  }
+  return s;
+}
 function parsePRL(source){
   var lines = String(source||"").replace(/\r/g,"").split("\n");
   var passengers = [], cur = null;
@@ -51,7 +60,7 @@ function parsePRL(source){
     if(/^\d+\S+\/\S+.*\.L\//i.test(line)){
       m = line.match(/\.L\/([^\s]+)/i);
       cur = { ReservationName: line.split(/\s+\.L\//i)[0].replace(/^\d+/,""),
-              RecordLocator: m?m[1]:"", Seat:"", DOCO:"", docs:[] };
+              RecordLocator: m?m[1]:"", Seat:"", DOCO:"", RN:"", docs:[] };
       passengers.push(cur);
       return;
     }
@@ -59,12 +68,31 @@ function parsePRL(source){
     if((m = line.match(/^\.R\/SEAT\s+(?:HK1\s+)?([^\s-]+)/i))) cur.Seat = m[1];
     else if((m = line.match(/^\.R\/DOCO\s+(.+)/i))) cur.DOCO = m[1];
     else if((m = line.match(/^\.R\/DOCS\s+(.+)/i))) cur.docs.push(m[1].split("/"));
-    else if((m = line.match(/^\.RN\/(.+)/i)) && amClean(m[1]).toUpperCase()!=="N") cur.ReservationName = amClean(m[1]);
+    /* .RN/ carries a name-completion remark (e.g. the remainder of a given name truncated
+       elsewhere in the message) — it must NOT overwrite ReservationName, which stays as
+       recorded on the .L/ line. */
+    else if((m = line.match(/^\.RN\/(.+)/i)) && amClean(m[1]).toUpperCase()!=="N") cur.RN = amClean(m[1]);
+  });
+  passengers.forEach(function(p){
+    var parts = p.ReservationName.split("/");
+    var resSurname = parts[0], resGivenTitle = parts[1];
+    var passportDoc = p.docs.filter(function(d){ return amClean(d[1]).toUpperCase()==="P"; })[0] || p.docs[0] || [];
+    var docSurname = amClean(passportDoc[8]);
+    var docGivenInitial = amClean(passportDoc[9]);
+    /* LASTNAME: prefer the surname recorded in the .R/DOCS document element, falling back
+       to the surname portion of the reservation name. */
+    p.LASTNAME = docSurname || amClean(resSurname);
+    /* GIVENNAME: .R/DOCS often only carries the first initial of the given name (the rest
+       being cut to fit the document element). The .RN/ remark supplies the remainder, so
+       the two are joined back together (e.g. "M" + "ARIA ANTONIA" = "MARIA ANTONIA"). */
+    if(p.RN) p.GIVENNAME = (docGivenInitial+p.RN).toUpperCase().replace(/\s+/g," ").trim();
+    else p.GIVENNAME = amStripNameTitle(resGivenTitle);
   });
   var rows = [];
   passengers.forEach(function(p){
     p.docs.forEach(function(x){
       rows.push({ ReservationName:p.ReservationName, RecordLocator:p.RecordLocator, Seat:p.Seat,
+        LASTNAME:p.LASTNAME, GIVENNAME:p.GIVENNAME,
         Status:x[0]||"", DocumentType:x[1]||"", Nationality:x[2]||"", DocumentNumber:x[3]||"",
         IssueCountry:x[4]||"", DateOfBirth:x[5]||"", Gender:x[6]||"", ExpiryDate:x[7]||"", DOCO:p.DOCO });
     });

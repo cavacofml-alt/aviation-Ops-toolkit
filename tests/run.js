@@ -220,6 +220,17 @@ if(inBuild("airmsg")) try {
      prlRows.length === 1 && prlRows[0].RecordLocator === "ABC123" && prlRows[0].DocumentNumber === "123456789",
      JSON.stringify(prlRows));
 
+  const prlRnMsg = [
+    "1SILVA/JOAOMR .L/ABC123",
+    ".R/DOCS HK1/P/PRT/123456/PRT/01JAN80/M/01JAN30/SILVA/J",
+    ".RN/OAQUIM"
+  ].join("\n");
+  const prlRnRows = AM_LIB.parsePRL(prlRnMsg);
+  ok(".RN/ completes the given name instead of overwriting the reservation name",
+     prlRnRows.length === 1 && prlRnRows[0].ReservationName === "SILVA/JOAOMR" &&
+     prlRnRows[0].LASTNAME === "SILVA" && prlRnRows[0].GIVENNAME === "JOAQUIM",
+     JSON.stringify(prlRnRows));
+
   const paxMsg = [
     "UNH*1*PAXLST", "NAD*FL*1*1*SILVA:JOAO", "ATT*2**M", "DTM*329:900101",
     "NAT*2*PRT", "RFF*AVF:ABC123", "RFF*SEA:12A",
