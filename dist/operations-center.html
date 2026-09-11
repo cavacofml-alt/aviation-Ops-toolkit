@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Operations Center v1.2.204</title>
+<title>Operations Center v1.2.207</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -897,7 +897,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.204</span>
+      <span class="build-ver">v1.2.207</span>
     </header>
 
     <main>
@@ -1034,35 +1034,40 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
         <!-- ============ MESSAGE VALIDATOR ============ -->
         <section id="panel-msgcheck">
           <textarea id="msgInput" style="display:none" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
-          <div class="sec" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span>Input message — errors flagged character by character once validated</span>
-            <button class="btn small quiet" id="btnTelexCopy" style="margin-left:auto" hidden>&#128203; Copy message</button>
+          <div class="am-grid">
+            <div class="card">
+              <div class="am-card-head">
+                <div class="sec">Input message — errors flagged character by character once validated</div>
+                <button class="btn small quiet" id="btnTelexCopy" hidden>&#128203; Copy message</button>
+              </div>
+              <div class="telex" id="telex"></div>
+              <div class="controls">
+                <button class="btn primary" id="btnValidate">Validate message</button>
+                <span style="display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden">
+                  <button class="btn" id="btnExample" style="border:0;border-radius:0">Load example</button>
+                  <select id="msgtype" title="Example message type — applies to both example buttons"
+                    style="padding:9px 8px;border:0;border-left:1px solid var(--line);background:var(--panel2);color:var(--cyan);font-family:var(--mono);font-size:12px;font-weight:600">
+                    <option>PNL</option><option>PSM</option><option>PTM</option><option>PFS</option>
+                    <option>PIL</option><option>SOM</option><option>SPM</option><option>FTL</option>
+                    <option>PRL</option><option>ETL</option><option>MVT</option><option>DIV</option>
+                    <option>SSM</option><option>ASM</option>
+                  </select>
+                </span>
+                <button class="btn" id="btnExampleBad">Example with errors</button>
+                <button class="btn quiet" id="btnClear">Clear</button>
+                <span class="note" style="flex-basis:100%">Type or paste the message directly above (PNL, ADL, PSM, MVT, SSM… — the type is detected automatically),
+                  then select <b>Validate</b>. After the first run, click any highlighted character to see the rule behind it, then type the fix in place — the list refreshes as you type.</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="am-card-head">
+                <div class="sec" style="display:flex;align-items:center;gap:10px">Validation result<span id="liveFlag" class="liveflag"></span></div>
+                <button class="btn small" id="btnReport" hidden>&#128203; Export report</button>
+              </div>
+              <div id="summary" hidden></div>
+              <div id="findings"><div class="empty">Paste a message and select <b>Validate</b>. Findings appear here with the manual rule behind each one.</div></div>
+            </div>
           </div>
-          <div class="telex" id="telex"></div>
-          <div class="controls">
-            <button class="btn primary" id="btnValidate">Validate message</button>
-            <span style="display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden">
-              <button class="btn" id="btnExample" style="border:0;border-radius:0">Load example</button>
-              <select id="msgtype" title="Example message type — applies to both example buttons"
-                style="padding:9px 8px;border:0;border-left:1px solid var(--line);background:var(--panel2);color:var(--cyan);font-family:var(--mono);font-size:12px;font-weight:600">
-                <option>PNL</option><option>PSM</option><option>PTM</option><option>PFS</option>
-                <option>PIL</option><option>SOM</option><option>SPM</option><option>FTL</option>
-                <option>PRL</option><option>ETL</option><option>MVT</option><option>DIV</option>
-                <option>SSM</option><option>ASM</option>
-              </select>
-            </span>
-            <button class="btn" id="btnExampleBad">Example with errors</button>
-            <button class="btn quiet" id="btnClear">Clear</button>
-            <span class="note" style="flex-basis:100%">Type or paste the message directly above (PNL, ADL, PSM, MVT, SSM… — the type is detected automatically),
-              then select <b>Validate</b>. After the first run, click any highlighted character to select the finding, then type the fix in place — the list refreshes as you type.</span>
-          </div>
-          <div class="sec mt" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span>Validation result</span>
-            <span id="liveFlag" class="liveflag"></span>
-            <button class="btn small" id="btnReport" style="margin-left:auto" hidden>&#128203; Export report</button>
-          </div>
-          <div id="summary" hidden></div>
-          <div id="findings"><div class="empty">Paste a message and select <b>Validate</b>. Findings appear here with the manual rule behind each one.</div></div>
         </section>
 
         <!-- ============ SECURE ZIP ============ -->
@@ -1256,7 +1261,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.204 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.207 — Luís Cavaco
     Built 2026-09-11 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
