@@ -203,6 +203,13 @@ button.sb-brand:hover{background:var(--hover)}
 .btn.danger{border-color:var(--red); color:var(--red)}
 .btn.tpl{border-color:var(--magenta); color:var(--magenta); background:var(--magenta-soft)}
 .controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:14px 0 4px}
+.am-drop{position:relative; text-align:center; padding:16px 14px; margin-bottom:12px; cursor:pointer;
+  border:1.5px dashed var(--line-2); border-radius:var(--radius-sm); background:var(--panel2)}
+.am-drop:hover,.am-drop:focus-visible{border-color:var(--cyan); background:var(--cyan-soft)}
+.am-drop.dragover{border-color:var(--cyan); background:var(--cyan-soft)}
+.am-drop strong{display:block; font-size:12.5px}
+.am-drop span{display:block; font-size:11px; color:var(--dim); margin-top:3px}
+.am-drop input[type="file"]{position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%}
 .field label{display:block; font-family:var(--mono); font-size:9px; letter-spacing:1.5px;
   color:var(--dim); text-transform:uppercase; margin-bottom:4px}
 .field input,.field select{width:100%; padding:7px 9px; background:var(--input-bg); border:1px solid var(--line);

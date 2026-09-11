@@ -10,6 +10,11 @@
           <!-- ---- PRL ---- -->
           <div id="amPrl" class="am-panel">
             <div class="sec">1. PRL input</div>
+            <div class="am-drop" id="amPrlDrop" tabindex="0">
+              <strong>Drop or select a PRL TXT file</strong>
+              <span>The message can also be pasted below.</span>
+              <input type="file" id="amPrlFile" accept=".txt,text/plain">
+            </div>
             <textarea id="amPrlInput" spellcheck="false" autocapitalize="off" autocomplete="off"
               style="width:100%;min-height:220px;resize:vertical;padding:12px;border-radius:var(--radius-sm);
                      border:1px solid var(--line);background:var(--input-bg);color:var(--text);
@@ -17,9 +22,6 @@
               placeholder="Paste the PRL message here…"></textarea>
             <div class="controls">
               <button class="btn primary" id="amPrlParse">Parse PRL</button>
-              <label class="btn quiet" style="display:inline-flex;align-items:center">
-                &#128206; Load TXT file<input type="file" id="amPrlFile" accept=".txt,text/plain" style="display:none">
-              </label>
               <button class="btn quiet" id="amPrlClear">Clear</button>
               <button class="btn" id="amPrlDownload" disabled>&#8595; Download CSV</button>
             </div>
@@ -30,6 +32,11 @@
           <!-- ---- PAX ---- -->
           <div id="amPax" class="am-panel" hidden>
             <div class="sec">1. APIS PAXLST input</div>
+            <div class="am-drop" id="amPaxDrop" tabindex="0">
+              <strong>Drop or select a PAXLST TXT file</strong>
+              <span>CR, LF, apostrophe and $ segment terminators are all accepted.</span>
+              <input type="file" id="amPaxFile" accept=".txt,text/plain">
+            </div>
             <textarea id="amPaxInput" spellcheck="false" autocapitalize="off" autocomplete="off"
               style="width:100%;min-height:220px;resize:vertical;padding:12px;border-radius:var(--radius-sm);
                      border:1px solid var(--line);background:var(--input-bg);color:var(--text);
@@ -37,12 +44,8 @@
               placeholder="Paste the APIS PAXLST message here — single or multipart…"></textarea>
             <div class="controls">
               <button class="btn primary" id="amPaxParse">Parse PAXLST</button>
-              <label class="btn quiet" style="display:inline-flex;align-items:center">
-                &#128206; Load TXT file<input type="file" id="amPaxFile" accept=".txt,text/plain" style="display:none">
-              </label>
               <button class="btn quiet" id="amPaxClear">Clear</button>
               <button class="btn" id="amPaxDownload" disabled>&#8595; Download CSV</button>
-              <span class="note" style="flex-basis:100%">CR, LF, apostrophe and $ segment terminators are all accepted.</span>
             </div>
             <div class="sec mt">2. Passenger documents</div>
             <div id="amPaxResult"><div class="empty">No result yet.</div></div>
@@ -72,10 +75,12 @@
                 <button class="btn small" id="amPnlTemplateXlsx">&#8595; Template Excel</button>
               </div>
             </div>
+            <div class="am-drop" id="amPnlDrop" tabindex="0">
+              <strong>Drop or select list_of_PAX.csv / XLSX</strong>
+              <span>Supported booking-class columns: BookingClass or Class.</span>
+              <input type="file" id="amPnlFile" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+            </div>
             <div class="controls">
-              <label class="btn quiet" style="display:inline-flex;align-items:center">
-                &#128206; Load passenger list (CSV/XLSX)<input type="file" id="amPnlFile" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">
-              </label>
               <button class="btn primary" id="amPnlBuild">Build PNL</button>
               <button class="btn quiet" id="amPnlClear">Clear</button>
               <span class="note" style="flex-basis:100%">Required columns: Surname, GivenName, Gender, DateOfBirth, Nationality, RecordLocator, Seat, DocumentType, DocumentNumber, DocumentIssueCountry, DocumentIssueDate, DocumentExpiryDate, BCN. Booking class from BookingClass/Class/RBD, or the default above.</span>
