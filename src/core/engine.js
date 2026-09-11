@@ -652,6 +652,22 @@ function validateBlock(lines, block, isLastBlock, add, shared){
       validateDotElements(rawLine, n, 0, add, {standalone:true, lastWasR, elemCount:lastNameCount, msgType, paxCtx, rnNext:U[idx+1]});
       if(/^\.RN\//.test(line)){
         if(!lastWasR) add(n,1,4,"err",".RN/ (remarks continuation) without a .R/ element immediately before.",REF.rn);
+        else{
+          // RP 1707b: .RN/ exists only to resume text the 64-character limit
+          // cut off — never for its own sake. If the line above had room for
+          // the very next word (joined by the one space a wrapped line
+          // implies), the split was not required: the whole remark belonged
+          // on that line. A join that continues mid-value with no space
+          // (a date or surname cut in two) is only ever tighter than this,
+          // so testing the space-joined case is the safe, one-sided check.
+          let pIdx=idx-1;
+          while(pIdx>=block.start && U[pIdx].trim()==="") pIdx--;
+          const prevRaw = pIdx>=block.start ? U[pIdx] : "";
+          const cont = line.replace(/^\.RN\//,"").replace(/^\s+/,"");
+          const firstWord = (cont.match(/^\S+/)||[""])[0];
+          if(firstWord && prevRaw.length+1+firstWord.length<=RULES.maxLine)
+            add(n,1,4,"warn",`.RN/ may not be needed — the line above is ${prevRaw.length} characters, and the next word (<b>${firstWord}</b>) would still fit within the ${RULES.maxLine}-character limit.`,REF.rn);
+        }
       } else {
         lastWasR = /(^| )\.R\//.test(line);
       }

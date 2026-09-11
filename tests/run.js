@@ -111,6 +111,29 @@ ok("DOCS expiry date split across .RN/ is completed, not falsely flagged",
         "invalid document expiry"));
 ok("a genuinely invalid DOCS expiry is still caught (no continuation involved)",
    has(P + "1SILVA/JOAOMR\n.R/DOCS HK1 /P/ESP//ESP//F/99XXX\nENDPNL", "invalid document expiry"));
+
+/* .RN/ exists only to resume text the 64-character limit cut off. A line
+   nowhere near that limit followed by .RN/ means the remark should never
+   have been split — a mistake that costs nothing to catch, since the join
+   it implies (the next word, with the one space a wrap stands for) is the
+   most space it could possibly have needed. */
+ok("an .RN/ after a short line is flagged as likely unnecessary",
+   has(P + "1SILVA/JOAOMR\n.R/OTHS HK1 SHORT\n.RN/ MORE TEXT\nENDPNL",
+       "may not be needed"));
+ok("an .RN/ right at the 64-character limit is not flagged",
+   !has(P + "1SILVA/JOAOMR .R/OTHS HK1 "+"A".repeat(64-27)+"\n.RN/CONTINUED\nENDPNL",
+        "may not be needed"));
+ok("a second, chained .RN/ is judged against the line directly above it",
+   (() => {
+     const full = "1SILVA/JOAOMR .R/OTHS HK1 "+"A".repeat(64-27);      // exactly 64: justified
+     const short = ".RN/"+"B".repeat(10);                              // 14 chars: has room to spare
+     const f = API.validate(P + full + "\n" + short + "\n.RN/ SHORT\nENDPNL")
+       .filter(x => !x.dup && /may not be needed/.test(x.msg));
+     return f.length === 1 && f[0].line === 6;   // only the third line's break is unjustified
+   })());
+ok("an orphan .RN/ still gets its own error, not the length warning",
+   has(P + "1SILVA/JOAOMR\n.RN/ORPHAN\nENDPNL", "without a .R/ element immediately before") &&
+   !has(P + "1SILVA/JOAOMR\n.RN/ORPHAN\nENDPNL", "may not be needed"));
 ok("the last passenger is checked even without an END element",
    has(P + "1SILVA/JOAOMR\n.R/DOCS HK1/P/PRT/K123456/PRT/12MAY80/M/01JAN20/SILVA/JOAO", "expired"));
 ok("elements run together are caught",

@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.176</title>
+<title>Aviation Ops Toolkit v1.2.182</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -886,7 +886,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.176</span>
+      <span class="build-ver">v1.2.182</span>
     </header>
 
     <main>
@@ -1215,8 +1215,8 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.176 — Luís Cavaco
-    Built 2026-09-09 from the source tree; see build.manifest.json.
+/*! Aviation Ops Toolkit v1.2.182 — Luís Cavaco
+    Built 2026-09-11 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
 
@@ -2010,6 +2010,22 @@ function validateBlock(lines, block, isLastBlock, add, shared){
       validateDotElements(rawLine, n, 0, add, {standalone:true, lastWasR, elemCount:lastNameCount, msgType, paxCtx, rnNext:U[idx+1]});
       if(/^\.RN\//.test(line)){
         if(!lastWasR) add(n,1,4,"err",".RN/ (remarks continuation) without a .R/ element immediately before.",REF.rn);
+        else{
+          // RP 1707b: .RN/ exists only to resume text the 64-character limit
+          // cut off — never for its own sake. If the line above had room for
+          // the very next word (joined by the one space a wrapped line
+          // implies), the split was not required: the whole remark belonged
+          // on that line. A join that continues mid-value with no space
+          // (a date or surname cut in two) is only ever tighter than this,
+          // so testing the space-joined case is the safe, one-sided check.
+          let pIdx=idx-1;
+          while(pIdx>=block.start && U[pIdx].trim()==="") pIdx--;
+          const prevRaw = pIdx>=block.start ? U[pIdx] : "";
+          const cont = line.replace(/^\.RN\//,"").replace(/^\s+/,"");
+          const firstWord = (cont.match(/^\S+/)||[""])[0];
+          if(firstWord && prevRaw.length+1+firstWord.length<=RULES.maxLine)
+            add(n,1,4,"warn",`.RN/ may not be needed — the line above is ${prevRaw.length} characters, and the next word (<b>${firstWord}</b>) would still fit within the ${RULES.maxLine}-character limit.`,REF.rn);
+        }
       } else {
         lastWasR = /(^| )\.R\//.test(line);
       }
