@@ -48,7 +48,7 @@ function openTool(id){
 
   var tool = TOOLS.filter(function(t){return t.id===id;})[0];
   if(isHome){
-    $("toolTitle").textContent = "Aviation Ops Toolkit";
+    $("toolTitle").textContent = "Operations Center";
     $("toolBadge").textContent = "HOME";
     $("toolBadge").style.color = "var(--text)";
     $("toolBlurb").style.display = "none";
