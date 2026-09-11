@@ -20,5 +20,5 @@
 
 ## Alojamento (em transição)
 - O repositório de trabalho (onde o código é editado e testado) está a ser decidido entre Azure DevOps e GitHub empresarial — por agora continua no GitHub pessoal.
-- O SharePoint da empresa vai servir como arquivo/distribuição do ficheiro final (`dist/aviation-ops-toolkit.html`) e do `CHANGELOG.md`, não como ambiente de edição — não corre código.
+- O SharePoint da empresa vai servir como arquivo/distribuição do ficheiro final (`dist/operations-center.html`) e do `CHANGELOG.md`, não como ambiente de edição — não corre código.
 - A versão de produção fica num PC numa rede isolada; a atualização é sempre manual (não há ligação automática).
