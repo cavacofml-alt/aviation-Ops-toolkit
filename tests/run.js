@@ -139,6 +139,15 @@ ok("a glued .RN/ gets its own message, not the generic spacing one",
    !has(P + "1SILVA/JOAOMR .R/OTHS HK1 TEXT.RN/MORE\nENDPNL", "Missing space between"));
 ok("a glued .RN/ chained after another .RN/ gets the same message",
    has(P + "1SILVA/JOAOMR\n.R/OTHS HK1 "+"A".repeat(50)+"\n.RN/TAIL.RN/MORE\nENDPNL", "must start its own line"));
+/* .SN/ (continuation of .S/, Security Information) is the same kind of
+   element as .RN/: it stands for a line break, not a value of its own, so
+   a glued .SN/ needs the same wording — and for the same reason must not
+   get the generic "missing space" fix. */
+ok("a glued .SN/ gets its own message too, not the generic spacing one",
+   has(P + "1SILVA/JOAOMR .S/US/123456789.SN/987654321\nENDPNL", "must start its own line") &&
+   !has(P + "1SILVA/JOAOMR .S/US/123456789.SN/987654321\nENDPNL", "Missing space between"));
+ok("a normal element glued right after .SN/ keeps the generic message",
+   has(P + "1SILVA/JOAOMR\n.S/US/123456789\n.SN/987654321.WL/AB84\nENDPNL", "Missing space between"));
 ok("a dot inside free text is not an element",
    !has(P + "1A/BMR .R/STCR KK1 BROKEN HIP.NEEDS HELP\nENDPNL", "without the mandatory slash"));
 ok("a class outside the RBD is caught",
