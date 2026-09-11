@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-11 — PR #99
+Corrigido: um ficheiro exportado do PRL Parser não conseguia ser carregado no PNL Builder para gerar o PNL (dava erro de "colunas em falta"). Agora funciona diretamente, sem precisar de renomear nada.
+
 ## 2026-09-11 — PR #97
 No Secure ZIP, qualquer ficheiro `.csv` anexado passa a vir convertido para `.xlsx` corretamente formatado (colunas separadas, datas e números reais nas colunas certas) antes de ser encriptado.
 
