@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-11 — PR #93 e #95
+No Message Validator, a mensagem e o resultado passaram a ficar lado a lado, e agora dá para selecionar com o rato várias linhas ou a mensagem toda de uma vez — antes a seleção ficava presa a uma linha.
+
 ## 2026-09-11 — PR #90 e #91
 No Message Parser/Builder, a entrada e o resultado passaram a ficar lado a lado (não empilhados); no Secure ZIP foi adicionada a mesma zona de arrastar ficheiro que já existia no Message Parser/Builder.
 
