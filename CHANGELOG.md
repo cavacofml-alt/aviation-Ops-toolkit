@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-11 — PR #88
+Corrigido um bug grave no Parse PRL: passageiros sem localizador (`.L/`) na linha desapareciam por completo do resultado e do CSV exportado, em vez de aparecerem só sem essa coluna preenchida.
+
 ## 2026-09-11 — PR #85
 Corrigido: clicar num erro destacado na mensagem já não faz saltar a página para a lista de resultados — só mostra a explicação no local.
 
