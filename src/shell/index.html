@@ -329,6 +329,12 @@ thead th:last-child{text-align:right}
 .telex .ruler b{color:var(--cyan); font-weight:600}
 .telex .row{display:flex; gap:14px}
 .telex .n{color:var(--faint); user-select:none; min-width:2.5ch; text-align:right; flex-shrink:0}
+/* The line number is CSS-generated content, not a text node, so a
+   drag-select spanning multiple rows can never pick it up as part of the
+   copied text — unlike user-select:none alone, which only stops it from
+   being the start/end of a selection, not from being included once a range
+   happens to span across it. */
+.telex .n::before{content:attr(data-n)}
 .telex .t{white-space:pre}
 .telex mark{background:none; border-bottom:2px solid; padding-bottom:1px}
 .telex mark.err{color:var(--red); border-color:var(--red); background:var(--red-soft)}
