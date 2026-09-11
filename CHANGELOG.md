@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-11 — PR #73
+Corrigido falso erro "Malformed DOCS" quando a primeira linha `.RN/` de um `.R/DOCS` em branco tinha um espaço logo a seguir à barra — um formato real que ficava mal interpretado.
+
 ## 2026-09-11 — PR #71
 Validação de documentos (`.R/DOCS`) corrigida para quando o estado e todos os campos vêm em branco na linha principal e são completados por uma ou mais linhas `.RN/` seguidas. Antes, este formato (raro mas real) fazia o validador saltar por completo a verificação de nome/associação/validade do documento.
 
