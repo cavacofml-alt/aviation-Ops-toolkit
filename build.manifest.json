@@ -1,8 +1,8 @@
 {
   "name": "Aviation Ops Toolkit",
-  "version": "1.2.196",
+  "version": "1.2.197",
   "author": "Lu\u00eds Cavaco",
-  "output": "dist/aviation-ops-toolkit.html",
+  "output": "dist/operations-center.html",
   "_how_to_add_a_module": [
     "Create src/modules/<id>/ with panel.html (markup), <id>.js (logic) and",
     "ui.js (wiring). Add an entry below and one to TOOLS in shell-core.js.",

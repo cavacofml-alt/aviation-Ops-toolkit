@@ -18,7 +18,7 @@ No dependencies, no network, no installation — it runs from a double-click.
 python3 build.py --check
 ```
 
-Produces `dist/aviation-ops-toolkit.html` and runs the regression suite.
+Produces `dist/operations-center.html` and runs the regression suite.
 **Picking this up in a new conversation?** Start with
 `docs/CONTEXT-FOR-NEXT-SESSION.md` — it holds the reasoning that the code does
 not show, and lists what else to hand over.

@@ -34,7 +34,7 @@ aviation-ops/
 ## Commands
 
 ```bash
-python3 build.py            # build dist/aviation-ops-toolkit.html
+python3 build.py            # build dist/operations-center.html
 python3 build.py --check    # build, then run every test
 node tests/run.js           # tests only, against the last build
 ```

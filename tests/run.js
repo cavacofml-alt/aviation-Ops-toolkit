@@ -13,7 +13,7 @@ const path = require("path");
 const ROOT = path.join(__dirname, "..");
 const DIST = process.argv[2]
   ? path.resolve(process.argv[2])
-  : path.join(ROOT, "dist", "aviation-ops-toolkit.html");
+  : path.join(ROOT, "dist", "operations-center.html");
 console.log("Testing " + path.relative(ROOT, DIST));
 
 let pass = 0, fail = 0;
