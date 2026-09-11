@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Operations Center v1.2.215</title>
+<title>Operations Center v1.2.216</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -906,7 +906,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.215</span>
+      <span class="build-ver">v1.2.216</span>
     </header>
 
     <main>
@@ -915,7 +915,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <div class="tool-panel" id="toolPanel" data-accent="green">
         <span class="br tl"></span><span class="br tr"></span><span class="br bl"></span><span class="br brr"></span>
 
-                <!-- ============ AIRLINE MESSAGE TOOLKIT ============ -->
+                <!-- ============ MESSAGE PARSER/BUILDER ============ -->
         <section id="panel-airmsg" class="panel-hidden">
           <div class="note" style="margin-bottom:14px">PRL parser &middot; APIS PAXLST parser &middot; PSCRM PNL builder — local processing only, nothing leaves the browser.</div>
           <div class="comp-tabs">
@@ -1270,7 +1270,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.215 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.216 — Luís Cavaco
     Built 2026-09-11 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -1283,7 +1283,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
    Add a tool: append to TOOLS and add a <section id="panel-{id}"> in the markup.
    ============================================================================ */
 var TOOLS = [
-  { id:"airmsg", name:"Airline Message Toolkit", badge:"PAX OPS", code:"PAX", accent:"cyan", wide:true,
+  { id:"airmsg", name:"Message Parser/Builder", badge:"PAX OPS", code:"PAX", accent:"cyan", wide:true,
     blurb:"Parse PRL and APIS PAXLST messages, review passenger documents, and build PSCRM PNL messages from a CSV or XLSX passenger list. Everything runs locally in the browser.",
     sources:"LOCAL TOOL: PRL · APIS PAXLST · PSCRM PNL" },
   { id:"msgcheck", name:"Message Validator", badge:"MSGCHECK", code:"MSG", accent:"green", wide:true,
@@ -4336,7 +4336,7 @@ function downloadXlsx(sheetName, headers, rows, filename, dateCols){
 
 
 /* ============================================================================
-   AIRLINE MESSAGE TOOLKIT — pure parsing/building logic (no DOM here).
+   MESSAGE PARSER/BUILDER — pure parsing/building logic (no DOM here).
    Three independent tools: PRL parser, APIS PAXLST parser, PSCRM PNL builder
    from a CSV/XLSX passenger list. Everything runs client-side; no message,
    file or password ever leaves the browser.
@@ -6021,7 +6021,7 @@ function openTemplates(){
 
 
 /* ============================================================================
-   AIRLINE MESSAGE TOOLKIT — UI wiring
+   MESSAGE PARSER/BUILDER — UI wiring
    ============================================================================ */
 function amRenderTable(containerId, headers, rows){
   var el = $(containerId);

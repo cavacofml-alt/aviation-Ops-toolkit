@@ -1,6 +1,6 @@
 
 /* ============================================================================
-   AIRLINE MESSAGE TOOLKIT — pure parsing/building logic (no DOM here).
+   MESSAGE PARSER/BUILDER — pure parsing/building logic (no DOM here).
    Three independent tools: PRL parser, APIS PAXLST parser, PSCRM PNL builder
    from a CSV/XLSX passenger list. Everything runs client-side; no message,
    file or password ever leaves the browser.

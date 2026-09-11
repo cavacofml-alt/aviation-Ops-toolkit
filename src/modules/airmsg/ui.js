@@ -1,6 +1,6 @@
 
 /* ============================================================================
-   AIRLINE MESSAGE TOOLKIT — UI wiring
+   MESSAGE PARSER/BUILDER — UI wiring
    ============================================================================ */
 function amRenderTable(containerId, headers, rows){
   var el = $(containerId);
