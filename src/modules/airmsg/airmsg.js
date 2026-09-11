@@ -270,8 +270,28 @@ function parseXlsx(file){
 /* ---------- PSCRM PNL builder ---------- */
 var requiredPnl = ["Surname","GivenName","Gender","DateOfBirth","Nationality","RecordLocator","Seat",
   "DocumentType","DocumentNumber","DocumentIssueCountry","DocumentIssueDate","DocumentExpiryDate","BCN"];
+/* Lets a PRL Parser export be fed straight into the PNL Builder without the
+   user renaming columns by hand: LASTNAME/GIVENNAME/IssueCountry/ExpiryDate
+   are the same data under the PRL export's own header names.
+   DocumentIssueDate and BCN don't exist in a PRL export at all — both are
+   optional per row already (DocumentIssueDate isn't used for a passport's
+   .R/DOCS line, and .R/CHKD is only written when BCN is non-empty), so
+   they're just filled in blank rather than treated as missing. */
+var PNL_ALIASES = { Surname:"LASTNAME", GivenName:"GIVENNAME",
+  DocumentIssueCountry:"IssueCountry", DocumentExpiryDate:"ExpiryDate" };
+function applyPnlAliases(rows){
+  rows.forEach(function(r){
+    Object.keys(PNL_ALIASES).forEach(function(canon){
+      if(r[canon] === undefined) r[canon] = r[PNL_ALIASES[canon]] || "";
+    });
+    if(r.DocumentIssueDate === undefined) r.DocumentIssueDate = "";
+    if(r.BCN === undefined) r.BCN = "";
+  });
+  return rows;
+}
 function validatePnlRows(rows){
   if(!rows.length) throw new Error("The passenger file is empty.");
+  applyPnlAliases(rows);
   var missing = requiredPnl.filter(function(h){ return !(h in rows[0]); });
   if(missing.length) throw new Error("Missing columns: "+missing.join(", "));
 }

@@ -248,6 +248,21 @@ if(inBuild("airmsg")) try {
      paxRows.length === 1 && paxRows[0].Surname === "SILVA" && paxRows[0].RecordLocator === "ABC123" &&
      paxRows[0].DocumentType === "P", JSON.stringify(paxRows));
 
+  const prlToPnlMsg = [
+    "1SILVA/JOAOMR .L/ABC123",
+    ".R/SEAT HK1 12A",
+    ".R/DOCS HK1/P/PRT/123456789/PRT/01JAN90/M/01JAN30/SILVA/J"
+  ].join("\n");
+  const prlExportCsv = AM_LIB.makeCsv(AM_LIB.prlHeaders, AM_LIB.parsePRL(prlToPnlMsg));
+  const reimportedForPnl = AM_LIB.parseDelimited(prlExportCsv);
+  ok("a PRL Parser export feeds straight into the PNL Builder, no renaming needed",
+     (() => { try { AM_LIB.validatePnlRows(reimportedForPnl); return true; } catch(e){ return false; } })());
+  const roundTripPnl = AM_LIB.buildPnl(reimportedForPnl,
+    { airline:"XC", flight:"123", date:"2026-07-16", origin:"LIS", destination:"OPO", defaultClass:"Y" });
+  ok("and the resulting PNL carries that passenger's name, locator and seat",
+     roundTripPnl.text.includes("SILVA/JOAOMR") && roundTripPnl.text.includes(".L/ABC123") &&
+     roundTripPnl.text.includes("12A"), roundTripPnl.text);
+
   ok("parseDelimited auto-detects the ; separator",
      JSON.stringify(AM_LIB.parseDelimited("A;B\n1;2")) === JSON.stringify([{A:"1",B:"2"}]));
   ok("parseDelimited auto-detects the , separator",
