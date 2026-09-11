@@ -131,6 +131,10 @@ ok("an invalid expiry split across chained bare-DOCS .RN/ lines is still caught"
    has(P + "1KHAN/MOHAMMEDMR\n.R/DOCS\n" +
         ".RN/HK1/P/GBR/123467895/GBR/12JUL90/M/99XX/KHAN/MOHAMMEDZA\n" +
         ".RN/HAAN/-1KHAN/MOHAMMEDMR\nENDPNL", "invalid document expiry"));
+ok("a bare .R/DOCS with a space after the first .RN/ still validates clean",
+   API.validate(P + "1TEST/TESTMR\n.R/DOCS\n" +
+        ".RN/ HK1/P/NLD/NR1111111/NLD/11MAY80/M/01AUG28/TEST/TEST\n" +
+        ".RN//-1TEST/TESTMR\n.R/SEAT HK1 22B\nENDPNL").filter(f=>!f.dup).length===0);
 ok("an orphan .RN/ still gets its own error",
    has(P + "1SILVA/JOAOMR\n.RN/ORPHAN\nENDPNL", "without a .R/ element immediately before"));
 ok("a short, real-world DOCS name completion on .RN/ is never flagged",
