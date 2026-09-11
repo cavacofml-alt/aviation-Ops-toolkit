@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-11 — PR #90 e #91
+No Message Parser/Builder, a entrada e o resultado passaram a ficar lado a lado (não empilhados); no Secure ZIP foi adicionada a mesma zona de arrastar ficheiro que já existia no Message Parser/Builder.
+
 ## 2026-09-11 — PR #88
 Corrigido um bug grave no Parse PRL: passageiros sem localizador (`.L/`) na linha desapareciam por completo do resultado e do CSV exportado, em vez de aparecerem só sem essa coluna preenchida.
 
