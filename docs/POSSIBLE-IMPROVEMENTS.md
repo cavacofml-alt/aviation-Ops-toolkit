@@ -45,7 +45,7 @@ document. Do not resurrect this without a concrete, repeating source format.
 ### `.comp-tab` is shared between two meanings
 
 In the ULD panel the class marks compartment tabs **and** the `+ Compartment`
-button; in the Airline Message Toolkit it marks the PRL/PAXLST/PNL tabs. Nothing
+button; in the Message Parser/Builder it marks the PRL/PAXLST/PNL tabs. Nothing
 misbehaves — the click handlers key off `data-act` — but a selector written
 against the class alone reaches all three, which cost time while writing browser
 tests. Splitting the classes would make automation less error-prone.

@@ -4,7 +4,7 @@
    Add a tool: append to TOOLS and add a <section id="panel-{id}"> in the markup.
    ============================================================================ */
 var TOOLS = [
-  { id:"airmsg", name:"Airline Message Toolkit", badge:"PAX OPS", code:"PAX", accent:"cyan", wide:true,
+  { id:"airmsg", name:"Message Parser/Builder", badge:"PAX OPS", code:"PAX", accent:"cyan", wide:true,
     blurb:"Parse PRL and APIS PAXLST messages, review passenger documents, and build PSCRM PNL messages from a CSV or XLSX passenger list. Everything runs locally in the browser.",
     sources:"LOCAL TOOL: PRL · APIS PAXLST · PSCRM PNL" },
   { id:"msgcheck", name:"Message Validator", badge:"MSGCHECK", code:"MSG", accent:"green", wide:true,

@@ -309,7 +309,7 @@ if(inBuild("airmsg")) try {
   ok("buildPnl keeps two same-named passengers (blank PNR) as separate entries",
      twinsPnl.passengers === 2 && twinsPnl.text.includes("111111111") && twinsPnl.text.includes("222222222"),
      twinsPnl.text);
-} catch(e){ ok("Airline Message Toolkit module loads", false, e.message); }
+} catch(e){ ok("Message Parser/Builder module loads", false, e.message); }
 
 if(inBuild("securezip")) try {
   global.crypto = require("crypto").webcrypto;

@@ -1,4 +1,4 @@
-# Manual — Airline Message Toolkit
+# Manual — Message Parser/Builder
 
 Três ferramentas independentes num só sítio, tudo processado no browser (nada sai do computador): ler um **PRL**, ler um **APIS PAXLST**, e construir um **PNL** a partir de uma lista de passageiros em Excel/CSV.
 
