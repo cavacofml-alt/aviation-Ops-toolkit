@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Aviation Ops Toolkit v1.2.186</title>
+<title>Aviation Ops Toolkit v1.2.189</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -886,7 +886,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.186</span>
+      <span class="build-ver">v1.2.189</span>
     </header>
 
     <main>
@@ -1215,7 +1215,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.186 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.189 — Luís Cavaco
     Built 2026-09-11 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -1492,6 +1492,7 @@ const REF = {
   group:"RP 1707b §2.9.2 (Party/Group Identification)",
   remarks:"RP 1707b §3.24 (.R/ Remarks Element)",
   rn:"RP 1707b §3.24.8–3.27 (.RN/ continuation)",
+  sn:"RP 1707b Sec.3 (.SN/ continuation)",
   ssr:"AIRIMP §2.11.6.7 (SSR code matrix)",
   status:"AIRIMP §2.11.6 (Action/Status/Advice Codes)",
   elem:"RP 1707b Sec.3 (Data Elements .X/)",
@@ -2527,12 +2528,13 @@ function validateDotElements(rawLine, n, fromIdx, add, opts){
   hits.forEach((h,k)=>{
     if(!h.glued) return;
     const prev = k>0 ? "."+hits[k-1].tag+"/" : "the previous element";
-    // .RN/ is not just another element a space would fix: it stands for a
-    // line break the 64-character limit forced, so it can only ever be its
-    // own physical line. Telling the operator to add a space would be
-    // telling them to do the one thing that still leaves it wrong.
-    if(h.tag==="RN")
-      add(n,h.idx+1,1,"err",`.RN/ found glued to <b>${prev}</b> — a continuation must start its own line, not follow another element on the same one (RP 1707b §3.24.8–3.27).`,REF.rn);
+    // .RN/ and .SN/ are not just another element a space would fix: each
+    // stands for a line break the 64-character limit forced on .R/ or .S/
+    // respectively, so it can only ever be its own physical line. Telling
+    // the operator to add a space would be telling them to do the one
+    // thing that still leaves it wrong.
+    if(h.tag==="RN"||h.tag==="SN")
+      add(n,h.idx+1,1,"err",`.${h.tag}/ found glued to <b>${prev}</b> — a continuation must start its own line, not follow another element on the same one.`,h.tag==="RN"?REF.rn:REF.sn);
     else
       add(n,h.idx+1,1,"err",`Missing space between <b>${prev}</b> and <b>.${h.tag}/</b> — elements are always separated by a space (RP 1707b Sec.2/3).`,REF.elem);
   });
