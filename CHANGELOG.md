@@ -2,6 +2,12 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-11 — PR #82
+Corrigido um bug no parser de PRL: quando uma linha `.RN/` completava o nome próprio, o nome da reserva ficava todo substituído por essa remark, em vez de apenas juntar o resto do nome — isto corrompia o nome do passageiro no CSV exportado.
+
+## 2026-09-11 — PR #81
+Adicionada uma zona de "arrastar e largar" para carregar ficheiros PRL, PAXLST ou a lista de passageiros no Message Parser/Builder — antes só havia um botão simples.
+
 ## 2026-09-11 — PR #79
 O ficheiro final passou a chamar-se `operations-center.html` (antes `aviation-ops-toolkit.html`). Quem tiver o ficheiro antigo guardado precisa de usar o novo nome.
 
