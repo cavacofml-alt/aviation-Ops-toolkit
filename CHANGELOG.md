@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-11 — PR #103
+Corrigido um bug de layout real: quando o resultado tinha muitas colunas (ex.: um PRL grande), a caixa de entrada ficava esmagada numa faixa fina em vez de manter metade do espaço.
+
 ## 2026-09-11 — PR #101
 No tema claro, os títulos pequenos (ex.: "1. FLIGHT AND PASSENGER DATA", "AIRLINE *") estavam quase ilegíveis — a cor ficou mais escura em todas as ferramentas. O tema escuro não mudou.
 
