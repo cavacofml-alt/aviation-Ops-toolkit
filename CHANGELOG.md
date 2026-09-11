@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-11 — PR #79
+O ficheiro final passou a chamar-se `operations-center.html` (antes `aviation-ops-toolkit.html`). Quem tiver o ficheiro antigo guardado precisa de usar o novo nome.
+
 ## 2026-09-11 — PR #77
 A ferramenta passou a chamar-se "Operations Center" (antes "Aviation Ops Toolkit") — nome atualizado no título, na barra lateral e nos documentos do repositório.
 
