@@ -119,6 +119,18 @@ ok("a genuinely invalid DOCS expiry is still caught (no continuation involved)",
    flagged legitimate messages. Five real examples confirmed this — three
    of five tripped it. Only the orphan case (no .R/ before it at all) is
    reliable, and stays covered below. */
+ok("fully bare .R/DOCS with everything on two chained .RN/ lines validates clean",
+   API.validate(P + "1KHAN/MOHAMMEDMR\n.R/DOCS\n" +
+        ".RN/HK1/P/GBR/123467895/GBR/12JUL90/M/06MAR29/KHAN/MOHAMMEDZA\n" +
+        ".RN/HAAN/-1KHAN/MOHAMMEDMR\nENDPNL").filter(f=>!f.dup).length===0);
+ok("a wrong association in a chained bare DOCS is still caught",
+   has(P + "1KHAN/MOHAMMEDMR\n.R/DOCS\n" +
+        ".RN/HK1/P/GBR/123467895/GBR/12JUL90/M/06MAR29/KHAN/MOHAMMEDZA\n" +
+        ".RN/HAAN/-1SILVA/JOAOMR\nENDPNL", "document associated with the wrong passenger"));
+ok("an invalid expiry split across chained bare-DOCS .RN/ lines is still caught",
+   has(P + "1KHAN/MOHAMMEDMR\n.R/DOCS\n" +
+        ".RN/HK1/P/GBR/123467895/GBR/12JUL90/M/99XX/KHAN/MOHAMMEDZA\n" +
+        ".RN/HAAN/-1KHAN/MOHAMMEDMR\nENDPNL", "invalid document expiry"));
 ok("an orphan .RN/ still gets its own error",
    has(P + "1SILVA/JOAOMR\n.RN/ORPHAN\nENDPNL", "without a .R/ element immediately before"));
 ok("a short, real-world DOCS name completion on .RN/ is never flagged",
