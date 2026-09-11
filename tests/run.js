@@ -131,6 +131,14 @@ ok("the last passenger is checked even without an END element",
    has(P + "1SILVA/JOAOMR\n.R/DOCS HK1/P/PRT/K123456/PRT/12MAY80/M/01JAN20/SILVA/JOAO", "expired"));
 ok("elements run together are caught",
    has(P + "1DUARTE/CARLOSMR .L/X9Y8Z7.R/TKNE HK1 0471234567890/1\nENDPNL", "Missing space between"));
+/* .RN/ glued to the element before it is not a spacing slip a space would
+   fix — it stands for a line break, so it can only ever be its own line.
+   Telling the operator to add a space would leave it just as wrong. */
+ok("a glued .RN/ gets its own message, not the generic spacing one",
+   has(P + "1SILVA/JOAOMR .R/OTHS HK1 TEXT.RN/MORE\nENDPNL", "must start its own line") &&
+   !has(P + "1SILVA/JOAOMR .R/OTHS HK1 TEXT.RN/MORE\nENDPNL", "Missing space between"));
+ok("a glued .RN/ chained after another .RN/ gets the same message",
+   has(P + "1SILVA/JOAOMR\n.R/OTHS HK1 "+"A".repeat(50)+"\n.RN/TAIL.RN/MORE\nENDPNL", "must start its own line"));
 ok("a dot inside free text is not an element",
    !has(P + "1A/BMR .R/STCR KK1 BROKEN HIP.NEEDS HELP\nENDPNL", "without the mandatory slash"));
 ok("a class outside the RBD is caught",

@@ -1169,7 +1169,14 @@ function validateDotElements(rawLine, n, fromIdx, add, opts){
   hits.forEach((h,k)=>{
     if(!h.glued) return;
     const prev = k>0 ? "."+hits[k-1].tag+"/" : "the previous element";
-    add(n,h.idx+1,1,"err",`Missing space between <b>${prev}</b> and <b>.${h.tag}/</b> — elements are always separated by a space (RP 1707b Sec.2/3).`,REF.elem);
+    // .RN/ is not just another element a space would fix: it stands for a
+    // line break the 64-character limit forced, so it can only ever be its
+    // own physical line. Telling the operator to add a space would be
+    // telling them to do the one thing that still leaves it wrong.
+    if(h.tag==="RN")
+      add(n,h.idx+1,1,"err",`.RN/ found glued to <b>${prev}</b> — a continuation must start its own line, not follow another element on the same one (RP 1707b §3.24.8–3.27).`,REF.rn);
+    else
+      add(n,h.idx+1,1,"err",`Missing space between <b>${prev}</b> and <b>.${h.tag}/</b> — elements are always separated by a space (RP 1707b Sec.2/3).`,REF.elem);
   });
   let lCount=0, lNoDesignator=0, lFirstCol=0;
 
