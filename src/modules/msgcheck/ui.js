@@ -138,7 +138,7 @@ function renderTelex(raw){
       }
       body = out;
     }
-    html += '<div class="row" data-line="'+(idx+1)+'"><span class="n">'+(idx+1)+'</span><span class="t" contenteditable="true" spellcheck="false" autocorrect="off" autocapitalize="off">'+body+'</span></div>';
+    html += '<div class="row" data-line="'+(idx+1)+'"><span class="n" data-n="'+(idx+1)+'"></span><span class="t" contenteditable="false" spellcheck="false" autocorrect="off" autocapitalize="off">'+body+'</span></div>';
   });
   $("telex").innerHTML = html;
 }
@@ -214,9 +214,9 @@ function jumpToTelexCaret(f){
   if(!row) return;
   var t = row.querySelector(".t");
   if(!t) return;
+  telexEnterEdit(t);
   telexEditRow = f.line;
   telexEditOffset = Math.max(0, (f.col||1) - 1);
-  t.focus();
   setCaretOffset(t, telexEditOffset);
   telexEditRow = null;
 }
@@ -262,7 +262,11 @@ function getCaretOffset(el){
 
 function setCaretOffset(el, offset){
   if(!el || !window.getSelection) return;
-  el.focus();
+  // preventScroll: this runs on every keystroke while typing (via
+  // restoreTelexCaret) and every plain click that enables editing on a row —
+  // neither should ever jump the page, only an explicit jump (jumpToTelex)
+  // scrolls, and it does so deliberately before this runs.
+  el.focus({preventScroll:true});
   var NF = (typeof NodeFilter !== "undefined") ? NodeFilter.SHOW_TEXT : 4;
   var walker = document.createTreeWalker(el, NF, null, false);
   var rem = offset, node;
@@ -281,6 +285,54 @@ function setCaretOffset(el, offset){
   sel.removeAllRanges(); sel.addRange(r);
 }
 
+/* Only the row actually being edited is contenteditable — every other row
+   is plain text. Two separate contenteditable regions can't be selected
+   across with the mouse (the browser treats each as its own editing host),
+   which used to make it impossible to drag-select more than one line; with
+   at most one editable row at a time, dragging out of it into the plain
+   text around it works like normal text selection. */
+function telexEnterEdit(t){
+  if(t.getAttribute("contenteditable") === "true") return;
+  Array.prototype.forEach.call($("telex").querySelectorAll('.t[contenteditable="true"]'), function(other){
+    other.setAttribute("contenteditable", "false");
+  });
+  t.setAttribute("contenteditable", "true");
+}
+/* Entering edit mode is deferred to mouseup, and only when the click didn't
+   drag out a selection: a row made contenteditable on mousedown clips any
+   drag started inside it to that row alone (a contenteditable region cannot
+   be dragged past its own boundary), which is exactly the "can't select the
+   whole message" complaint. Left as plain text until mouseup confirms a
+   plain click, a normal cross-row drag-selection works like any read-only
+   text — then a genuine click enables editing right at that spot. */
+$("telex").addEventListener("focusout", function(e){
+  var t = e.target.closest ? e.target.closest(".t") : null;
+  if(!t) return;
+  // A row that was left editable after the user typed in it would otherwise
+  // stay that way indefinitely, and a later drag starting inside it would
+  // still be clipped to it. Deferred one tick in case focus is only moving
+  // to a different row, whose own mouseup will make IT the editable one.
+  setTimeout(function(){
+    if(document.activeElement !== t) t.setAttribute("contenteditable", "false");
+  }, 0);
+});
+$("telex").addEventListener("mouseup", function(e){
+  var t = e.target.closest ? e.target.closest(".t") : null;
+  if(!t) return;
+  // A plain click collapses the browser's own selection to the new point,
+  // but when it follows an existing cross-row selection that collapse can
+  // still be pending at the moment mouseup is dispatched — checking
+  // isCollapsed synchronously here reads the stale (still-extended) state.
+  // Letting the browser finish that first is enough to see it settled.
+  setTimeout(function(){
+    var sel = window.getSelection();
+    if(!sel || !sel.isCollapsed) return;   // a drag was made — leave it selected
+    var offset = getCaretOffset(t);
+    telexEnterEdit(t);
+    setCaretOffset(t, offset);
+  }, 0);
+});
+
 function telexLinesToMsgInput(){
   var rows = $("telex").querySelectorAll(".row");
   var lines = Array.prototype.map.call(rows, function(r){
@@ -297,12 +349,13 @@ function restoreTelexCaret(){
   if(!row) return;
   var t = row.querySelector(".t");
   if(!t) return;
+  telexEnterEdit(t);
   setCaretOffset(t, savedOff);
 }
 
 $("telex").addEventListener("input", function(e){
   var t = e.target.closest ? e.target.closest(".t") : null;
-  if(!t || !t.getAttribute("contenteditable")) return;
+  if(!t || t.getAttribute("contenteditable") !== "true") return;
   var row = t.parentElement;
   telexEditRow = +row.getAttribute("data-line");
   telexEditOffset = getCaretOffset(t);
@@ -317,7 +370,7 @@ $("telex").addEventListener("input", function(e){
 
 $("telex").addEventListener("keydown", function(e){
   var t = e.target.closest ? e.target.closest(".t") : null;
-  if(!t || !t.getAttribute("contenteditable")) return;
+  if(!t || t.getAttribute("contenteditable") !== "true") return;
   if(e.key === "Enter"){
     e.preventDefault();
     var row = t.parentElement;
@@ -359,7 +412,7 @@ $("telex").addEventListener("keydown", function(e){
 
 $("telex").addEventListener("paste", function(e){
   var t = e.target.closest ? e.target.closest(".t") : null;
-  if(!t || !t.getAttribute("contenteditable")) return;
+  if(!t || t.getAttribute("contenteditable") !== "true") return;
   e.preventDefault();
   var text = (e.clipboardData || window.clipboardData).getData("text/plain");
   if(!text) return;
