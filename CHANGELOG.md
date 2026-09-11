@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-11 — PR #85
+Corrigido: clicar num erro destacado na mensagem já não faz saltar a página para a lista de resultados — só mostra a explicação no local.
+
 ## 2026-09-11 — PR #82
 Corrigido um bug no parser de PRL: quando uma linha `.RN/` completava o nome próprio, o nome da reserva ficava todo substituído por essa remark, em vez de apenas juntar o resto do nome — isto corrompia o nome do passageiro no CSV exportado.
 
