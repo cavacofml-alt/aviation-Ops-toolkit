@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-11 — PR #104
+A ferramenta "Airline Message Toolkit" passou a chamar-se "Message Parser/Builder", o mesmo nome usado na ferramenta original em que foi baseada.
+
 ## 2026-09-11 — PR #103
 Corrigido um bug de layout real: quando o resultado tinha muitas colunas (ex.: um PRL grande), a caixa de entrada ficava esmagada numa faixa fina em vez de manter metade do espaço.
 
