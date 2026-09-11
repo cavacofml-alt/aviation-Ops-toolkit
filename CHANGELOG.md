@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-11 — PR #97
+No Secure ZIP, qualquer ficheiro `.csv` anexado passa a vir convertido para `.xlsx` corretamente formatado (colunas separadas, datas e números reais nas colunas certas) antes de ser encriptado.
+
 ## 2026-09-11 — PR #93 e #95
 No Message Validator, a mensagem e o resultado passaram a ficar lado a lado, e agora dá para selecionar com o rato várias linhas ou a mensagem toda de uma vez — antes a seleção ficava presa a uma linha.
 
