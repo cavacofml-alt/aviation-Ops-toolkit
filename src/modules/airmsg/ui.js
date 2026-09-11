@@ -29,6 +29,23 @@ document.addEventListener("click", function(e){
 });
 amSwitchTab("prl");
 
+/* ---------- drag & drop wrapper for the three file inputs ---------- */
+function amWireDrop(dropId, fileId, onFile){
+  var drop = $(dropId), input = $(fileId);
+  input.addEventListener("change", function(e){ onFile(e.target.files[0]); e.target.value = ""; });
+  ["dragenter","dragover"].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add("dragover"); });
+  });
+  ["dragleave","dragend","drop"].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ drop.classList.remove("dragover"); });
+  });
+  drop.addEventListener("drop", function(e){
+    e.preventDefault();
+    var f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) onFile(f);
+  });
+}
+
 /* ---------- PRL ---------- */
 function amRunPrl(){
   var rows = parsePRL($("amPrlInput").value);
@@ -43,11 +60,11 @@ $("amPrlClear").addEventListener("click", function(){
   $("amPrlDownload").disabled = true;
 });
 $("amPrlDownload").addEventListener("click", function(){ downloadText(AM.prlCsv, "PRL_output.csv"); });
-$("amPrlFile").addEventListener("change", function(e){
-  var f = e.target.files[0]; if(!f) return;
+amWireDrop("amPrlDrop", "amPrlFile", function(f){
+  if(!f) return;
   var r = new FileReader();
   r.onload = function(ev){ $("amPrlInput").value = ev.target.result; amRunPrl(); };
-  r.readAsText(f); e.target.value = "";
+  r.readAsText(f);
 });
 
 /* ---------- PAX ---------- */
@@ -64,11 +81,11 @@ $("amPaxClear").addEventListener("click", function(){
   $("amPaxDownload").disabled = true;
 });
 $("amPaxDownload").addEventListener("click", function(){ downloadText(AM.paxCsv, "PAXLST_output.csv"); });
-$("amPaxFile").addEventListener("change", function(e){
-  var f = e.target.files[0]; if(!f) return;
+amWireDrop("amPaxDrop", "amPaxFile", function(f){
+  if(!f) return;
   var r = new FileReader();
   r.onload = function(ev){ $("amPaxInput").value = ev.target.result; amRunPax(); };
-  r.readAsText(f); e.target.value = "";
+  r.readAsText(f);
 });
 
 /* ---------- PNL ---------- */
@@ -96,7 +113,7 @@ function amLoadPnlFile(file){
     status.style.color = "var(--red)";
   });
 }
-$("amPnlFile").addEventListener("change", function(e){ amLoadPnlFile(e.target.files[0]); e.target.value = ""; });
+amWireDrop("amPnlDrop", "amPnlFile", amLoadPnlFile);
 function amBuildPnl(){
   var status = $("amPnlStatus");
   try{

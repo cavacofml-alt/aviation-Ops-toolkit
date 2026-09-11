@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Operations Center v1.2.197</title>
+<title>Operations Center v1.2.198</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -203,6 +203,13 @@ button.sb-brand:hover{background:var(--hover)}
 .btn.danger{border-color:var(--red); color:var(--red)}
 .btn.tpl{border-color:var(--magenta); color:var(--magenta); background:var(--magenta-soft)}
 .controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:14px 0 4px}
+.am-drop{position:relative; text-align:center; padding:16px 14px; margin-bottom:12px; cursor:pointer;
+  border:1.5px dashed var(--line-2); border-radius:var(--radius-sm); background:var(--panel2)}
+.am-drop:hover,.am-drop:focus-visible{border-color:var(--cyan); background:var(--cyan-soft)}
+.am-drop.dragover{border-color:var(--cyan); background:var(--cyan-soft)}
+.am-drop strong{display:block; font-size:12.5px}
+.am-drop span{display:block; font-size:11px; color:var(--dim); margin-top:3px}
+.am-drop input[type="file"]{position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%}
 .field label{display:block; font-family:var(--mono); font-size:9px; letter-spacing:1.5px;
   color:var(--dim); text-transform:uppercase; margin-bottom:4px}
 .field input,.field select{width:100%; padding:7px 9px; background:var(--input-bg); border:1px solid var(--line);
@@ -886,7 +893,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.197</span>
+      <span class="build-ver">v1.2.198</span>
     </header>
 
     <main>
@@ -907,6 +914,11 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
           <!-- ---- PRL ---- -->
           <div id="amPrl" class="am-panel">
             <div class="sec">1. PRL input</div>
+            <div class="am-drop" id="amPrlDrop" tabindex="0">
+              <strong>Drop or select a PRL TXT file</strong>
+              <span>The message can also be pasted below.</span>
+              <input type="file" id="amPrlFile" accept=".txt,text/plain">
+            </div>
             <textarea id="amPrlInput" spellcheck="false" autocapitalize="off" autocomplete="off"
               style="width:100%;min-height:220px;resize:vertical;padding:12px;border-radius:var(--radius-sm);
                      border:1px solid var(--line);background:var(--input-bg);color:var(--text);
@@ -914,9 +926,6 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
               placeholder="Paste the PRL message here…"></textarea>
             <div class="controls">
               <button class="btn primary" id="amPrlParse">Parse PRL</button>
-              <label class="btn quiet" style="display:inline-flex;align-items:center">
-                &#128206; Load TXT file<input type="file" id="amPrlFile" accept=".txt,text/plain" style="display:none">
-              </label>
               <button class="btn quiet" id="amPrlClear">Clear</button>
               <button class="btn" id="amPrlDownload" disabled>&#8595; Download CSV</button>
             </div>
@@ -927,6 +936,11 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
           <!-- ---- PAX ---- -->
           <div id="amPax" class="am-panel" hidden>
             <div class="sec">1. APIS PAXLST input</div>
+            <div class="am-drop" id="amPaxDrop" tabindex="0">
+              <strong>Drop or select a PAXLST TXT file</strong>
+              <span>CR, LF, apostrophe and $ segment terminators are all accepted.</span>
+              <input type="file" id="amPaxFile" accept=".txt,text/plain">
+            </div>
             <textarea id="amPaxInput" spellcheck="false" autocapitalize="off" autocomplete="off"
               style="width:100%;min-height:220px;resize:vertical;padding:12px;border-radius:var(--radius-sm);
                      border:1px solid var(--line);background:var(--input-bg);color:var(--text);
@@ -934,12 +948,8 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
               placeholder="Paste the APIS PAXLST message here — single or multipart…"></textarea>
             <div class="controls">
               <button class="btn primary" id="amPaxParse">Parse PAXLST</button>
-              <label class="btn quiet" style="display:inline-flex;align-items:center">
-                &#128206; Load TXT file<input type="file" id="amPaxFile" accept=".txt,text/plain" style="display:none">
-              </label>
               <button class="btn quiet" id="amPaxClear">Clear</button>
               <button class="btn" id="amPaxDownload" disabled>&#8595; Download CSV</button>
-              <span class="note" style="flex-basis:100%">CR, LF, apostrophe and $ segment terminators are all accepted.</span>
             </div>
             <div class="sec mt">2. Passenger documents</div>
             <div id="amPaxResult"><div class="empty">No result yet.</div></div>
@@ -969,10 +979,12 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
                 <button class="btn small" id="amPnlTemplateXlsx">&#8595; Template Excel</button>
               </div>
             </div>
+            <div class="am-drop" id="amPnlDrop" tabindex="0">
+              <strong>Drop or select list_of_PAX.csv / XLSX</strong>
+              <span>Supported booking-class columns: BookingClass or Class.</span>
+              <input type="file" id="amPnlFile" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+            </div>
             <div class="controls">
-              <label class="btn quiet" style="display:inline-flex;align-items:center">
-                &#128206; Load passenger list (CSV/XLSX)<input type="file" id="amPnlFile" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">
-              </label>
               <button class="btn primary" id="amPnlBuild">Build PNL</button>
               <button class="btn quiet" id="amPnlClear">Clear</button>
               <span class="note" style="flex-basis:100%">Required columns: Surname, GivenName, Gender, DateOfBirth, Nationality, RecordLocator, Seat, DocumentType, DocumentNumber, DocumentIssueCountry, DocumentIssueDate, DocumentExpiryDate, BCN. Booking class from BookingClass/Class/RBD, or the default above.</span>
@@ -1215,7 +1227,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.197 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.198 — Luís Cavaco
     Built 2026-09-11 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -5929,6 +5941,23 @@ document.addEventListener("click", function(e){
 });
 amSwitchTab("prl");
 
+/* ---------- drag & drop wrapper for the three file inputs ---------- */
+function amWireDrop(dropId, fileId, onFile){
+  var drop = $(dropId), input = $(fileId);
+  input.addEventListener("change", function(e){ onFile(e.target.files[0]); e.target.value = ""; });
+  ["dragenter","dragover"].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add("dragover"); });
+  });
+  ["dragleave","dragend","drop"].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ drop.classList.remove("dragover"); });
+  });
+  drop.addEventListener("drop", function(e){
+    e.preventDefault();
+    var f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) onFile(f);
+  });
+}
+
 /* ---------- PRL ---------- */
 function amRunPrl(){
   var rows = parsePRL($("amPrlInput").value);
@@ -5943,11 +5972,11 @@ $("amPrlClear").addEventListener("click", function(){
   $("amPrlDownload").disabled = true;
 });
 $("amPrlDownload").addEventListener("click", function(){ downloadText(AM.prlCsv, "PRL_output.csv"); });
-$("amPrlFile").addEventListener("change", function(e){
-  var f = e.target.files[0]; if(!f) return;
+amWireDrop("amPrlDrop", "amPrlFile", function(f){
+  if(!f) return;
   var r = new FileReader();
   r.onload = function(ev){ $("amPrlInput").value = ev.target.result; amRunPrl(); };
-  r.readAsText(f); e.target.value = "";
+  r.readAsText(f);
 });
 
 /* ---------- PAX ---------- */
@@ -5964,11 +5993,11 @@ $("amPaxClear").addEventListener("click", function(){
   $("amPaxDownload").disabled = true;
 });
 $("amPaxDownload").addEventListener("click", function(){ downloadText(AM.paxCsv, "PAXLST_output.csv"); });
-$("amPaxFile").addEventListener("change", function(e){
-  var f = e.target.files[0]; if(!f) return;
+amWireDrop("amPaxDrop", "amPaxFile", function(f){
+  if(!f) return;
   var r = new FileReader();
   r.onload = function(ev){ $("amPaxInput").value = ev.target.result; amRunPax(); };
-  r.readAsText(f); e.target.value = "";
+  r.readAsText(f);
 });
 
 /* ---------- PNL ---------- */
@@ -5996,7 +6025,7 @@ function amLoadPnlFile(file){
     status.style.color = "var(--red)";
   });
 }
-$("amPnlFile").addEventListener("change", function(e){ amLoadPnlFile(e.target.files[0]); e.target.value = ""; });
+amWireDrop("amPnlDrop", "amPnlFile", amLoadPnlFile);
 function amBuildPnl(){
   var status = $("amPnlStatus");
   try{
