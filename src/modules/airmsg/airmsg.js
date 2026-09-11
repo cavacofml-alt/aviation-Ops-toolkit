@@ -57,7 +57,12 @@ function parsePRL(source){
     var line = raw.trim();
     if(!line) return;
     var m;
-    if(/^\d+\S+\/\S+.*\.L\//i.test(line)){
+    /* A name-element always starts a passenger, whether or not it carries a
+       .L/ record locator on the same line — some PRLs omit it (e.g. group
+       members covered by another passenger's locator). Requiring .L/ here
+       used to silently drop that passenger's row (and every .R/ line under
+       it) from the whole export. */
+    if(/^\d+\S+\/\S+/i.test(line)){
       m = line.match(/\.L\/([^\s]+)/i);
       cur = { ReservationName: line.split(/\s+\.L\//i)[0].replace(/^\d+/,""),
               RecordLocator: m?m[1]:"", Seat:"", DOCO:"", RN:"", docs:[] };

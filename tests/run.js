@@ -231,6 +231,13 @@ if(inBuild("airmsg")) try {
      prlRnRows[0].LASTNAME === "SILVA" && prlRnRows[0].GIVENNAME === "JOAQUIM",
      JSON.stringify(prlRnRows));
 
+  const prlNoLocMsg = [
+    "1SILVA/JOAOMR",
+    ".R/DOCS HK1/P/PRT/123456/PRT/01JAN80/M/01JAN30/SILVA/J"
+  ].join("\n");
+  ok("PRL parser keeps a passenger with no .L/ record locator",
+     AM_LIB.parsePRL(prlNoLocMsg).length === 1, JSON.stringify(AM_LIB.parsePRL(prlNoLocMsg)));
+
   const paxMsg = [
     "UNH*1*PAXLST", "NAD*FL*1*1*SILVA:JOAO", "ATT*2**M", "DTM*329:900101",
     "NAT*2*PRT", "RFF*AVF:ABC123", "RFF*SEA:12A",
