@@ -1616,7 +1616,7 @@ function validateRemark(content,n,start,add,elemCount,msgType,paxCtx,rnNext,rnCh
     // Bare case: strip a leading status token (HK1, KK1…) the way it would
     // have been read had it sat on this line, then treat what remains
     // exactly like an ordinary field list.
-    const effFree = bareDeferred ? (rnChain||"").replace(/^[A-Z]{1,2}\d{1,3}/,"") : free;
+    const effFree = bareDeferred ? (rnChain||"").replace(/^\s+/,"").replace(/^[A-Z]{1,2}\d{1,3}/,"") : free;
     if(!/^\//.test(effFree))
       add(n,start+1+content.indexOf(free),Math.max(effFree.length,1),"err","Malformed DOCS — document fields start with / after the status (e.g. /P/CA/939822373/…).",REF.remarks);
     else{
