@@ -147,6 +147,72 @@ function szMakeZip(){
   });
 }
 
+/* ---------- CSV → XLSX: "Text to Columns", done on the way in ---------- */
+/* A plain .csv depends on the OS's regional list separator to open
+   correctly — a comma-delimited file opens as one column crammed into A on
+   a machine set to ";". Every .csv attached is rebuilt as a real .xlsx
+   (split on its own delimiter, whatever it is, with as many columns as it
+   has) so that never happens, regardless of the header row. On top of that,
+   if a known check-in-export column happens to be present by name — two
+   date columns, four count columns — that one column is typed as a real
+   date/number instead of text, matching how it's meant to look; anything
+   else stays plain text either way. */
+var SZ_CSV_DATE_COLS = ["PNR creation date", "Check-in date"];
+var SZ_CSV_INT_COLS = ["Number in party", "Boarding control number", "Bags - pieces", "Bags - weight"];
+var SZ_MONTHS3 = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+function szParseDdmmmyyyy(s){
+  var m = /^(\d{1,2})([A-Z]{3})(\d{4})$/.exec(String(s||"").toUpperCase());
+  if(!m) return null;
+  var mi = SZ_MONTHS3.indexOf(m[2]);
+  if(mi < 0) return null;
+  return { y:+m[3], mo:mi+1, d:+m[1] };
+}
+function szParseCsvRows(text){
+  var lines = text.replace(/^﻿/,"").replace(/\r/g,"").split("\n");
+  while(lines.length && !lines[lines.length-1].trim()) lines.pop();
+  if(!lines.length) return null;
+  var semis = (lines[0].match(/;/g)||[]).length, commas = (lines[0].match(/,/g)||[]).length;
+  var delim = semis > commas ? ";" : ",";
+  function parseRow(s){
+    var a = [], v = "", q = false;
+    for(var i=0;i<s.length;i++){
+      var c = s[i];
+      if(c==='"' && s[i+1]==='"' && q){ v+='"'; i++; }
+      else if(c==='"') q = !q;
+      else if(c===delim && !q){ a.push(v); v=""; }
+      else v += c;
+    }
+    a.push(v);
+    return a;
+  }
+  return { headers: parseRow(lines[0]), rows: lines.slice(1).map(parseRow) };
+}
+function szCsvToXlsxIfMatch(name, bytes){
+  if(!/\.csv$/i.test(name)) return null;
+  var text;
+  try { text = new TextDecoder("utf-8").decode(bytes); } catch(e){ return null; }
+  var parsed = szParseCsvRows(text);
+  if(!parsed) return null;
+  var headers = parsed.headers;
+
+  var dateIdx = SZ_CSV_DATE_COLS.map(function(h){ return headers.indexOf(h); }).filter(function(i){ return i>=0; });
+  var intIdx = SZ_CSV_INT_COLS.map(function(h){ return headers.indexOf(h); }).filter(function(i){ return i>=0; });
+  var outRows = parsed.rows.map(function(cells){
+    return headers.map(function(h, i){
+      var v = cells[i]==null ? "" : cells[i];
+      if(dateIdx.indexOf(i) >= 0){
+        var d = szParseDdmmmyyyy(v);
+        return d ? excelSerialDate(d.y, d.mo, d.d) : v;
+      }
+      if(intIdx.indexOf(i) >= 0 && /^\d+$/.test(v)) return +v;
+      return v;
+    });
+  });
+  var xlsxName = name.replace(/\.csv$/i, ".xlsx");
+  var sheetName = xlsxName.replace(/\.xlsx$/i, "").slice(0, 31) || "Sheet1";
+  return { name: xlsxName, data: buildXlsxFile(sheetName, headers, outRows, dateIdx) };
+}
+
 /* ---------- events ---------- */
 var SZ_MAX_FILE = 64 * 1024 * 1024;    // per file
 var SZ_MAX_TOTAL = 128 * 1024 * 1024;  // whole archive — everything is held in RAM
@@ -171,7 +237,10 @@ function szHandleFiles(fileList){
   files.forEach(function(file){
     var r = new FileReader();
     r.onload = function(ev){
-      SZ.files.push({ name:file.name, data:new Uint8Array(ev.target.result) });
+      var bytes = new Uint8Array(ev.target.result);
+      var converted = null;
+      try { converted = szCsvToXlsxIfMatch(file.name, bytes); } catch(e){ converted = null; }
+      SZ.files.push(converted || { name:file.name, data:bytes });
       if(--pending === 0) szRender();
     };
     r.onerror = function(){ if(--pending === 0) szRender(); };

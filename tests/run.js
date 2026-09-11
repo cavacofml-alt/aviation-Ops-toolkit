@@ -352,6 +352,44 @@ if(inBuild("securezip")) try {
      plain[11] === ((zcCrc >>> 24) & 0xff), plain[11] + " vs " + ((zcCrc >>> 24) & 0xff));
 } catch(e){ ok("crypto module loads", false, e.message); }
 
+if(inBuild("securezip")) try {
+  // securezip.js wires DOM events at its tail on load — sliced off so this
+  // can run headless the same way the module logic block above does for
+  // airmsg.
+  const szSrc = fileOf("src/modules/securezip/securezip.js").split('/* ---------- events ---------- */')[0];
+  eval(fileOf("src/core/ui.js") + szSrc + ";SZ_LIB = {szCsvToXlsxIfMatch, szParseCsvRows};");
+
+  const ftpCsv = "Off point,Booking class,Number in party,PNR creation date\n" +
+    "RMO,G,1,30JUL2026\nRMO,G,1,30JUL2026\n";
+  const ftpXlsx = SZ_LIB.szCsvToXlsxIfMatch("TEST_FTP.csv", new TextEncoder().encode(ftpCsv));
+  ok("a recognised check-in export is renamed .csv -> .xlsx",
+     ftpXlsx && ftpXlsx.name === "TEST_FTP.xlsx");
+  ok("its date/count columns land in the sheet XML as real Excel date/number cells, not text",
+     (() => {
+       const text = new TextDecoder().decode(ftpXlsx.data);
+       return /<c r="C2"><v>1<\/v><\/c>/.test(text) &&        // Number in party — plain numeric
+              /<c r="D2" s="1"><v>\d+<\/v><\/c>/.test(text);  // PNR creation date — dated style
+     })());
+
+  const withExtra = "Off point,Extra A,Number in party,Extra B,PNR creation date\n" +
+    "RMO,x,4,y,01AUG2026\n";
+  const extraXlsx = SZ_LIB.szCsvToXlsxIfMatch("extra.csv", new TextEncoder().encode(withExtra));
+  ok("extra, unrecognised columns don't stop the known ones from being found by name",
+     (() => {
+       const text = new TextDecoder().decode(extraXlsx.data);
+       return /<c r="C2"><v>4<\/v><\/c>/.test(text) && /<c r="E2" s="1">/.test(text);
+     })());
+
+  const genericCsv = "Name,Age,City\nAlice,30,Lisbon\n";
+  const genericXlsx = SZ_LIB.szCsvToXlsxIfMatch("people.csv", new TextEncoder().encode(genericCsv));
+  ok("a .csv with none of the known columns still converts cleanly (plain text-to-columns)",
+     genericXlsx && genericXlsx.name === "people.xlsx" &&
+     new TextDecoder().decode(genericXlsx.data).indexOf('<is><t xml:space="preserve">Lisbon</t></is>') >= 0);
+
+  ok("a non-.csv attachment is left untouched",
+     SZ_LIB.szCsvToXlsxIfMatch("report.pdf", new TextEncoder().encode("x")) === null);
+} catch(e){ ok("securezip CSV-to-XLSX module loads", false, e.message); }
+
 if(inBuild("uld")) try {
   // store.js reaches for window/document as it loads: with neither storage
   // backend present it settles on "none", which is what we want here — the
