@@ -92,6 +92,12 @@ ok("the continuation completes the association, not the document",
         ".R/DOCS HK1//////M//KALU/SAMUELJOHNBOSCO-1KALU/SAMUELJOHNBOSCOM\n.RN/R\nENDADL", "does not match"));
 ok("a document belonging to someone else is caught",
    has(P + "1SILVA/JOAOMR\n.R/DOCS HK1/P/PRT/K123456/PRT/12MAY80/M/01JAN30/CURRIE/MARIE\nENDPNL", "does not match"));
+ok("a non-DOCS remark's -SURNAME/GIVEN association pointing at the wrong passenger is caught",
+   has(P + "1SILVA/JOAOMR\n.R/CHKD HK1 SEQ117-1TEST/ATESTMR\nENDPNL", "does not match the passenger"));
+ok("a matching association on a non-DOCS remark stays silent",
+   !has(P + "1TEST/TESTMR\n.R/CHKD HK1 SEQ117-1TEST/TESTMR\nENDPNL", "does not match"));
+ok("a group element's association isn't second-guessed on the given name — which of several first names the sequence number picks isn't ours to assume",
+   !has(P + "2COSTA/ANAMRS/TIAGOMSTR\n.R/CHLD HK1 12MAY19-1COSTA/TIAGOMSTR\nENDPNL", "gives the given name"));
 ok("DOCS with trailing -1SURNAME/ and given name on .RN/ — no hyphen warning",
    !has("PNL\nTP1234/16JUL LIS PART1\n-OPO01Y\n1ABDO/PERIMISSMRS\n" +
         ".R/DOCS HK1/P/SY/123456789/SY/01JAN80/F/01JAN30/ABDO/PERI-1ABDO/\n" +
