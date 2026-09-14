@@ -98,6 +98,13 @@ ok("a matching association on a non-DOCS remark stays silent",
    !has(P + "1TEST/TESTMR\n.R/CHKD HK1 SEQ117-1TEST/TESTMR\nENDPNL", "does not match"));
 ok("a group element's association isn't second-guessed on the given name — which of several first names the sequence number picks isn't ours to assume",
    !has(P + "2COSTA/ANAMRS/TIAGOMSTR\n.R/CHLD HK1 12MAY19-1COSTA/TIAGOMSTR\nENDPNL", "gives the given name"));
+ok("a compound surname (AL KARAD) with a correct association stays silent",
+   API.validate(P + "1AL KARAD/AREEJMS\n.R/VGML HK1 -1AL KARAD/AREEJMS\nENDPNL")
+     .filter(f => !f.dup && f.sev==="err").length===0);
+ok("a compound surname (AL KARAD) with a wrong association is still caught",
+   has(P + "1AL KARAD/AREEJMS\n.R/VGML HK1 -1AL RASHID/AREEJMS\nENDPNL", "does not match the passenger"));
+ok("a genuinely stray hyphen (not a name particle) is still flagged, not read as an association",
+   has(P + "1SILVA/JOAOMR\n.R/OTHS HK1 NOTE-NOT AVAILABLE\nENDPNL", "Hyphen in the Remarks"));
 ok("DOCS with trailing -1SURNAME/ and given name on .RN/ — no hyphen warning",
    !has("PNL\nTP1234/16JUL LIS PART1\n-OPO01Y\n1ABDO/PERIMISSMRS\n" +
         ".R/DOCS HK1/P/SY/123456789/SY/01JAN80/F/01JAN30/ABDO/PERI-1ABDO/\n" +
