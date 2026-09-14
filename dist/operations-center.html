@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Operations Center v1.2.216</title>
+<title>Operations Center v1.2.218</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -338,7 +338,11 @@ thead th:last-child{text-align:right}
    being the start/end of a selection, not from being included once a range
    happens to span across it. */
 .telex .n::before{content:attr(data-n)}
-.telex .t{white-space:pre}
+/* flex:1, not the content's own width: an empty line's text span would
+   otherwise be zero-width — nothing there to click — so a blank message
+   (first use, or right after Clear) couldn't be focused at all, and typing
+   or pasting into it silently did nothing. */
+.telex .t{white-space:pre; flex:1; min-width:0}
 .telex mark{background:none; border-bottom:2px solid; padding-bottom:1px}
 .telex mark.err{color:var(--red); border-color:var(--red); background:var(--red-soft)}
 .telex mark.warn{color:var(--amber); border-color:var(--amber); background:var(--amber-soft)}
@@ -906,7 +910,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.216</span>
+      <span class="build-ver">v1.2.218</span>
     </header>
 
     <main>
@@ -1270,8 +1274,8 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.216 — Luís Cavaco
-    Built 2026-09-11 from the source tree; see build.manifest.json.
+/*! Aviation Ops Toolkit v1.2.218 — Luís Cavaco
+    Built 2026-09-14 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
 
@@ -6482,6 +6486,17 @@ function telexEnterEdit(t){
   });
   t.setAttribute("contenteditable", "true");
 }
+/* Backstop: whatever brings focus to a row that mouseup didn't already
+   handle — Tab, a screen reader, the browser restoring focus on its own —
+   still needs to flip it editable, or typing/pasting into it silently does
+   nothing (contenteditable stays "false" and neither event fires). Safe
+   next to the mouseup path below: a plain drag-selection never focuses the
+   text it passes through, only mouseup on an actual click does, and by then
+   this has already made it editable. */
+$("telex").addEventListener("focusin", function(e){
+  var t = e.target.closest ? e.target.closest(".t") : null;
+  if(t) telexEnterEdit(t);
+});
 /* Entering edit mode is deferred to mouseup, and only when the click didn't
    drag out a selection: a row made contenteditable on mousedown clips any
    drag started inside it to that row alone (a contenteditable region cannot
@@ -6502,7 +6517,21 @@ $("telex").addEventListener("focusout", function(e){
 });
 $("telex").addEventListener("mouseup", function(e){
   var t = e.target.closest ? e.target.closest(".t") : null;
-  if(!t) return;
+  if(!t){
+    // The box has a min-height so it looks like a normal, roomy textarea,
+    // but a short message only fills the first line or two — clicking
+    // anywhere in that empty-looking space below hit neither a .row nor a
+    // .t, and did nothing. Land on the last line's end, same as a real
+    // textarea does when you click below all its text.
+    if(e.target !== $("telex")) return;
+    var rows = $("telex").querySelectorAll(".row .t");
+    var last = rows[rows.length-1];
+    if(!last) return;
+    var end = last.textContent.length;
+    telexEnterEdit(last);
+    setCaretOffset(last, end);
+    return;
+  }
   // A plain click collapses the browser's own selection to the new point,
   // but when it follows an existing cross-row selection that collapse can
   // still be pending at the moment mouseup is dispatched — checking
