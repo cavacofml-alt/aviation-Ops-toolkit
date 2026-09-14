@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-14 — PR #114
+Removidos os botões de exportar em CSV no Gerador de Layout de ULDs: o ficheiro `.csv` abria mal no Excel (tudo numa coluna só, por causa das definições regionais) e também é usado para upload — para evitar confusão e uploads falhados, só fica o Excel (`.xlsx`), que já funciona bem nos dois casos.
+
 ## 2026-09-14 — PR #113
 Corrigido: no Gerador de Layout de ULDs, na vista de zonas, os nomes dos tipos de ULD ficavam sobrepostos quando o nome era comprido (ex.: aeronaves com muitos tipos certificados na mesma posição).
 

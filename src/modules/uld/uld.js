@@ -541,8 +541,7 @@ function viewStep3(){
 
   var head = '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'+
     '<button class="btn primary" data-act="generate"'+(blocked?" disabled":"")+'>&#9889; Generate all layouts</button>'+
-    (U.layouts && !blocked ? '<button class="btn" data-act="xlsx-all">&#8595; Export all (Excel)</button>':'')+
-    (U.layouts && !blocked ? '<button class="btn small quiet" data-act="csv-all">CSV (all)</button>':'')+'</div>' + mergeBox + gate+
+    (U.layouts && !blocked ? '<button class="btn" data-act="xlsx-all">&#8595; Export all (Excel)</button>':'')+'</div>' + mergeBox + gate+
     (U.layouts && U.layoutsStale && !blocked ? '<div class="warnbox" style="margin-bottom:14px">'+
       '<b>&#9888; Data changed since these layouts were generated</b>'+
       '<div style="margin-top:4px;color:var(--dim)">A position was edited after the layouts below were computed — '+
@@ -579,8 +578,7 @@ function viewStep3(){
     '<div style="padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
       '<b>Compartment '+n+' — '+list.length+' layouts</b>'+
       '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-      '<button class="btn small" data-act="xlsx-one">&#8595; Excel compartment '+n+'</button>'+
-      '<button class="btn small quiet" data-act="csv-one">CSV</button></div></div>'+
+      '<button class="btn small" data-act="xlsx-one">&#8595; Excel compartment '+n+'</button></div></div>'+
     (list.length? renderLayoutList(n, list) : '<div class="empty">No valid layouts for this compartment.</div>')+
     '</div>';
   return head + aircraftPanel(nums[U.activeLayoutComp], "layouts") + stats + warnHtml + tabs + body;
@@ -1715,15 +1713,6 @@ function onUldClick(e){
     var cn = +b.getAttribute("data-n");
     U.layoutLimit[cn] = (U.layoutLimit[cn] || LAYOUT_PAGE) + LAYOUT_PAGE;
     uldRender();
-  }
-  else if(act==="csv-one"){
-    var n = U.compartments.map(function(c){return c.number;})[U.activeLayoutComp];
-    exportGuard(n, false, function(){
-      showTextModal("CSV — compartment "+n, csvOne(n), "compartment"+n+"_layouts.csv"); });
-  }
-  else if(act==="csv-all"){
-    exportGuard(undefined, true, function(){
-      showTextModal("CSV — all compartments", csvAll(), "all_layouts.csv"); });
   }
   else if(act==="xlsx-one"){
     // "D3" is a fixed sheet name the operator's own upload system expects on
