@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-14 — PR #109
+Corrigido: quando uma remark (ex.: `.R/CHKD`) tinha uma associação a um passageiro errado (nome trocado), isso não era detetado — só acontecia essa verificação para o `.R/DOCS`. Agora aplica-se a qualquer remark.
+
 ## 2026-09-14 — PR #107
 Corrigido: não era possível colar texto no Message Validator quando a mensagem estava vazia ou acabada de limpar — clicar na caixa não fazia nada porque não havia ali um alvo clicável.
 
