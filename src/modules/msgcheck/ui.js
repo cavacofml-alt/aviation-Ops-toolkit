@@ -298,6 +298,17 @@ function telexEnterEdit(t){
   });
   t.setAttribute("contenteditable", "true");
 }
+/* Backstop: whatever brings focus to a row that mouseup didn't already
+   handle — Tab, a screen reader, the browser restoring focus on its own —
+   still needs to flip it editable, or typing/pasting into it silently does
+   nothing (contenteditable stays "false" and neither event fires). Safe
+   next to the mouseup path below: a plain drag-selection never focuses the
+   text it passes through, only mouseup on an actual click does, and by then
+   this has already made it editable. */
+$("telex").addEventListener("focusin", function(e){
+  var t = e.target.closest ? e.target.closest(".t") : null;
+  if(t) telexEnterEdit(t);
+});
 /* Entering edit mode is deferred to mouseup, and only when the click didn't
    drag out a selection: a row made contenteditable on mousedown clips any
    drag started inside it to that row alone (a contenteditable region cannot
@@ -318,7 +329,21 @@ $("telex").addEventListener("focusout", function(e){
 });
 $("telex").addEventListener("mouseup", function(e){
   var t = e.target.closest ? e.target.closest(".t") : null;
-  if(!t) return;
+  if(!t){
+    // The box has a min-height so it looks like a normal, roomy textarea,
+    // but a short message only fills the first line or two — clicking
+    // anywhere in that empty-looking space below hit neither a .row nor a
+    // .t, and did nothing. Land on the last line's end, same as a real
+    // textarea does when you click below all its text.
+    if(e.target !== $("telex")) return;
+    var rows = $("telex").querySelectorAll(".row .t");
+    var last = rows[rows.length-1];
+    if(!last) return;
+    var end = last.textContent.length;
+    telexEnterEdit(last);
+    setCaretOffset(last, end);
+    return;
+  }
   // A plain click collapses the browser's own selection to the new point,
   // but when it follows an existing cross-row selection that collapse can
   // still be pending at the moment mouseup is dispatched — checking

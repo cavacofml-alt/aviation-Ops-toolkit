@@ -338,7 +338,11 @@ thead th:last-child{text-align:right}
    being the start/end of a selection, not from being included once a range
    happens to span across it. */
 .telex .n::before{content:attr(data-n)}
-.telex .t{white-space:pre}
+/* flex:1, not the content's own width: an empty line's text span would
+   otherwise be zero-width — nothing there to click — so a blank message
+   (first use, or right after Clear) couldn't be focused at all, and typing
+   or pasting into it silently did nothing. */
+.telex .t{white-space:pre; flex:1; min-width:0}
 .telex mark{background:none; border-bottom:2px solid; padding-bottom:1px}
 .telex mark.err{color:var(--red); border-color:var(--red); background:var(--red-soft)}
 .telex mark.warn{color:var(--amber); border-color:var(--amber); background:var(--amber-soft)}
