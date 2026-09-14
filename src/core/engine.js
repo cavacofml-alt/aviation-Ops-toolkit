@@ -1533,6 +1533,28 @@ function validateRemark(content,n,start,add,elemCount,msgType,paxCtx,rnNext,rnCh
   checkHyphens(content,n,start,add,code);
   free=stripPax(free);
 
+  // associação -1SURNAME/GIVEN a apontar para o passageiro errado (DOCS já tem
+  // a sua própria verificação, mais detalhada, em checkPaxCoherence — evita
+  // duplicar o aviso ali).
+  if(code!=="DOCS" && paxCtx && paxCtx.names && paxCtx.names.length){
+    const assocM=content.match(PAXID);
+    if(assocM){
+      const am=assocM[0].replace(/^-\d*/,"").split("/");
+      const aSur=am[0]||"", aGiv=am[1]||"";
+      const tSur=paxCtx.names[0]||"";
+      const assocStart=start+1+content.length-assocM[0].length;
+      if(aSur && tSur && !nameMatches(aSur,tSur))
+        add(n,assocStart,aSur.length,"err",`Association <b>${assocM[0].trim()}</b> does not match the passenger (<b>${tSur}</b>) — remark associated with the wrong passenger (RP 1707b §3.24/§3.37).`,REF.remarks);
+      // O nome próprio só é verificado quando o elemento tem um único
+      // passageiro: num grupo (COSTA/ANAMRS/TIAGOMSTR) o "1" da associação
+      // indexa qual dos vários nomes próprios do grupo é visado, não
+      // necessariamente names[1] — sem essa correspondência garantida, o
+      // risco de falso positivo é maior do que vale a pena.
+      else if(paxCtx.names.length===2 && aGiv && !nameMatches(aGiv,stripTitle(paxCtx.names[1]||"")))
+        add(n,assocStart+aSur.length+1,aGiv.length,"err",`Association <b>${assocM[0].trim()}</b> gives the given name as <b>${aGiv}</b>, but the passenger is <b>${stripTitle(paxCtx.names[1])}</b> — check the association.`,REF.remarks);
+    }
+  }
+
   // ambiguidade: elemento com vários passageiros, remark para menos, sem associação
   if(elemCount>1){
     const hasPax=PAXID.test(content);
