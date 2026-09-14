@@ -160,9 +160,26 @@ function zoneGrid(comp){
   }
   function row(label, color, cells){
     return '<div style="display:flex;gap:4px;align-items:center">'+
-      '<div style="width:50px;text-align:right;padding-right:8px;font-family:var(--mono);'+
+      '<div style="width:'+LABEL_W+'px;flex:0 0 '+LABEL_W+'px;text-align:right;padding-right:8px;'+
+      'white-space:nowrap;font-family:var(--mono);'+
       'font-size:10px;color:'+color+'">'+esc(label)+'</div>'+cells+'</div>';
   }
+
+  // Row labels list every certified IATA code for the group (e.g.
+  // "AKE/QKE/PKC/RKN/AKC R") and can run far past a fixed 50px column —
+  // that wrapped the label onto a second line and overlapped the row
+  // above it. Size the label column to the longest label instead.
+  var rowLabels = [];
+  groups.forEach(function(g){
+    var iata = iatasOf(g).join("/");
+    var hasLR = g.positions.some(function(p){ return /[LR]$/.test(p.name); });
+    var hasP  = g.positions.some(function(p){ return /P$/.test(p.name); });
+    if(hasLR){ rowLabels.push(iata+" R", iata+" L"); }
+    else if(hasP){ rowLabels.push(iata+" P"); }
+    else { rowLabels.push(iata); }
+  });
+  var maxLabelLen = rowLabels.reduce(function(m,l){ return Math.max(m, l.length); }, 0);
+  var LABEL_W = Math.max(50, maxLabelLen*6 + 8);
 
   var rows = "", legend = [];
   groups.forEach(function(g){
@@ -194,7 +211,7 @@ function zoneGrid(comp){
     '<div style="overflow-x:auto"><div style="display:inline-flex;flex-direction:column;gap:4px;min-width:max-content">'+
       rows +
       '<div style="display:flex;gap:4px;align-items:center;margin-top:2px">'+
-        '<div style="width:50px"></div>'+
+        '<div style="width:'+LABEL_W+'px;flex:0 0 '+LABEL_W+'px"></div>'+
         nums.map(function(n){
           return '<div style="width:46px;text-align:center;font-family:var(--mono);font-size:9px;color:var(--faint)">'+esc(n)+'</div>';
         }).join("")+

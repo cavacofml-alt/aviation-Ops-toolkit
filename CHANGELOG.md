@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-14 — PR #113
+Corrigido: no Gerador de Layout de ULDs, na vista de zonas, os nomes dos tipos de ULD ficavam sobrepostos quando o nome era comprido (ex.: aeronaves com muitos tipos certificados na mesma posição).
+
 ## 2026-09-14 — PR #111
 Corrigido: apelidos compostos (ex.: "AL KARAD", "DA SILVA") numa associação a passageiro eram acusados como "hífen solto" mesmo estando corretos.
 
