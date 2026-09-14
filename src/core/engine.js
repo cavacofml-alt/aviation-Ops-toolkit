@@ -1120,7 +1120,14 @@ const RX={
   seatTok:/^(\d{1,3}[A-Z]{1,7}|\d{1,3}[A-Z]?-\d{1,3}[A-Z](-[A-Z])?|\d{1,3}[A-Z]-[A-Z]|\d{1,3}ROW|ALL|REST|NIL)$/,
   status:/^([A-Z]{2})(\d{1,3})$/
 };
-const PAXID=/-\d{0,2}[A-Z]+(\/[A-Z]*)*\s*$/; // associação -1NOME/APELIDO no fim (/ final aceite — given name pode continuar no .RN/)
+// associação -1NOME/APELIDO no fim (/ final aceite — given name pode continuar no .RN/).
+// A partícula opcional (AL KARAD, DA SILVA, VAN DER BERG…) cobre apelidos
+// compostos reais sem abrir demasiado a porta: só uma lista fechada de
+// partículas conhecidas conta como início do apelido, não qualquer palavra
+// de 2-3 letras — senão um hífen genuinamente solto (".../ALGO-NAO OK")
+// passaria a ler-se como associação.
+const PAXID_PARTICLES="AL|DA|DAS|DE|DI|DO|DOS|DEL|DEN|DER|EL|LA|LE|VAN|VON|BIN|IBN|MAC|MC|SAN|SANTA";
+const PAXID=new RegExp("-\\d{0,2}(?:(?:"+PAXID_PARTICLES+") )?[A-Z]+(\\/[A-Z]*)*\\s*$");
 
 // Devolve o texto reunido de uma ou mais linhas .RN/ seguidas, até ao
 // primeiro elemento .XX/ que já não seja .RN/ (ou uma linha que já não
