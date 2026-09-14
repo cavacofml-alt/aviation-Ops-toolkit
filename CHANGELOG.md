@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-14 — PR #107
+Corrigido: não era possível colar texto no Message Validator quando a mensagem estava vazia ou acabada de limpar — clicar na caixa não fazia nada porque não havia ali um alvo clicável.
+
 ## 2026-09-11 — PR #104
 A ferramenta "Airline Message Toolkit" passou a chamar-se "Message Parser/Builder", o mesmo nome usado na ferramenta original em que foi baseada.
 
