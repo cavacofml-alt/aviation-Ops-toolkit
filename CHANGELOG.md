@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-14 — PR #111
+Corrigido: apelidos compostos (ex.: "AL KARAD", "DA SILVA") numa associação a passageiro eram acusados como "hífen solto" mesmo estando corretos.
+
 ## 2026-09-14 — PR #109
 Corrigido: quando uma remark (ex.: `.R/CHKD`) tinha uma associação a um passageiro errado (nome trocado), isso não era detetado — só acontecia essa verificação para o `.R/DOCS`. Agora aplica-se a qualquer remark.
 
