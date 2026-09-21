@@ -191,14 +191,28 @@ function zoneGrid(comp){
     var iata = iatasOf(g).join("/");
     var hasLR = g.positions.some(function(p){ return /[LR]$/.test(p.name); });
     var hasP  = g.positions.some(function(p){ return /P$/.test(p.name); });
+    // Match by column key (name with L/R/P stripped), not by reconstructing
+    // "n+R"/"n+L"/"n+P": a base that already carries its own decoration
+    // (e.g. the pallet-style "11PL"/"11PR") does not equal the literal
+    // string "11"+"R" — reconstructing it that way marked a real position
+    // as missing from the grid, and everywhere it did match it was only by
+    // coincidence (a bare-number base with nothing between it and the
+    // suffix). Finding the position whose own stripped name equals the
+    // column works for every naming style, and shows its real name in the
+    // cell instead of a synthetic one that may not be the export's name.
+    var byCol = function(list){
+      var m = {};
+      list.forEach(function(p){ m[p.name.replace(/[LRP]/g,"")] = p.name; });
+      return m;
+    };
     if(hasLR){
-      var rSet = g.positions.filter(function(p){ return /R$/.test(p.name); }).map(function(p){ return p.name; });
-      var lSet = g.positions.filter(function(p){ return /L$/.test(p.name); }).map(function(p){ return p.name; });
-      rows += row(iata+" R", color, nums.map(function(n){ return cell(color, n+"R", rSet.indexOf(n+"R")>=0); }).join(""));
-      rows += row(iata+" L", color, nums.map(function(n){ return cell(color, n+"L", lSet.indexOf(n+"L")>=0); }).join(""));
+      var rMap = byCol(g.positions.filter(function(p){ return /R$/.test(p.name); }));
+      var lMap = byCol(g.positions.filter(function(p){ return /L$/.test(p.name); }));
+      rows += row(iata+" R", color, nums.map(function(n){ return cell(color, rMap[n]||(n+"R"), !!rMap[n]); }).join(""));
+      rows += row(iata+" L", color, nums.map(function(n){ return cell(color, lMap[n]||(n+"L"), !!lMap[n]); }).join(""));
     } else if(hasP){
-      var pSet = g.positions.map(function(p){ return p.name; });
-      rows += row(iata+" P", color, nums.map(function(n){ return cell(color, n+"P", pSet.indexOf(n+"P")>=0); }).join(""));
+      var pMap = byCol(g.positions);
+      rows += row(iata+" P", color, nums.map(function(n){ return cell(color, pMap[n]||(n+"P"), !!pMap[n]); }).join(""));
     } else {
       var sSet = g.positions.map(function(p){ return p.name; });
       rows += row(iata, color, nums.map(function(n){ return cell(color, n, sSet.indexOf(n)>=0); }).join(""));
