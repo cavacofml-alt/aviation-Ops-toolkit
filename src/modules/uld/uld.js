@@ -528,16 +528,23 @@ function viewStep3(){
      both. Off, each type gets its own layout, and the bay is loaded once
      per type. */
   var mergeOn = U.mergeIdentical !== false;
+  // The checkbox stays visible either way — removing it would trade one kind
+  // of confusion (why does this do nothing?) for another (why is the option
+  // gone?) — but when nothing in the current data could ever share a slot,
+  // both of its usual explanations are equally misleading: the operator has
+  // no way to tell "this is off" from "this would do nothing even if on".
+  var mergeable = anyMergeableSlots();
+  var mergeNote = !mergeable
+    ? 'No two ULD types currently share the exact same station, index and max weight at the same bay — there is nothing here to combine either way.'
+    : (mergeOn
+        ? 'Types sharing a bay’s station, index and max weight are offered as one slot — <b>2LD3/LD2</b>, one layout naming both.'
+        : 'Each type gets its own layout even where the numbers are identical — <b>2LD3</b> and <b>2LD2</b> separately.');
   var mergeBox = '<div style="margin-bottom:16px">'+
     '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text)">'+
       '<input type="checkbox" id="mergeIdentical"'+(mergeOn?" checked":"")+'>'+
       '<span style="font-size:13px">Combine ULDs certified for the same position</span>'+
     '</label>'+
-    '<div class="note" style="margin-top:4px">'+
-      (mergeOn
-        ? 'Types sharing a bay’s station, index and max weight are offered as one slot — <b>2LD3/LD2</b>, one layout naming both.'
-        : 'Each type gets its own layout even where the numbers are identical — <b>2LD3</b> and <b>2LD2</b> separately.')+
-    '</div></div>';
+    '<div class="note" style="margin-top:4px">'+ mergeNote +'</div></div>';
 
   var head = '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'+
     '<button class="btn primary" data-act="generate"'+(blocked?" disabled":"")+'>&#9889; Generate all layouts</button>'+
@@ -878,6 +885,56 @@ function renderLayoutList(compNum, list){
       (list.length-limit)+' remaining</button>';
   }
   return html;
+}
+
+/* Whether the "combine" checkbox above would ever change anything: true only
+   if two different groups offer the exact same bay under the exact same
+   numbers — the same base+signature match generateLayouts uses to decide
+   two offers are one slot, computed here without building the full layouts.
+   Kept in lockstep with the two offer loops there (L/R pair, then whole-bay)
+   on purpose — this only answers "could a slot ever merge", not what the
+   merged label or positions would look like. */
+function anyMergeableSlots(){
+  for(var ci=0; ci<U.compartments.length; ci++){
+    var comp = U.compartments[ci];
+    var seenBy = {};   // base+"\u0000"+signature -> gid of the first group offering it
+    var groups = comp.uldGroups || [];
+    for(var gi=0; gi<groups.length; gi++){
+      var group = groups[gi];
+      if(group.include === false) continue;
+      if(!uldDefsOf(group).length) continue;
+      var gid = group.id || ("#"+gi);
+      var positions = group.positions || [];
+      var mate = function(p){
+        var m = String(p.name||"").match(/^(.*)([LR])$/);
+        if(!m) return null;
+        var want = m[1] + (m[2] === "L" ? "R" : "L");
+        return positions.filter(function(q){ return q.name === want; })[0] || null;
+      };
+      var keys = [];
+      positions.forEach(function(posL){
+        if(!/L$/.test(posL.name)) return;
+        var posR = mate(posL);
+        if(!posR) return;
+        var base = posL.name.slice(0,-1);
+        var mw = Math.min(parseFloat(posL.maxWeight||0), parseFloat(posR.maxWeight||0));
+        keys.push(base+"\u0000"+posL.fwd+"|"+posL.aft+"|"+posL.index+"|"+mw+
+              "|2|"+posL.left+"/"+posL.right+"+"+posR.left+"/"+posR.right);
+      });
+      positions.forEach(function(pos){
+        if(/[LR]$/.test(pos.name) && mate(pos)) return;
+        var base = String(pos.name||"").replace(/[LRP]$/,"") || pos.name;
+        keys.push(base+"\u0000"+pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight+
+              "|1|"+pos.left+"/"+pos.right);
+      });
+      for(var ki=0; ki<keys.length; ki++){
+        var k = keys[ki];
+        if(seenBy[k] !== undefined && seenBy[k] !== gid) return true;
+        if(seenBy[k] === undefined) seenBy[k] = gid;
+      }
+    }
+  }
+  return false;
 }
 
 /* ---------- layout generation (algorithm preserved verbatim) ---------- */
