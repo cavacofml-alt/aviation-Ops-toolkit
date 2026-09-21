@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Operations Center v1.2.228</title>
+<title>Operations Center v1.2.232</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -910,7 +910,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.228</span>
+      <span class="build-ver">v1.2.232</span>
     </header>
 
     <main>
@@ -1274,8 +1274,8 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.228 — Luís Cavaco
-    Built 2026-09-14 from the source tree; see build.manifest.json.
+/*! Aviation Ops Toolkit v1.2.232 — Luís Cavaco
+    Built 2026-09-21 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
 
@@ -7157,11 +7157,13 @@ var ULD_TYPE_HINTS = {
 var GROUP_COLORS = { "LD3":"var(--cyan)", "L3P/PKC":"var(--cyan)", "LD7/P88":"var(--green)", "LD7/P96":"var(--teal)",
                      "LD8":"var(--amber)", "PLA":"var(--amber)", "LD6":"var(--magenta)" };
 function groupColor(t){ return GROUP_COLORS[t] || "var(--dim)"; }
-/* Types that sit as a left/right half-bay pair, so they get the "+ L/R pair"
-   form and the L<->R auto-mirror: the LD3 family (AKE, PKC, QKE, AKC, RKN…),
-   PKC when the operator codes it as its own L3P/PKC type, and LD2 (AKH, DPE).
-   Everything else (LD7 pallets, LD8/PLA/LD6 half pallets) occupies a whole
-   bay and takes single positions. */
+/* Whether a bay is filled by an L/R pair or by one container on its own is a
+   property of the aircraft/compartment, not of the ULD type — a leased
+   aircraft's structure can pair up a type (e.g. LD8/DQF) that this operator's
+   own fleet always loads whole-bay. The "+ L/R pair" form and the L<->R
+   auto-mirror are therefore offered for every type; this list only supplies
+   the placeholder hint shown in the single-position field (LD3 family and
+   LD2 hint a bare bay number, matching how those types are usually typed). */
 var LR_PAIR_TYPES = { "LD3":1, "L3P/PKC":1, "LD2":1 };
 function isPairType(t){ return !!LR_PAIR_TYPES[t]; }
 /* Type codes that name the same physical base. Only pairs the operator's own
@@ -7553,7 +7555,7 @@ function groupBox(comp,g,gi){
   }).join("");
 
   var pairForm = "";
-  if(isLD3 && U.pairForm===g.id){
+  if(U.pairForm===g.id){
     pairForm = '<div style="border:1px solid var(--cyan);background:var(--cyan-soft);border-radius:2px;padding:12px;margin:10px 0">'+
       '<div class="sec" style="color:var(--cyan);margin-bottom:10px">Add L/R pair — fill the common values, L and R are created automatically</div>'+
       '<div class="grid-form" style="grid-template-columns:.8fr 1fr 1fr .9fr 1.1fr 1fr">'+
@@ -7574,10 +7576,8 @@ function groupBox(comp,g,gi){
   var singleBtn = '<button class="btn small" data-act="add-pos" data-g="'+gi+'" '+
     'style="border-color:'+gc+';color:'+gc+'" title="One container filling the bay on its own — '+
     'give it the lateral arms if it does not sit on the centreline">+ Position</button>';
-  var addBtn = isLD3
-    ? '<button class="btn small" data-act="open-pair" data-g="'+gi+'" style="border-color:'+gc+';color:'+gc+'"'+
-      (U.pairForm===g.id?" disabled":"")+'>+ L/R pair</button>'+singleBtn
-    : singleBtn;
+  var addBtn = '<button class="btn small" data-act="open-pair" data-g="'+gi+'" style="border-color:'+gc+';color:'+gc+'"'+
+      (U.pairForm===g.id?" disabled":"")+'>+ L/R pair</button>'+singleBtn;
 
   if(!open) return '<div class="group-box" data-collapsed="1" style="--gc:'+gc+'">'+header+'</div>';
   var included = g.include !== false;
@@ -8579,7 +8579,7 @@ function bindStep(){
       }
       // auto-mirror L/R pairs both ways (fwd/aft/index/max weight shared,
       // left/right swapped) — editing either side keeps the other in sync.
-      if(isPairType(group.uldType) && /[LR]$/.test(pos.name||"")){
+      if(/[LR]$/.test(pos.name||"")){
         var side = pos.name.slice(-1), otherSide = side==="L" ? "R" : "L";
         var base = pos.name.slice(0,-1);
         var ri = -1;

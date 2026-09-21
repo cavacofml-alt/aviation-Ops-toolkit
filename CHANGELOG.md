@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-21 — PR #115
+Corrigido: no Gerador de Layout de ULDs, a opção "+ L/R pair" só aparecia para LD3/LD2 — tipos como o LD8 (DQF/FQA), que também podem ser carregados em par L/R consoante a aeronave, obrigavam a criar as posições à mão e davam erro de índice inválido. Agora a opção está disponível para todos os tipos de ULD.
+
 ## 2026-09-14 — PR #114
 Removidos os botões de exportar em CSV no Gerador de Layout de ULDs: o ficheiro `.csv` abria mal no Excel (tudo numa coluna só, por causa das definições regionais) e também é usado para upload — para evitar confusão e uploads falhados, só fica o Excel (`.xlsx`), que já funciona bem nos dois casos.
 
