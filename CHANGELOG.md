@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-21 — PR #117
+Corrigido: no Gerador de Layout de ULDs, a explicação da opção "Combine ULDs certified for the same position" dizia sempre que os tipos se iam combinar — mesmo quando nenhum tipo partilhava a mesma estação/índice/peso máximo e por isso nada se ia combinar de facto. Agora avisa quando não há nada para combinar.
+
 ## 2026-09-21 — PR #116
 Corrigido: na vista de zonas do Gerador de Layout de ULDs, posições L/R com "P" no nome (ex. `11PL`/`11PR`, usado no LD8/DQF) apareciam como se não existissem — a célula ficava vazia mesmo com a posição criada e pronta a exportar. Agora mostra a posição certa em qualquer tipo de nome.
 
