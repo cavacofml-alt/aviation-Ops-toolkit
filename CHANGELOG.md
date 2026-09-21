@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-21 — PR #116
+Corrigido: na vista de zonas do Gerador de Layout de ULDs, posições L/R com "P" no nome (ex. `11PL`/`11PR`, usado no LD8/DQF) apareciam como se não existissem — a célula ficava vazia mesmo com a posição criada e pronta a exportar. Agora mostra a posição certa em qualquer tipo de nome.
+
 ## 2026-09-21 — PR #115
 Corrigido: no Gerador de Layout de ULDs, a opção "+ L/R pair" só aparecia para LD3/LD2 — tipos como o LD8 (DQF/FQA), que também podem ser carregados em par L/R consoante a aeronave, obrigavam a criar as posições à mão e davam erro de índice inválido. Agora a opção está disponível para todos os tipos de ULD.
 
