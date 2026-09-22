@@ -480,11 +480,53 @@ function groupBox(comp,g,gi){
   return '<div class="group-box" style="--gc:'+gc+'">'+header+'<div class="gbody">'+opts+colHead+
     (rows || '<div class="note" style="margin-bottom:8px">No positions yet.</div>')+
     pairForm+
-    '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'+addBtn+'</div></div></div>';
+    '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'+addBtn+'</div>'+
+    comboSection(g, gi)+
+    '</div></div>';
 }
 function pairInp(id,label,type,ph){
   return '<div class="field"><label for="'+id+'">'+esc(label)+'</label>'+
     '<input id="'+id+'" type="'+type+'" placeholder="'+esc(ph)+'" data-pair="1"></div>';
+}
+
+/* BETA — fixed combinations: for a ULD that only ever loads as one specific
+   set of this group's own positions used together, and whose own profile
+   requires named positions elsewhere (any group, any name) to stay empty
+   while it's used — e.g. an AHM565 remark like "LD-8 may load as 12PL,
+   21PL, 21PR; positions fwd and aft of it must be left empty." Nothing here
+   understands adjacency or container shape; the operator reads that off the
+   manual and types the position names, same as every other number in this
+   tool. Most groups will never need this section. */
+function comboSection(g, gi){
+  var posNames = (g.positions||[]).map(function(p){ return p.name; });
+  var combos = g.combos || [];
+  var head = combos.length
+    ? '<div class="posrow" style="grid-template-columns:1.3fr 1.3fr auto;margin:8px 0 2px">'+
+        ["Positions in this combination","Leave these empty when used",""].map(function(h){
+          return '<div style="font-family:var(--mono);font-size:9px;letter-spacing:1.2px;'+
+            'text-transform:uppercase;color:var(--dim)">'+esc(h)+'</div>'; }).join("")+
+      '</div>'
+    : '';
+  var rows = combos.map(function(c, ci){
+    var missing = (c.posNames||[]).filter(function(n){ return posNames.indexOf(n)<0; });
+    return '<div class="posrow" style="grid-template-columns:1.3fr 1.3fr auto">'+
+      '<div class="field"><input type="text" value="'+esc((c.posNames||[]).join(", "))+'" '+
+        'placeholder="e.g. 12PL, 21PL, 21PR" data-combo="1" data-g="'+gi+'" data-c="'+ci+'" data-ck="posNames">'+
+        '<span class="fielderr" style="'+(missing.length?'':'display:none')+'">'+
+          (missing.length ? 'not a position of this group: '+esc(missing.join(", ")) : '')+'</span>'+
+      '</div>'+
+      '<div class="field"><input type="text" value="'+esc((c.locks||[]).join(", "))+'" '+
+        'placeholder="e.g. 11P, 22P" data-combo="1" data-g="'+gi+'" data-c="'+ci+'" data-ck="locks"></div>'+
+      '<button class="btn small danger" data-act="del-combo" data-g="'+gi+'" data-c="'+ci+'" '+
+        'style="align-self:start;margin-top:1px">&times;</button>'+
+    '</div>';
+  }).join("");
+  return '<div style="border-top:1px dashed var(--line);padding-top:8px;margin-top:8px">'+
+    '<span class="note" style="letter-spacing:1px">FIXED COMBINATIONS <span style="color:var(--amber)">(beta)</span></span> '+
+    '<i title="For a type that only loads as one fixed set of positions from this group, where using it means named positions elsewhere must stay empty — per the aircraft manual\'s remarks for that hold. Leave empty if this type does not need it.">&#9432;</i>'+
+    head + rows +
+    '<button class="btn small" data-act="add-combo" data-g="'+gi+'" style="margin-top:6px">+ Add combination</button>'+
+  '</div>';
 }
 
 function posInp(gi,pi,key,val,type,ph,err){
@@ -974,7 +1016,14 @@ function generateLayouts(){
     // never produces a duplicate.
     var mergeIdentical = U.mergeIdentical !== false;
     var zoneBySignature = {};
-    function addOption(base, sig, positions, gid){
+    // BETA — fixed combinations: some ULDs (e.g. an LD-8 in a size-code-Q
+    // hold) may only load as one specific set of positions used together,
+    // and using it means named positions elsewhere must stay empty (the
+    // container's own profile intrudes past its listed bay). "locks" is
+    // that list of position names — carried on the option so the layout
+    // walk below can treat "occupies a locked name" the same as a real
+    // station overlap, without the algorithm needing to know why.
+    function addOption(base, sig, positions, gid, locks){
       if(!zoneBySignature[base]) zoneBySignature[base] = {};
       var key = mergeIdentical ? sig : sig + "\u0000" + gid;
       var existing = zoneBySignature[base][key];
@@ -993,7 +1042,7 @@ function generateLayouts(){
       // to this signature's certified list — a merged slot's name must show
       // every certified IATA ("2LD3(AKE/PKC)"), not just whichever group
       // happened to reach it first.
-      var opt = { positions:positions, certified:certified };
+      var opt = { positions:positions, certified:certified, locks: locks||[] };
       zoneBySignature[base][key] = opt;
       if(!zoneOptionsMap[base]) zoneOptionsMap[base]=[];
       zoneOptionsMap[base].push(opt);
@@ -1017,13 +1066,32 @@ function generateLayouts(){
         var want = m[1] + (m[2] === "L" ? "R" : "L");
         return positions.filter(function(q){ return q.name === want; })[0] || null;
       };
-      var offer = function(base, sig, posList){
+      var offer = function(base, sig, posList, locks){
         uldDefs.forEach(function(uldDef){
           addOption(base, sig, posList.map(function(p){
             return Object.assign({}, p, {uld:uldDef.iata, uldType:group.uldType});
-          }), gid);
+          }), gid, locks);
         });
       };
+      // BETA — fixed combinations: a group with any defined skips the usual
+      // per-bay offering below entirely. Each combination becomes one
+      // atomic option spanning all its own positions together (never used
+      // partially), carrying whatever it locks elsewhere. A combination
+      // naming a position this group doesn't have is quietly skipped here —
+      // the group box below flags it so it doesn't fail silently for the
+      // operator.
+      if(group.combos && group.combos.length){
+        group.combos.forEach(function(combo, ci){
+          var matched = (combo.posNames||[]).map(function(n){
+            return positions.filter(function(p){ return p.name===n; })[0];
+          }).filter(Boolean);
+          if(!matched.length) return;
+          var sig = matched.map(function(p){
+            return [p.name,p.fwd,p.aft,p.left,p.right,p.index,p.maxWeight].join("|"); }).join("+");
+          offer("combo:"+(combo.id||ci), sig, matched, combo.locks||[]);
+        });
+        return;
+      }
       // side by side: every L with an R of its own
       positions.forEach(function(posL){
         if(!/L$/.test(posL.name)) return;
@@ -1078,7 +1146,18 @@ function generateLayouts(){
     });
     allOptions.sort(function(a,b){ return (a.fwd-b.fwd) || (a.aft-b.aft); });
 
-    var conflict = function(a,b){ return a.fwd < b.aft && b.fwd < a.aft; };
+    // BETA — a combination's "locks" list conflicts with any option that
+    // occupies one of those names, on top of the usual station overlap —
+    // this is how a fixed combination keeps its required-empty neighbours
+    // out of every other option's layouts, even ones that don't physically
+    // overlap it in station terms.
+    var locksClash = function(a,b){
+      var an = a.positions.map(function(p){ return p.name; });
+      var bn = b.positions.map(function(p){ return p.name; });
+      return (a.locks||[]).some(function(n){ return bn.indexOf(n)>=0; })
+          || (b.locks||[]).some(function(n){ return an.indexOf(n)>=0; });
+    };
+    var conflict = function(a,b){ return (a.fwd < b.aft && b.fwd < a.aft) || locksClash(a,b); };
     var results = [];
     var walk = function(idx, chosen){
       if(idx === allOptions.length){
@@ -1543,6 +1622,24 @@ function bindStep(){
       if(typeof uldTouch === "function") uldTouch();
     });
   });
+  // BETA — fixed-combination fields: parsed as a comma/space-separated list
+  // of position names, same as the operator would read them off a manual.
+  // No re-render while typing (same reasoning as data-pos above); the
+  // "not a position of this group" hint refreshes once the field is left.
+  Array.prototype.forEach.call(host.querySelectorAll('input[data-combo]'), function(inp){
+    var apply = function(){
+      var g = +inp.getAttribute("data-g"), c = +inp.getAttribute("data-c"), ck = inp.getAttribute("data-ck");
+      var comp = U.compartments[U.activeComp];
+      var group = comp && comp.uldGroups[g];
+      var combo = group && group.combos && group.combos[c];
+      if(!combo) return;
+      combo[ck] = inp.value.split(/[,\n]/).map(function(s){ return s.trim().toUpperCase(); }).filter(Boolean);
+      if(U.layouts) U.layoutsStale = true;
+      if(typeof uldTouch === "function") uldTouch();
+    };
+    inp.addEventListener("input", apply);
+    inp.addEventListener("blur", function(){ apply(); uldRender(); });
+  });
   // live preview of the L/R pair being created
   Array.prototype.forEach.call(host.querySelectorAll('input[data-pair]'), function(inp){
     inp.addEventListener("input", function(){
@@ -1722,6 +1819,20 @@ function onUldClick(e){
     var gp2 = comp.uldGroups[+b.getAttribute("data-g")].positions[+b.getAttribute("data-p")];
     pushUndo("removed position "+((gp2&&gp2.name)||""));
     comp.uldGroups[+b.getAttribute("data-g")].positions.splice(+b.getAttribute("data-p"),1); uldRender();
+  }
+  else if(act==="add-combo"){
+    var gCombo = comp.uldGroups[+b.getAttribute("data-g")];
+    if(!gCombo) return;
+    gCombo.combos = gCombo.combos || [];
+    gCombo.combos.push({ id:uid(), posNames:[], locks:[] });
+    if(U.layouts) U.layoutsStale = true;
+    uldRender();
+  }
+  else if(act==="del-combo"){
+    var gDelCombo = comp.uldGroups[+b.getAttribute("data-g")];
+    if(gDelCombo && gDelCombo.combos) gDelCombo.combos.splice(+b.getAttribute("data-c"),1);
+    if(U.layouts) U.layoutsStale = true;
+    uldRender();
   }
   else if(act==="add-bulk"){
     U.bulk = U.bulk || [];
