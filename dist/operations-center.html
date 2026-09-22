@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Operations Center v1.2.295</title>
+<title>Operations Center v1.2.298</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -910,7 +910,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.295</span>
+      <span class="build-ver">v1.2.298</span>
     </header>
 
     <main>
@@ -1274,7 +1274,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.295 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.298 — Luís Cavaco
     Built 2026-09-22 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -7903,7 +7903,10 @@ function comboSection(comp, g, gi){
   return '<div style="border-top:1px dashed var(--line);padding-top:8px;margin-top:8px">'+
     '<div class="sec" style="margin-bottom:4px">Fixed combinations</div>'+
     '<div class="note" style="margin-bottom:8px">Use this only if this type must always load as one exact set of positions together, ' +
-      'and loading it that way requires certain other positions to stay empty. Most types don\'t need this — leave it empty.</div>'+
+      'and loading it that way requires certain other positions to stay empty. Most types don\'t need this — leave it empty.<br>'+
+      '<b>Only works as a real block if the empty positions are in this same compartment.</b> A position in another compartment '+
+      'only shows a warning here and in Layouts — it has no effect on what gets exported or on any system reading that file. '+
+      'A cross-compartment restriction only becomes real if the positions\' own FWD/AFT stations are made to overlap.</div>'+
     head + rows +
     '<button class="btn small" data-act="add-combo" data-g="'+gi+'" style="margin-top:6px">+ Add combination</button>'+
   '</div>';

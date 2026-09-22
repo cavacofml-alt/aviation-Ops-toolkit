@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-22 — PR #131
+Explicação das "Fixed combinations" no Gerador de Layout de ULDs passa a dizer claramente que só funciona como bloqueio real quando a posição a manter vazia está no mesmo compartimento — uma posição de outro compartimento só produz um aviso, sem qualquer efeito no ficheiro exportado nem em quem o lê depois; uma restrição real entre compartimentos só existe se as próprias estações (FWD/AFT) se sobrepuserem.
+
 ## 2026-09-22 — PR #130
 Corrigido o símbolo do aviso do PR anterior (campo "positions that must stay empty"): o ícone não aparecia direito na letra usada pela aplicação e ficava a parecer um "i" solto por engano — trocado por um símbolo que já é usado em confirmações noutros sítios da ferramenta.
 

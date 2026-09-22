@@ -569,7 +569,10 @@ function comboSection(comp, g, gi){
   return '<div style="border-top:1px dashed var(--line);padding-top:8px;margin-top:8px">'+
     '<div class="sec" style="margin-bottom:4px">Fixed combinations</div>'+
     '<div class="note" style="margin-bottom:8px">Use this only if this type must always load as one exact set of positions together, ' +
-      'and loading it that way requires certain other positions to stay empty. Most types don\'t need this — leave it empty.</div>'+
+      'and loading it that way requires certain other positions to stay empty. Most types don\'t need this — leave it empty.<br>'+
+      '<b>Only works as a real block if the empty positions are in this same compartment.</b> A position in another compartment '+
+      'only shows a warning here and in Layouts — it has no effect on what gets exported or on any system reading that file. '+
+      'A cross-compartment restriction only becomes real if the positions\' own FWD/AFT stations are made to overlap.</div>'+
     head + rows +
     '<button class="btn small" data-act="add-combo" data-g="'+gi+'" style="margin-top:6px">+ Add combination</button>'+
   '</div>';
