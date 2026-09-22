@@ -99,7 +99,11 @@ var uid = function(){
 var U = { step:0, ulds:[], compartments:[], bulk:[], refStation:"", activeComp:0,
           layouts:null, activeLayoutComp:0, editUld:null, pairForm:null, addType:"",
           collapsed:{}, openLayout:{}, layoutLimit:{}, signAck:false, tplName:null,
-          undo:[], myTemplates:[], mergeIdentical:true, issuesOpen:false };
+          undo:[], myTemplates:[], mergeIdentical:true, issuesOpen:false,
+          // compNum -> index into U.layouts[compNum]: the layout the operator says
+          // is actually being used there. Once set, other compartments hide any
+          // layout that conflicts with it, instead of only marking it.
+          selectedLayout:{} };
 
 function emptyPos(name){
   return { name:name||"", fwd:"", aft:"", left:"0", right:"0", index:"", maxWeight:"" };
@@ -987,12 +991,54 @@ function layoutConflicts(compNum, layout){
   return out;
 }
 
+/* Checked against what the operator actually marked as used in the OTHER
+   compartments (not every candidate there, like layoutConflicts above) —
+   this is what decides whether a layout is still offered as a choice at
+   all. Compares the concrete selected layout's own positions/locks, since
+   by this point there is an actual layout to compare against, not just a
+   compartment's raw position table. */
+function conflictsWithSelection(compNum, layout){
+  var out = [];
+  var names = layout.positions.map(function(p){ return p.name; });
+  var fwds = layout.positions.map(function(p){ return parseFloat(p.fwd); });
+  var afts = layout.positions.map(function(p){ return parseFloat(p.aft); });
+  var fwd = Math.min.apply(null, fwds), aft = Math.max.apply(null, afts);
+  U.compartments.forEach(function(c){
+    if(c.number === compNum) return;
+    var selIdx = U.selectedLayout[c.number];
+    if(selIdx == null) return;
+    var sel = (U.layouts[c.number]||[])[selIdx];
+    if(!sel) return;
+    var selNames = sel.positions.map(function(p){ return p.name; });
+    var selFwds = sel.positions.map(function(p){ return parseFloat(p.fwd); });
+    var selAfts = sel.positions.map(function(p){ return parseFloat(p.aft); });
+    var selFwd = Math.min.apply(null, selFwds), selAft = Math.max.apply(null, selAfts);
+    var overlap = fwd < selAft && selFwd < aft;
+    var lockClash = (layout.locks||[]).some(function(nm){ return selNames.indexOf(nm)>=0; })
+                 || (sel.locks||[]).some(function(nm){ return names.indexOf(nm)>=0; });
+    if(overlap || lockClash) out.push({ n2:c.number, name2:sel.name, kind: lockClash?"lock":"overlap" });
+  });
+  return out;
+}
+
 function renderLayoutList(compNum, list){
   var limit = U.layoutLimit[compNum] || LAYOUT_PAGE;
-  var shown = list.slice(0, limit);
-  var html = shown.map(function(l, i){
+  var selIdx = U.selectedLayout[compNum];
+  // Index into the ORIGINAL list, not the filtered one — stable identity for
+  // "select"/"unselect" and for the open/closed state, and unaffected by how
+  // many other entries happen to be hidden this render.
+  var hiddenCount = 0;
+  var visible = [];
+  list.forEach(function(l, i){
+    if(i === selIdx || !conflictsWithSelection(compNum, l).length){ visible.push({l:l, i:i}); }
+    else { hiddenCount++; }
+  });
+  var shown = visible.slice(0, limit);
+  var html = shown.map(function(entry){
+    var l = entry.l, i = entry.i;
     var key = compNum + ":" + i;
     var open = !!U.openLayout[key];
+    var isSelected = i === selIdx;
     var conflicts = layoutConflicts(compNum, l);
     var conflictNote = conflicts.length
       ? '<div class="note" style="color:var(--amber);margin-top:8px">&#9888; Conflicts with Compartment '+
@@ -1002,8 +1048,21 @@ function renderLayoutList(compNum, list){
           }).join("; Compartment ")+
         '</div>'
       : '';
+    var selectBtn = '<button class="btn small'+(isSelected?' primary':'')+'" '+
+      'data-act="'+(isSelected?'unselect-layout':'select-layout')+'" data-comp="'+compNum+'" data-i="'+i+'">'+
+      (isSelected ? '&#10003; Marked as used — click to clear' : 'Mark as used')+'</button>';
+    // A selection is never auto-cleared by a later choice elsewhere (see
+    // conflictsWithSelection) — it can still turn invalid, and that has to
+    // be shown loudly rather than silently dropped.
+    var selfConflict = isSelected ? conflictsWithSelection(compNum, l) : [];
+    var selfConflictNote = selfConflict.length
+      ? '<div class="note" style="color:var(--red,#c0392b);margin-top:8px">&#9888; This selection now conflicts with Compartment '+
+          selfConflict.map(function(cf){ return cf.n2+' "'+esc(cf.name2)+'"'; }).join(", ")+
+          ' — one of the two needs to change.</div>'
+      : '';
     var body = open
       ? deckStrip(l) +
+        '<div style="margin-top:8px">'+selectBtn+'</div>'+
         '<div style="overflow-x:auto;margin-top:8px"><table><thead><tr><th>Position</th><th>ULD</th>'+
         '<th>Certified ULDs</th><th>FWD</th><th>AFT</th><th>Index</th><th>Max wt</th></tr></thead><tbody>'+
         l.positions.map(function(p){
@@ -1013,9 +1072,9 @@ function renderLayoutList(compNum, list){
             esc(p.uld)+'</span> <span style="color:'+pc+'">'+esc(p.uldType)+'</span></td>'+
             '<td style="color:var(--dim)">'+cert+'</td>'+
             '<td>'+esc(p.fwd)+'</td><td>'+esc(p.aft)+'</td><td>'+esc(p.index)+'</td><td>'+esc(p.maxWeight)+'</td></tr>';
-        }).join("")+'</tbody></table></div>'+ conflictNote
+        }).join("")+'</tbody></table></div>'+ conflictNote + selfConflictNote
       : '';
-    return '<div class="layout-item">'+
+    return '<div class="layout-item" style="'+(isSelected?'background:var(--panel-2, rgba(0,200,120,0.06))':'')+'">'+
       '<div class="layout-name" data-act="toggle-layout" data-k="'+esc(key)+'">'+
         '<span class="chev" data-open="'+(open?1:0)+'">&#9656;</span>'+
         '<span>'+esc(l.name).split("/").map(function(part){
@@ -1023,14 +1082,21 @@ function renderLayoutList(compNum, list){
                   : /LD8/.test(part) ? "LD8" : /LD3/.test(part) ? "LD3" : null;
             return t ? '<span style="color:'+groupColor(t)+'">'+part+'</span>' : part;
           }).join('<span style="color:var(--faint)">/</span>')+'</span>'+
-        (conflicts.length ? '<span style="color:var(--amber)" title="Conflicts with another compartment — see details below">&#9888;</span>' : '')+
+        (isSelected ? '<span style="color:var(--green,#2a9d5c)" title="Marked as used">&#10003;</span>' : '')+
+        (selfConflict.length ? '<span style="color:var(--red,#c0392b)" title="This selection now conflicts with another compartment">&#9888;</span>' : (conflicts.length ? '<span style="color:var(--amber)" title="Conflicts with another compartment — see details below">&#9888;</span>' : ''))+
         '<span class="collapsed-hint" style="margin-left:auto">'+l.positions.length+' pos</span>'+
       '</div>'+ body +'</div>';
   }).join("");
-  if(list.length > limit){
+  var hiddenNote = hiddenCount
+    ? '<div class="note" style="padding:8px 16px;color:var(--dim)">'+hiddenCount+' layout'+(hiddenCount!==1?'s':'')+
+      ' hidden — '+(hiddenCount!==1?'they conflict':'it conflicts')+' with what you marked as used in another compartment.</div>'
+    : '';
+  html = hiddenNote + html;
+  var visLen = visible.length;
+  if(visLen > limit){
     html += '<button class="showmore" data-act="more-layouts" data-n="'+compNum+'">'+
-      'Show '+Math.min(LAYOUT_PAGE, list.length-limit)+' more &middot; '+
-      (list.length-limit)+' remaining</button>';
+      'Show '+Math.min(LAYOUT_PAGE, visLen-limit)+' more &middot; '+
+      (visLen-limit)+' remaining</button>';
   }
   return html;
 }
@@ -1344,6 +1410,10 @@ function generateLayouts(){
   U.layouts = allLayouts;
   U.layoutsStale = false;
   U.activeLayoutComp = 0;
+  // A previous selection points at an index in the old, now-discarded
+  // layout arrays — nothing guarantees the same index still means the same
+  // layout after a re-generate, so it can't be carried forward.
+  U.selectedLayout = {};
 }
 
 function crossCompartmentWarnings(){
@@ -2045,6 +2115,14 @@ function onUldClick(e){
   else if(act==="toggle-layout"){
     var k = b.getAttribute("data-k");
     U.openLayout[k] = !U.openLayout[k]; uldRender();
+  }
+  else if(act==="select-layout"){
+    U.selectedLayout[+b.getAttribute("data-comp")] = +b.getAttribute("data-i");
+    uldRender();
+  }
+  else if(act==="unselect-layout"){
+    delete U.selectedLayout[+b.getAttribute("data-comp")];
+    uldRender();
   }
   else if(act==="more-layouts"){
     var cn = +b.getAttribute("data-n");
