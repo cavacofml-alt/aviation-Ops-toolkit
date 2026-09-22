@@ -534,9 +534,11 @@ function comboSection(comp, g, gi){
   var rows = combos.map(function(c, ci){
     var names = c.posNames||[], locks = c.locks||[];
     var missing = names.filter(function(n){ return posNames.indexOf(n)<0; });
-    // A lock naming a position outside this compartment only ever produces a
-    // warning (crossCompartmentWarnings, in Layouts), never a real block —
-    // flag it here so the mistake isn't only caught later.
+    // A lock naming a position outside this compartment is not a mistake —
+    // it's the intended way to keep a position in another compartment empty
+    // (see the Layouts tab, which marks the resulting conflict directly on
+    // each layout). This just confirms that reading back to the operator,
+    // so it isn't only discovered later.
     var foreign = locks.filter(function(n){
       var owners = compartmentsOf(n);
       return owners.length && owners.indexOf(comp.number) < 0;
@@ -557,7 +559,7 @@ function comboSection(comp, g, gi){
       '<div class="field"><input type="text" value="'+esc(locks.join(", "))+'" '+
         'placeholder="e.g. 11P, 22P" data-combo="1" data-g="'+gi+'" data-c="'+ci+'" data-ck="locks">'+
         '<span class="fielderr" style="'+(foreign.length?'':'display:none')+'; color:var(--amber)">'+
-          (foreign.length ? '⚠ only positions in this compartment are allowed: '+esc(foreign.join(", ")) : '')+'</span>'+
+          (foreign.length ? '&#8505; in another compartment: '+esc(foreign.join(", "))+' — will show as a conflict in Layouts' : '')+'</span>'+
       '</div>'+
       '<button class="btn small danger" data-act="del-combo" data-g="'+gi+'" data-c="'+ci+'" '+
         'style="align-self:start;margin-top:1px">&times;</button>'+

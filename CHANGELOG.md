@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-22 — PR #129
+No campo "positions that must stay empty" (combinações fixas), o aviso para uma posição de outro compartimento dizia "só são permitidas posições deste compartimento" — o que dava a entender que isso era rejeitado, quando na verdade é a forma correta e prevista de usar o campo. Passa a confirmar que a posição fica registada e vai aparecer como conflito no separador Layouts.
+
 ## 2026-09-22 — PR #128
 No separador Layouts do Gerador de Layout de ULDs, o aviso de "conflitos entre compartimentos" deixou de contar combinações do outro compartimento (um número artificialmente enorme, tipo "119 layouts") e passa a dizer diretamente quais as posições físicas em conflito (ex: "Compartment 2 21P") — a informação que realmente importa.
 
