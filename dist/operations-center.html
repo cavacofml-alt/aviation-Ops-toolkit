@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Operations Center v1.2.304</title>
+<title>Operations Center v1.2.308</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -910,7 +910,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.304</span>
+      <span class="build-ver">v1.2.308</span>
     </header>
 
     <main>
@@ -1274,7 +1274,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.304 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.308 — Luís Cavaco
     Built 2026-09-22 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -5761,6 +5761,7 @@ var TPL_B787_8 = {
     ],
     combos:[
       {id:"cb1",posNames:["12PL"],locks:["13PL","13PR"]},
+      {id:"cb2",posNames:["13PL","13PR"],locks:["12PL","21PL","21PR"]},
     ]},
   ]},
   {id:"c2",number:2,uldGroups:[
@@ -5798,22 +5799,22 @@ var TPL_B787_8 = {
       {name:"21P",fwd:"639.7",aft:"735.9",left:"0",right:"0",index:"-0.00196",maxWeight:"4717"},
       {name:"22P",fwd:"736.6",aft:"832.8",left:"0",right:"0",index:"-0.00147",maxWeight:"4717"},
     ]},
-    // FWD deliberately brought back from 639.7 to 638.8 — this LD-8 and
-    // Compartment 1's 13PL/13PR are two alternative placements of the same
-    // physical AHM565 3.1.3 combination and can never both be loaded. A
-    // "Fixed combination" lock across compartments only ever warns here
-    // (see PR #123) — it doesn't stop the operator's own load-control
-    // system from letting both be selected, because that system checks
-    // station overlap, not this tool's lock metadata. Overlapping the
-    // stations by the smallest realistic margin makes that system's own
-    // overlap check refuse the pair, without touching the index (still
-    // the real -0.00196) that its weight×index math actually depends on.
-    // A fixed combination stays worth declaring only within one
-    // compartment (Compartment 1's 12PL/13PL example below), where the
-    // lock is a hard, enforced exclusion, not just a warning.
+    // FWD is the real manual value (639.7) — this LD-8 and Compartment 1's
+    // 13PL/13PR are two alternative placements of the same physical AHM565
+    // 3.1.3 combination and can never both be loaded, but the real station
+    // gap between them (638.9 to 639.7) is genuine and too small to lean on
+    // for detection. An earlier revision (PR #124) closed that gap on
+    // purpose (638.8) so a plain station-overlap check would catch the
+    // pair — but that also falsified the real FWD this position's own
+    // index/weight math depends on, and still only ever produces a warning
+    // downstream, not a real block (this tool's own generator is the one
+    // place the exclusion is actually enforced, via the "locks" on
+    // Compartment 1's combo above — see PR #131/#132: marking a layout used
+    // here hides the incompatible 13PL/13PR options in Compartment 1, and
+    // "Export selected configuration" refuses to ship both at once).
     {id:"g12",uldType:"LD8",iata:"DQF",label:"LD8 — DQF",positions:[
-      {name:"21PL",fwd:"638.8",aft:"735.9",left:"0", right:"50",index:"-0.00196",maxWeight:"2267"},
-      {name:"21PR",fwd:"638.8",aft:"735.9",left:"50",right:"0", index:"-0.00196",maxWeight:"2267"},
+      {name:"21PL",fwd:"639.7",aft:"735.9",left:"0", right:"50",index:"-0.00196",maxWeight:"2267"},
+      {name:"21PR",fwd:"639.7",aft:"735.9",left:"50",right:"0", index:"-0.00196",maxWeight:"2267"},
     ]},
   ]},
   {id:"c3",number:3,uldGroups:[

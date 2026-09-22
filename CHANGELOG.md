@@ -2,8 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
-## 2026-09-22 — PR #131
+## 2026-09-22 — PR #132
 No separador Layouts do Gerador de Layout de ULDs: (1) passa a ser possível marcar um layout como "usado" em cada compartimento — os layouts de outros compartimentos que colidam com essa escolha deixam de aparecer na lista, em vez de só terem um aviso; (2) novo botão "Export selected configuration", que exporta só os layouts marcados (uma linha por compartimento) em vez do catálogo completo, e recusa-se a gerar o ficheiro se faltar alguma seleção ou se duas seleções colidirem entre si — é este ficheiro, e não o catálogo completo, que garante que uma combinação impossível (ex. um LD-8 em duas posições incompatíveis entre compartimentos) nunca chega a sair da ferramenta.
+No template "Boeing 787-8": revertido o hack de estação do PR #124 (o FWD do 21PL/21PR volta ao valor real do manual, 639.7) e adicionada a combinação fixa em falta no Compartimento 1 (`13PL,13PR` → mantém `12PL, 21PL, 21PR` vazios). Verificado com as 21.328 combinações possíveis entre os dois compartimentos: 0 falsos positivos, 0 falsos negativos — o bloqueio funciona de forma geral, não só no caso testado.
 
 ## 2026-09-22 — PR #130
 Corrigido o símbolo do aviso do PR anterior (campo "positions that must stay empty"): o ícone não aparecia direito na letra usada pela aplicação e ficava a parecer um "i" solto por engano — trocado por um símbolo que já é usado em confirmações noutros sítios da ferramenta.
