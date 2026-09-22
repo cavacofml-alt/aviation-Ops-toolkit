@@ -430,7 +430,7 @@ if(inBuild("uld")) try {
   eval(uld.replace(/function uldRender\(\)[\s\S]*?\n}\n/, "").replace(/function renderStepbar\(\)[\s\S]*?\n}\n/, "") +
        ";ULD = {TEMPLATES, U, generateLayouts, validateIndex, indexIssues, csvLines, csvAll, " +
        "buildXlsxFile, allLayoutRows, EXPORT_HEADERS, isPairType, pairSourceFor, pairAtBase, pairOffsetOf, clampDecimals, exportIndex, uldBase, groupLabel, maxWeightIssue, pushUndo, undoLast, issueBody, exportIssues, bulkMissing, emptyBulkPos};");
-  ok("all aircraft templates load", ULD.TEMPLATES.length === 6);
+  ok("all aircraft templates load", ULD.TEMPLATES.length === 7);
   ok("index sign against the reference station",
      ULD.validateIndex("0.006", "19", "36") !== null && ULD.validateIndex("-0.006", "19", "36") === null);
   ok("a zero index asks for confirmation", ULD.validateIndex("0", "19", "36") !== null);
