@@ -642,10 +642,16 @@ function viewStep3(){
   var list = U.layouts[n] || [];
   var warns = crossCompartmentWarnings();
   var warnHtml = warns.map(function(w){
-    return '<div class="warnbox"><b>&#9888; Physical conflicts between compartments</b><br>'+
+    var title = w.kind==="lock"
+      ? "Fixed-combination conflicts between compartments"
+      : "Physical conflicts between compartments";
+    var why = w.kind==="lock"
+      ? "A fixed combination in one compartment keeps a position empty that this pairing would use in the other."
+      : "These layouts can be used individually, but not simultaneously on the same flight.";
+    return '<div class="warnbox"><b>&#9888; '+title+'</b><br>'+
       'Compartment '+w.n1+' &harr; Compartment '+w.n2+': '+w.conflicting.length+' invalid layout combinations.'+
       '<div style="color:var(--dim);margin-top:4px">Example: '+esc(w.conflicting[0])+'</div>'+
-      '<div style="color:var(--dim);margin-top:4px">These layouts can be used individually, but not simultaneously on the same flight.</div></div>';
+      '<div style="color:var(--dim);margin-top:4px">'+why+'</div></div>';
   }).join("");
 
   var body = '<div style="border:1px solid var(--line);border-radius:2px;overflow:hidden">'+
@@ -1212,9 +1218,16 @@ function generateLayouts(){
     walk(0, []);
 
     var allCombos = results.map(function(chosen){
-      var positions = [];
-      chosen.forEach(function(o){ positions = positions.concat(o.positions); });
-      return { name: chosen.map(function(o){return o.label;}).join("/"), positions: positions };
+      var positions = [], locks = [];
+      chosen.forEach(function(o){
+        positions = positions.concat(o.positions);
+        // kept on the layout (not just the option) so a cross-compartment
+        // check can later see "this layout locks these names elsewhere" —
+        // a fixed combination's reach isn't limited to its own compartment,
+        // even though the combination itself only names positions there
+        if(o.locks && o.locks.length) locks = locks.concat(o.locks);
+      });
+      return { name: chosen.map(function(o){return o.label;}).join("/"), positions: positions, locks: locks };
     });
 
     // types flagged "do not mix" may only appear in single-type layouts
@@ -1280,7 +1293,35 @@ function crossCompartmentWarnings(){
             if(f2 < a1) conflicting.push('C'+n1+':"'+l1.name+'" \u2194 C'+n2+':"'+l2.name+'"');
           });
         });
-        if(conflicting.length) warnings.push({n1:n1,n2:n2,conflicting:conflicting});
+        if(conflicting.length) warnings.push({n1:n1,n2:n2,conflicting:conflicting,kind:"overlap"});
+      }
+      // A fixed combination in one compartment can name positions to keep
+      // empty that live in a DIFFERENT compartment \u2014 e.g. an LD-8 whose
+      // combination spans a compartment boundary the operator drew for
+      // other reasons. Station overlap alone would miss this (the two
+      // compartments' own stations don't touch), so it's a separate check.
+      // Cheap prefilter first: skip the full comparison unless something on
+      // either side could possibly clash, so aircraft with no combinations
+      // at all (the common case) pay nothing extra here.
+      var l1Locks = {}, l2Names = {}, l2Locks = {}, l1Names = {};
+      L1.forEach(function(l){ (l.locks||[]).forEach(function(n){ l1Locks[n]=1; });
+                               l.positions.forEach(function(p){ l1Names[p.name]=1; }); });
+      L2.forEach(function(l){ (l.locks||[]).forEach(function(n){ l2Locks[n]=1; });
+                               l.positions.forEach(function(p){ l2Names[p.name]=1; }); });
+      var possible = Object.keys(l1Locks).some(function(n){ return l2Names[n]; })
+                  || Object.keys(l2Locks).some(function(n){ return l1Names[n]; });
+      if(possible){
+        var lockConflicting = [];
+        L1.forEach(function(l1){
+          var l1names = l1.positions.map(function(p){ return p.name; });
+          L2.forEach(function(l2){
+            var l2names = l2.positions.map(function(p){ return p.name; });
+            var clash = (l1.locks||[]).some(function(n){ return l2names.indexOf(n)>=0; })
+                     || (l2.locks||[]).some(function(n){ return l1names.indexOf(n)>=0; });
+            if(clash) lockConflicting.push('C'+n1+':"'+l1.name+'" \u2194 C'+n2+':"'+l2.name+'"');
+          });
+        });
+        if(lockConflicting.length) warnings.push({n1:n1,n2:n2,conflicting:lockConflicting,kind:"lock"});
       }
     }
   }

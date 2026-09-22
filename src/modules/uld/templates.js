@@ -1039,6 +1039,15 @@ var TPL_B787_8 = {
     {id:"g12",uldType:"LD8",iata:"DQF",label:"LD8 — DQF",positions:[
       {name:"21PL",fwd:"639.7",aft:"735.9",left:"0", right:"50",index:"-0.00196",maxWeight:"2267"},
       {name:"21PR",fwd:"639.7",aft:"735.9",left:"50",right:"0", index:"-0.00196",maxWeight:"2267"},
+    ],
+    // Per AHM565 3.1.3: this LD-8 (12PL+21PL+21PR) and the Compartment 1
+    // combination (13PL+13PR) are the same physical hold's two alternative
+    // placements — they can never both be used. The lock only needs to be
+    // declared on one side to be caught (crossCompartmentWarnings checks
+    // both directions), but declaring it here too keeps this group
+    // self-describing on its own, without depending on Compartment 1's box.
+    combos:[
+      {id:"cb1",posNames:["21PL","21PR"],locks:["13PL","13PR"]},
     ]},
   ]},
   {id:"c3",number:3,uldGroups:[

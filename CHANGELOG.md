@@ -2,6 +2,12 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-22 — PR #123
+Novo aviso no Gerador de Layout de ULDs: quando uma combinação fixa num compartimento obriga a deixar vazia uma posição que está noutro compartimento (ex. um LD-8 cujas combinações atravessam a fronteira entre compartimentos, como no AHM565), a ferramenta agora avisa — junto ao aviso já existente para sobreposições físicas entre compartimentos. Não bloqueia automaticamente, só avisa, para não arriscar mudar como os layouts já gerados funcionam.
+
+## 2026-09-22 — PR #122
+Removida a etiqueta "(beta)" de "Fixed combinations" no Gerador de Layout de ULDs — já estava aprovada e em produção.
+
 ## 2026-09-22 — PR #121
 Adicionado o template "Boeing 787-8" à lista de aeronaves do Gerador de Layout de ULDs, com base na configuração real fornecida (4 compartimentos + bulk, incluindo a combinação fixa do LD-8).
 
