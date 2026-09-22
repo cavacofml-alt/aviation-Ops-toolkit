@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Operations Center v1.2.240</title>
+<title>Operations Center v1.2.244</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -910,7 +910,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.240</span>
+      <span class="build-ver">v1.2.244</span>
     </header>
 
     <main>
@@ -1274,8 +1274,8 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.240 — Luís Cavaco
-    Built 2026-09-21 from the source tree; see build.manifest.json.
+/*! Aviation Ops Toolkit v1.2.244 — Luís Cavaco
+    Built 2026-09-22 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
 
@@ -7444,7 +7444,14 @@ function viewStep2(){
         '<div style="display:flex;gap:8px;align-items:end;margin-top:14px;flex-wrap:wrap">'+
         '<div class="field" style="min-width:220px"><label for="newGroupType">Add ULD group</label>'+
         '<select id="newGroupType">'+avail.map(function(t){
-          return '<option value="'+esc(t)+'">'+esc(ULD_TYPE_LABELS[t]||t)+'</option>'; }).join("")+'</select></div>'+
+          // Once the operator has added ULDs, the group they are about to
+          // create is tied to those, not to the generic hint shown before
+          // any catalog existed — showing the hint here drifts from the
+          // catalog the moment it differs (an LD8 catalog entry has no
+          // hint at all; an LD2 with only DPE still claimed "AKH / DPE").
+          var ia = iatasOfType(t);
+          var label = ia.length ? t+" ("+ia.join(" / ")+")" : t;
+          return '<option value="'+esc(t)+'">'+esc(label)+'</option>'; }).join("")+'</select></div>'+
         '<button class="btn small" data-act="add-group">+ Add group</button></div>'
         : '<div class="note" style="margin-top:12px">All ULD types available have already been added.</div>')+
     '</div>'+ (groups || '') + bulkSection();
