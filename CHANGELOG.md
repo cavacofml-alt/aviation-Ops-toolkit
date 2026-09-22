@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-22 — PR #126
+Simplificado o aviso do PR anterior no Gerador de Layout de ULDs: em vez de explicar que "só avisa, nunca bloqueia" (linguagem interna da ferramenta), passa a dizer diretamente "only positions in this compartment are allowed" — mais direto para quem preenche o campo.
+
 ## 2026-09-22 — PR #125
 No Gerador de Layout de ULDs, o campo "positions that must stay empty" de uma combinação fixa agora avisa quando escreves lá uma posição de outro compartimento — esse tipo de bloqueio nunca chega a impedir nada de verdade (só avisa mais tarde, em Layouts), por isso é melhor saber logo ao escrever.
 
