@@ -954,6 +954,14 @@ function anyMergeableSlots(){
       if(!uldDefsOf(group).length) continue;
       var gid = group.id || ("#"+gi);
       var positions = group.positions || [];
+      // a position claimed by a fixed combination isn't offered on its own
+      // by generateLayouts either (see there) — skip it here too, so this
+      // hint doesn't count a slot that was never really independently
+      // offered.
+      var comboClaimed = {};
+      (group.combos||[]).forEach(function(combo){
+        (combo.posNames||[]).forEach(function(n){ comboClaimed[n] = true; });
+      });
       var mate = function(p){
         var m = String(p.name||"").match(/^(.*)([LR])$/);
         if(!m) return null;
@@ -962,16 +970,19 @@ function anyMergeableSlots(){
       };
       var keys = [];
       positions.forEach(function(posL){
+        if(comboClaimed[posL.name]) return;
         if(!/L$/.test(posL.name)) return;
         var posR = mate(posL);
-        if(!posR) return;
+        if(!posR || comboClaimed[posR.name]) return;
         var base = posL.name.slice(0,-1);
         var mw = Math.min(parseFloat(posL.maxWeight||0), parseFloat(posR.maxWeight||0));
         keys.push(base+"\u0000"+posL.fwd+"|"+posL.aft+"|"+posL.index+"|"+mw+
               "|2|"+posL.left+"/"+posL.right+"+"+posR.left+"/"+posR.right);
       });
       positions.forEach(function(pos){
-        if(/[LR]$/.test(pos.name) && mate(pos)) return;
+        if(comboClaimed[pos.name]) return;
+        var matePos = mate(pos);
+        if(matePos && !comboClaimed[matePos.name]) return;
         var base = String(pos.name||"").replace(/[LRP]$/,"") || pos.name;
         keys.push(base+"\u0000"+pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight+
               "|1|"+pos.left+"/"+pos.right);
@@ -1073,30 +1084,34 @@ function generateLayouts(){
           }), gid, locks);
         });
       };
-      // BETA — fixed combinations: a group with any defined skips the usual
-      // per-bay offering below entirely. Each combination becomes one
-      // atomic option spanning all its own positions together (never used
+      // BETA — fixed combinations: each combination becomes one atomic
+      // option spanning all its own positions together (never used
       // partially), carrying whatever it locks elsewhere. A combination
       // naming a position this group doesn't have is quietly skipped here —
       // the group box below flags it so it doesn't fail silently for the
-      // operator.
-      if(group.combos && group.combos.length){
-        group.combos.forEach(function(combo, ci){
-          var matched = (combo.posNames||[]).map(function(n){
-            return positions.filter(function(p){ return p.name===n; })[0];
-          }).filter(Boolean);
-          if(!matched.length) return;
-          var sig = matched.map(function(p){
-            return [p.name,p.fwd,p.aft,p.left,p.right,p.index,p.maxWeight].join("|"); }).join("+");
-          offer("combo:"+(combo.id||ci), sig, matched, combo.locks||[]);
-        });
-        return;
-      }
+      // operator. Only the positions a combination actually claims are
+      // pulled out of the normal offering below — a position this group has
+      // but no combination names is not "managed by combinations" at all,
+      // and must keep being offered exactly as before. Defining one
+      // combination is not a switch that silences every other position in
+      // the group.
+      var comboClaimed = {};
+      (group.combos||[]).forEach(function(combo, ci){
+        var matched = (combo.posNames||[]).map(function(n){
+          return positions.filter(function(p){ return p.name===n; })[0];
+        }).filter(Boolean);
+        if(!matched.length) return;
+        var sig = matched.map(function(p){
+          return [p.name,p.fwd,p.aft,p.left,p.right,p.index,p.maxWeight].join("|"); }).join("+");
+        offer("combo:"+(combo.id||ci), sig, matched, combo.locks||[]);
+        matched.forEach(function(p){ comboClaimed[p.name] = true; });
+      });
       // side by side: every L with an R of its own
       positions.forEach(function(posL){
+        if(comboClaimed[posL.name]) return;
         if(!/L$/.test(posL.name)) return;
         var posR = mate(posL);
-        if(!posR) return;
+        if(!posR || comboClaimed[posR.name]) return;
         var base = posL.name.slice(0,-1);
         var mw = Math.min(parseFloat(posL.maxWeight||0), parseFloat(posR.maxWeight||0));
         offer(base, posL.fwd+"|"+posL.aft+"|"+posL.index+"|"+mw+
@@ -1105,7 +1120,9 @@ function generateLayouts(){
       // and one container to a bay: a whole-bay position, a P bay, or a
       // half-bay position with no other half defined
       positions.forEach(function(pos){
-        if(/[LR]$/.test(pos.name) && mate(pos)) return;     // already offered as a pair
+        if(comboClaimed[pos.name]) return;
+        var matePos = mate(pos);
+        if(matePos && !comboClaimed[matePos.name]) return;   // already offered as a pair
         var base = String(pos.name||"").replace(/[LRP]$/,"") || pos.name;
         offer(base, pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight+
               "|1|"+pos.left+"/"+pos.right, [pos]);

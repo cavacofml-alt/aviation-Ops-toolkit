@@ -4,6 +4,7 @@ Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e
 
 ## 2026-09-22 — PR #119 (BETA — aguarda aprovação)
 Nova funcionalidade no Gerador de Layout de ULDs: "Fixed combinations" por grupo, para tipos que só carregam numa combinação fixa de posições e que obrigam a deixar outras posições vazias (ex. LD-8 em holds size code Q, conforme AHM565). O gerador passa a respeitar isso ao montar os layouts.
+Corrigido (ainda dentro da mesma PR beta): assim que um grupo tinha qualquer combinação definida, as posições desse grupo que não pertenciam a nenhuma combinação deixavam de ser geradas, sem aviso — confirmado com um ficheiro real onde `13PL`/`13PR` desapareceram do export só por o `12PL` ter uma combinação. Agora só as posições da combinação ficam geridas por ela; as restantes continuam normais.
 
 ## 2026-09-22 — PR #118
 Corrigido: no Gerador de Layout de ULDs, o menu "Add ULD group" mostrava sempre os mesmos IATA de exemplo (ex. "LD2 (AKH / DPE)") em vez dos que tu realmente adicionaste ao catálogo — o LD8 nem sequer tinha exemplo e aparecia sem nada. Agora mostra sempre os IATA reais do teu catálogo.
