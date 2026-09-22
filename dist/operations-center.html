@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Operations Center v1.2.244</title>
+<title>Operations Center v1.2.258</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -910,7 +910,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.244</span>
+      <span class="build-ver">v1.2.258</span>
     </header>
 
     <main>
@@ -1274,7 +1274,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.244 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.258 — Luís Cavaco
     Built 2026-09-22 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -7311,7 +7311,7 @@ function uldRender(){
   else host.innerHTML = viewStep3();
   bindStep();
   var canNext = [
-    U.ulds.length>0,
+    U.ulds.length>0 && hasRefStation(),
     U.compartments.length>0 && U.compartments.every(function(c){
       return c.uldGroups && c.uldGroups.length>0 &&
              c.uldGroups.every(function(g){ return g.positions.length>0; }); }),
@@ -7321,11 +7321,17 @@ function uldRender(){
   $("btnNext").style.display = U.step<2 ? "" : "none";
   $("btnNext").disabled = !canNext[U.step];
   $("nextHint").textContent = canNext[U.step] ? "" :
-    (U.step===0 ? "Add at least 1 ULD" : "Add positions to every group");
+    (U.step===0 ? (U.ulds.length===0 ? "Add at least 1 ULD" : "Enter the reference station above")
+                : "Add positions to every group");
 }
+function hasRefStation(){ return !!(U.refStation && String(U.refStation).trim()); }
 function stepReady(i){
   if(i<=0) return true;
-  if(i===1) return U.ulds.length>0;
+  // The reference station decides every index-sign check from here on
+  // (validateIndex, the export gate, the "worth checking" list) — moving
+  // on without it means every position typed in step 2 goes unchecked
+  // until the operator remembers to come back and fill it in.
+  if(i===1) return U.ulds.length>0 && hasRefStation();
   return U.compartments.length>0 && U.compartments.every(function(c){
     return c.uldGroups && c.uldGroups.length>0 &&
            c.uldGroups.every(function(g){ return g.positions.length>0; }); });
@@ -7333,7 +7339,9 @@ function stepReady(i){
 function renderStepbar(){
   $("stepbar").innerHTML = STEP_LABELS.map(function(l,i){
     var can = stepReady(i);
-    var tip = can ? "" : (i===1 ? "Add at least one ULD first" : "Give every group at least one position first");
+    var tip = can ? "" : (i===1
+      ? (U.ulds.length===0 ? "Add at least one ULD first" : "Enter the reference station first")
+      : "Give every group at least one position first");
     return '<button class="st stepbar-btn" data-act="goto-step" data-s="'+i+'" '+
       'data-on="'+(U.step===i?1:0)+'" data-done="'+(U.step>i?1:0)+'"'+
       (can?'':' disabled title="'+esc(tip)+'"')+'>'+
@@ -7632,11 +7640,63 @@ function groupBox(comp,g,gi){
   return '<div class="group-box" style="--gc:'+gc+'">'+header+'<div class="gbody">'+opts+colHead+
     (rows || '<div class="note" style="margin-bottom:8px">No positions yet.</div>')+
     pairForm+
-    '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'+addBtn+'</div></div></div>';
+    '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'+addBtn+'</div>'+
+    comboSection(g, gi)+
+    '</div></div>';
 }
 function pairInp(id,label,type,ph){
   return '<div class="field"><label for="'+id+'">'+esc(label)+'</label>'+
     '<input id="'+id+'" type="'+type+'" placeholder="'+esc(ph)+'" data-pair="1"></div>';
+}
+
+/* BETA — fixed combinations: for a ULD that only ever loads as one specific
+   set of this group's own positions used together, and whose own profile
+   requires named positions elsewhere (any group, any name) to stay empty
+   while it's used — e.g. an AHM565 remark like "LD-8 may load as 12PL,
+   21PL, 21PR; positions fwd and aft of it must be left empty." Nothing here
+   understands adjacency or container shape; the operator reads that off the
+   manual and types the position names, same as every other number in this
+   tool. Most groups will never need this section. */
+function comboSection(g, gi){
+  var posNames = (g.positions||[]).map(function(p){ return p.name; });
+  var combos = g.combos || [];
+  var head = combos.length
+    ? '<div class="posrow" style="grid-template-columns:1.3fr 1.3fr auto;margin:8px 0 2px">'+
+        ["Positions used together","Positions that must stay empty",""].map(function(h){
+          return '<div style="font-family:var(--mono);font-size:9px;letter-spacing:1.2px;'+
+            'text-transform:uppercase;color:var(--dim)">'+esc(h)+'</div>'; }).join("")+
+      '</div>'
+    : '';
+  var rows = combos.map(function(c, ci){
+    var names = c.posNames||[], locks = c.locks||[];
+    var missing = names.filter(function(n){ return posNames.indexOf(n)<0; });
+    // A plain-English restatement of the two lists — the two text fields
+    // read as raw data entry; this line is what the operator is actually
+    // telling the generator, in one sentence.
+    var summary = names.length
+      ? 'Loading <b>'+esc(names.join(" + "))+'</b>'+(names.length>1?' together':'')+
+        (locks.length ? ' keeps <b>'+esc(locks.join(", "))+'</b> empty.' : ' — nothing else is kept empty yet.')
+      : '';
+    return '<div class="posrow" style="grid-template-columns:1.3fr 1.3fr auto">'+
+      '<div class="field"><input type="text" value="'+esc(names.join(", "))+'" '+
+        'placeholder="e.g. 12PL, 21PL, 21PR" data-combo="1" data-g="'+gi+'" data-c="'+ci+'" data-ck="posNames">'+
+        '<span class="fielderr" style="'+(missing.length?'':'display:none')+'">'+
+          (missing.length ? 'not a position of this group: '+esc(missing.join(", ")) : '')+'</span>'+
+      '</div>'+
+      '<div class="field"><input type="text" value="'+esc(locks.join(", "))+'" '+
+        'placeholder="e.g. 11P, 22P" data-combo="1" data-g="'+gi+'" data-c="'+ci+'" data-ck="locks"></div>'+
+      '<button class="btn small danger" data-act="del-combo" data-g="'+gi+'" data-c="'+ci+'" '+
+        'style="align-self:start;margin-top:1px">&times;</button>'+
+      (summary ? '<div class="note" style="grid-column:1/3;margin-top:-4px">'+summary+'</div>' : '')+
+    '</div>';
+  }).join("");
+  return '<div style="border-top:1px dashed var(--line);padding-top:8px;margin-top:8px">'+
+    '<div class="sec" style="margin-bottom:4px">Fixed combinations <span style="color:var(--amber);font-weight:normal">(beta)</span></div>'+
+    '<div class="note" style="margin-bottom:8px">Only needed for a type that can never be loaded on its own in some positions — always as one exact set, ' +
+      'which also means specific other positions must stay empty (check the aircraft manual\'s remarks for that hold). Most types never need this — leave it empty.</div>'+
+    head + rows +
+    '<button class="btn small" data-act="add-combo" data-g="'+gi+'" style="margin-top:6px">+ Add combination</button>'+
+  '</div>';
 }
 
 function posInp(gi,pi,key,val,type,ph,err){
@@ -8064,6 +8124,14 @@ function anyMergeableSlots(){
       if(!uldDefsOf(group).length) continue;
       var gid = group.id || ("#"+gi);
       var positions = group.positions || [];
+      // a position claimed by a fixed combination isn't offered on its own
+      // by generateLayouts either (see there) — skip it here too, so this
+      // hint doesn't count a slot that was never really independently
+      // offered.
+      var comboClaimed = {};
+      (group.combos||[]).forEach(function(combo){
+        (combo.posNames||[]).forEach(function(n){ comboClaimed[n] = true; });
+      });
       var mate = function(p){
         var m = String(p.name||"").match(/^(.*)([LR])$/);
         if(!m) return null;
@@ -8072,16 +8140,19 @@ function anyMergeableSlots(){
       };
       var keys = [];
       positions.forEach(function(posL){
+        if(comboClaimed[posL.name]) return;
         if(!/L$/.test(posL.name)) return;
         var posR = mate(posL);
-        if(!posR) return;
+        if(!posR || comboClaimed[posR.name]) return;
         var base = posL.name.slice(0,-1);
         var mw = Math.min(parseFloat(posL.maxWeight||0), parseFloat(posR.maxWeight||0));
         keys.push(base+"\u0000"+posL.fwd+"|"+posL.aft+"|"+posL.index+"|"+mw+
               "|2|"+posL.left+"/"+posL.right+"+"+posR.left+"/"+posR.right);
       });
       positions.forEach(function(pos){
-        if(/[LR]$/.test(pos.name) && mate(pos)) return;
+        if(comboClaimed[pos.name]) return;
+        var matePos = mate(pos);
+        if(matePos && !comboClaimed[matePos.name]) return;
         var base = String(pos.name||"").replace(/[LRP]$/,"") || pos.name;
         keys.push(base+"\u0000"+pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight+
               "|1|"+pos.left+"/"+pos.right);
@@ -8126,7 +8197,14 @@ function generateLayouts(){
     // never produces a duplicate.
     var mergeIdentical = U.mergeIdentical !== false;
     var zoneBySignature = {};
-    function addOption(base, sig, positions, gid){
+    // BETA — fixed combinations: some ULDs (e.g. an LD-8 in a size-code-Q
+    // hold) may only load as one specific set of positions used together,
+    // and using it means named positions elsewhere must stay empty (the
+    // container's own profile intrudes past its listed bay). "locks" is
+    // that list of position names — carried on the option so the layout
+    // walk below can treat "occupies a locked name" the same as a real
+    // station overlap, without the algorithm needing to know why.
+    function addOption(base, sig, positions, gid, locks){
       if(!zoneBySignature[base]) zoneBySignature[base] = {};
       var key = mergeIdentical ? sig : sig + "\u0000" + gid;
       var existing = zoneBySignature[base][key];
@@ -8145,7 +8223,7 @@ function generateLayouts(){
       // to this signature's certified list — a merged slot's name must show
       // every certified IATA ("2LD3(AKE/PKC)"), not just whichever group
       // happened to reach it first.
-      var opt = { positions:positions, certified:certified };
+      var opt = { positions:positions, certified:certified, locks: locks||[] };
       zoneBySignature[base][key] = opt;
       if(!zoneOptionsMap[base]) zoneOptionsMap[base]=[];
       zoneOptionsMap[base].push(opt);
@@ -8169,18 +8247,41 @@ function generateLayouts(){
         var want = m[1] + (m[2] === "L" ? "R" : "L");
         return positions.filter(function(q){ return q.name === want; })[0] || null;
       };
-      var offer = function(base, sig, posList){
+      var offer = function(base, sig, posList, locks){
         uldDefs.forEach(function(uldDef){
           addOption(base, sig, posList.map(function(p){
             return Object.assign({}, p, {uld:uldDef.iata, uldType:group.uldType});
-          }), gid);
+          }), gid, locks);
         });
       };
+      // BETA — fixed combinations: each combination becomes one atomic
+      // option spanning all its own positions together (never used
+      // partially), carrying whatever it locks elsewhere. A combination
+      // naming a position this group doesn't have is quietly skipped here —
+      // the group box below flags it so it doesn't fail silently for the
+      // operator. Only the positions a combination actually claims are
+      // pulled out of the normal offering below — a position this group has
+      // but no combination names is not "managed by combinations" at all,
+      // and must keep being offered exactly as before. Defining one
+      // combination is not a switch that silences every other position in
+      // the group.
+      var comboClaimed = {};
+      (group.combos||[]).forEach(function(combo, ci){
+        var matched = (combo.posNames||[]).map(function(n){
+          return positions.filter(function(p){ return p.name===n; })[0];
+        }).filter(Boolean);
+        if(!matched.length) return;
+        var sig = matched.map(function(p){
+          return [p.name,p.fwd,p.aft,p.left,p.right,p.index,p.maxWeight].join("|"); }).join("+");
+        offer("combo:"+(combo.id||ci), sig, matched, combo.locks||[]);
+        matched.forEach(function(p){ comboClaimed[p.name] = true; });
+      });
       // side by side: every L with an R of its own
       positions.forEach(function(posL){
+        if(comboClaimed[posL.name]) return;
         if(!/L$/.test(posL.name)) return;
         var posR = mate(posL);
-        if(!posR) return;
+        if(!posR || comboClaimed[posR.name]) return;
         var base = posL.name.slice(0,-1);
         var mw = Math.min(parseFloat(posL.maxWeight||0), parseFloat(posR.maxWeight||0));
         offer(base, posL.fwd+"|"+posL.aft+"|"+posL.index+"|"+mw+
@@ -8189,7 +8290,9 @@ function generateLayouts(){
       // and one container to a bay: a whole-bay position, a P bay, or a
       // half-bay position with no other half defined
       positions.forEach(function(pos){
-        if(/[LR]$/.test(pos.name) && mate(pos)) return;     // already offered as a pair
+        if(comboClaimed[pos.name]) return;
+        var matePos = mate(pos);
+        if(matePos && !comboClaimed[matePos.name]) return;   // already offered as a pair
         var base = String(pos.name||"").replace(/[LRP]$/,"") || pos.name;
         offer(base, pos.fwd+"|"+pos.aft+"|"+pos.index+"|"+pos.maxWeight+
               "|1|"+pos.left+"/"+pos.right, [pos]);
@@ -8230,7 +8333,18 @@ function generateLayouts(){
     });
     allOptions.sort(function(a,b){ return (a.fwd-b.fwd) || (a.aft-b.aft); });
 
-    var conflict = function(a,b){ return a.fwd < b.aft && b.fwd < a.aft; };
+    // BETA — a combination's "locks" list conflicts with any option that
+    // occupies one of those names, on top of the usual station overlap —
+    // this is how a fixed combination keeps its required-empty neighbours
+    // out of every other option's layouts, even ones that don't physically
+    // overlap it in station terms.
+    var locksClash = function(a,b){
+      var an = a.positions.map(function(p){ return p.name; });
+      var bn = b.positions.map(function(p){ return p.name; });
+      return (a.locks||[]).some(function(n){ return bn.indexOf(n)>=0; })
+          || (b.locks||[]).some(function(n){ return an.indexOf(n)>=0; });
+    };
+    var conflict = function(a,b){ return (a.fwd < b.aft && b.fwd < a.aft) || locksClash(a,b); };
     var results = [];
     var walk = function(idx, chosen){
       if(idx === allOptions.length){
@@ -8695,6 +8809,24 @@ function bindStep(){
       if(typeof uldTouch === "function") uldTouch();
     });
   });
+  // BETA — fixed-combination fields: parsed as a comma/space-separated list
+  // of position names, same as the operator would read them off a manual.
+  // No re-render while typing (same reasoning as data-pos above); the
+  // "not a position of this group" hint refreshes once the field is left.
+  Array.prototype.forEach.call(host.querySelectorAll('input[data-combo]'), function(inp){
+    var apply = function(){
+      var g = +inp.getAttribute("data-g"), c = +inp.getAttribute("data-c"), ck = inp.getAttribute("data-ck");
+      var comp = U.compartments[U.activeComp];
+      var group = comp && comp.uldGroups[g];
+      var combo = group && group.combos && group.combos[c];
+      if(!combo) return;
+      combo[ck] = inp.value.split(/[,\n]/).map(function(s){ return s.trim().toUpperCase(); }).filter(Boolean);
+      if(U.layouts) U.layoutsStale = true;
+      if(typeof uldTouch === "function") uldTouch();
+    };
+    inp.addEventListener("input", apply);
+    inp.addEventListener("blur", function(){ apply(); uldRender(); });
+  });
   // live preview of the L/R pair being created
   Array.prototype.forEach.call(host.querySelectorAll('input[data-pair]'), function(inp){
     inp.addEventListener("input", function(){
@@ -8750,7 +8882,14 @@ function mirrorDom(g,p,k,val){
 function fillPairFormFromBase(){
   var comp = U.compartments[U.activeComp];
   if(!comp) return;
-  var src = pairAtBase(comp, ($("pf_base")||{}).value);
+  var base = (($("pf_base")||{}).value||"").trim().toUpperCase();
+  // A "P" base (a pallet-style bay, e.g. 12P) is its own type's own bay —
+  // it must never silently pick up FWD/AFT/index from an unrelated
+  // position elsewhere just because the base number happens to match.
+  // Plain numeric bases still inherit from an L/R pair already in the
+  // compartment, same as before.
+  if(/P$/.test(base)) return;
+  var src = pairAtBase(comp, base);
   if(!src) return;
   [["pf_fwd", src.fwd], ["pf_aft", src.aft], ["pf_index", src.index],
    ["pf_off", pairOffsetOf(src)]].forEach(function(pair){
@@ -8874,6 +9013,20 @@ function onUldClick(e){
     var gp2 = comp.uldGroups[+b.getAttribute("data-g")].positions[+b.getAttribute("data-p")];
     pushUndo("removed position "+((gp2&&gp2.name)||""));
     comp.uldGroups[+b.getAttribute("data-g")].positions.splice(+b.getAttribute("data-p"),1); uldRender();
+  }
+  else if(act==="add-combo"){
+    var gCombo = comp.uldGroups[+b.getAttribute("data-g")];
+    if(!gCombo) return;
+    gCombo.combos = gCombo.combos || [];
+    gCombo.combos.push({ id:uid(), posNames:[], locks:[] });
+    if(U.layouts) U.layoutsStale = true;
+    uldRender();
+  }
+  else if(act==="del-combo"){
+    var gDelCombo = comp.uldGroups[+b.getAttribute("data-g")];
+    if(gDelCombo && gDelCombo.combos) gDelCombo.combos.splice(+b.getAttribute("data-c"),1);
+    if(U.layouts) U.layoutsStale = true;
+    uldRender();
   }
   else if(act==="add-bulk"){
     U.bulk = U.bulk || [];
@@ -9030,6 +9183,19 @@ $("refStation").addEventListener("input", function(){
   // a full uldRender() here would take the caret out of this input
   var panel = $("uldAircraft");
   if(panel && AIRCRAFT_VIEW) panel.outerHTML = aircraftPanel(AIRCRAFT_VIEW.num, AIRCRAFT_VIEW.mode);
+  // filling it in is now what unlocks step 2 — reflect that immediately,
+  // the same targeted way as the diagram redraw above
+  if(U.step===0){
+    var ready = U.ulds.length>0 && hasRefStation();
+    $("btnNext").disabled = !ready;
+    $("nextHint").textContent = ready ? "" :
+      (U.ulds.length===0 ? "Add at least 1 ULD" : "Enter the reference station above");
+    var tab = $("stepbar").querySelector('[data-s="1"]');
+    if(tab){
+      tab.disabled = !ready;
+      tab.title = ready ? "" : (U.ulds.length===0 ? "Add at least one ULD first" : "Enter the reference station first");
+    }
+  }
 });
 $("btnSaveCfg").addEventListener("click", function(){
   if(typeof uldSaveNow === "function") uldSaveNow();
