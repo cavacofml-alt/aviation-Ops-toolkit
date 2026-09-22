@@ -1036,18 +1036,22 @@ var TPL_B787_8 = {
       {name:"21P",fwd:"639.7",aft:"735.9",left:"0",right:"0",index:"-0.00196",maxWeight:"4717"},
       {name:"22P",fwd:"736.6",aft:"832.8",left:"0",right:"0",index:"-0.00147",maxWeight:"4717"},
     ]},
+    // FWD deliberately brought back from 639.7 to 638.8 — this LD-8 and
+    // Compartment 1's 13PL/13PR are two alternative placements of the same
+    // physical AHM565 3.1.3 combination and can never both be loaded. A
+    // "Fixed combination" lock across compartments only ever warns here
+    // (see PR #123) — it doesn't stop the operator's own load-control
+    // system from letting both be selected, because that system checks
+    // station overlap, not this tool's lock metadata. Overlapping the
+    // stations by the smallest realistic margin makes that system's own
+    // overlap check refuse the pair, without touching the index (still
+    // the real -0.00196) that its weight×index math actually depends on.
+    // A fixed combination stays worth declaring only within one
+    // compartment (Compartment 1's 12PL/13PL example below), where the
+    // lock is a hard, enforced exclusion, not just a warning.
     {id:"g12",uldType:"LD8",iata:"DQF",label:"LD8 — DQF",positions:[
-      {name:"21PL",fwd:"639.7",aft:"735.9",left:"0", right:"50",index:"-0.00196",maxWeight:"2267"},
-      {name:"21PR",fwd:"639.7",aft:"735.9",left:"50",right:"0", index:"-0.00196",maxWeight:"2267"},
-    ],
-    // Per AHM565 3.1.3: this LD-8 (12PL+21PL+21PR) and the Compartment 1
-    // combination (13PL+13PR) are the same physical hold's two alternative
-    // placements — they can never both be used. The lock only needs to be
-    // declared on one side to be caught (crossCompartmentWarnings checks
-    // both directions), but declaring it here too keeps this group
-    // self-describing on its own, without depending on Compartment 1's box.
-    combos:[
-      {id:"cb1",posNames:["21PL","21PR"],locks:["13PL","13PR"]},
+      {name:"21PL",fwd:"638.8",aft:"735.9",left:"0", right:"50",index:"-0.00196",maxWeight:"2267"},
+      {name:"21PR",fwd:"638.8",aft:"735.9",left:"50",right:"0", index:"-0.00196",maxWeight:"2267"},
     ]},
   ]},
   {id:"c3",number:3,uldGroups:[

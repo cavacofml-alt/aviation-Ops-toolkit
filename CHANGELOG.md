@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-22 — PR #124
+Atualizado o template "Boeing 787-8": a `21PL`/`21PR` passa a sobrepor-se ligeiramente à `13PL`/`13PR` (FWD 638.8, índice sem alteração), para que o sistema de carregamento do operador — que já bloqueia posições fisicamente sobrepostas — impeça sozinho essa combinação. Removida a combinação fixa entre Compartment 1 e 2, que só avisava e não bloqueava; a combinação fixa dentro do Compartment 1 (`12PL` vs `13PL`/`13PR`), essa sim bloqueada de verdade pela ferramenta, mantém-se.
+
 ## 2026-09-22 — PR #123
 Novo aviso no Gerador de Layout de ULDs: quando uma combinação fixa num compartimento obriga a deixar vazia uma posição que está noutro compartimento (ex. um LD-8 cujas combinações atravessam a fronteira entre compartimentos, como no AHM565), a ferramenta agora avisa — junto ao aviso já existente para sobreposições físicas entre compartimentos. Não bloqueia automaticamente, só avisa, para não arriscar mudar como os layouts já gerados funcionam.
 
