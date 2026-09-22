@@ -666,19 +666,16 @@ function viewStep3(){
 
   var n = nums[U.activeLayoutComp];
   var list = U.layouts[n] || [];
-  var warns = crossCompartmentWarnings();
-  var warnHtml = warns.map(function(w){
-    var title = w.kind==="lock"
-      ? "Fixed-combination conflicts between compartments"
-      : "Physical conflicts between compartments";
-    var why = w.kind==="lock"
-      ? "A fixed combination in one compartment keeps a position empty that this pairing would use in the other."
-      : "These layouts can be used individually, but not simultaneously on the same flight.";
-    return '<div class="warnbox"><b>&#9888; '+title+'</b><br>'+
-      'Compartment '+w.n1+' &harr; Compartment '+w.n2+': '+w.conflicting.length+' invalid layout combinations.'+
-      '<div style="color:var(--dim);margin-top:4px">Example: '+esc(w.conflicting[0])+'</div>'+
-      '<div style="color:var(--dim);margin-top:4px">'+why+'</div></div>';
-  }).join("");
+  // Rather than a single box reporting how many cross-compartment pairings
+  // are impossible in the whole aircraft (a number with no bearing on any
+  // one choice — see renderLayoutList, which marks each layout that has a
+  // conflict directly), this stays a short pointer to that per-layout marker.
+  var anyWarns = crossCompartmentWarnings().length > 0;
+  var warnHtml = anyWarns
+    ? '<div class="warnbox"><b>&#9888; Some layouts can\'t be used together across compartments</b>'+
+      '<div style="color:var(--dim);margin-top:4px">Marked with &#9888; below — a compartment\'s layout can still be used on its own, '+
+      'just not at the same time as the one it conflicts with.</div></div>'
+    : '';
 
   var body = '<div style="border:1px solid var(--line);border-radius:2px;overflow:hidden">'+
     '<div style="padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'+
@@ -948,12 +945,61 @@ function issueBox(o){
 /* Layouts are collapsed by default and shown in pages: one compartment can
    produce hundreds of valid combinations, and an open list is unusable. */
 var LAYOUT_PAGE = 25;
+/* Whether this layout can coexist with any layout in another compartment —
+   checked against every other compartment's own list, since a layout is
+   never "invalid" on its own, only incompatible with a specific pairing
+   (see the note above crossCompartmentWarnings). Two kinds of clash: a
+   station overlap (both would occupy the same physical zone) and a lock
+   clash (one keeps empty a position the other actually uses). */
+// Checked against the OTHER compartment's own position definitions, not its
+// generated layouts — counting generated layouts multiplies one real clash
+// (a single overlapping bay, or a single locked name) by every unrelated way
+// the rest of that compartment can be filled, which says nothing about how
+// many physical positions are actually in conflict.
+function layoutConflicts(compNum, layout){
+  var out = [];
+  var names = layout.positions.map(function(p){ return p.name; });
+  var fwds = layout.positions.map(function(p){ return parseFloat(p.fwd); });
+  var afts = layout.positions.map(function(p){ return parseFloat(p.aft); });
+  var fwd = Math.min.apply(null, fwds), aft = Math.max.apply(null, afts);
+  U.compartments.forEach(function(c){
+    if(c.number === compNum) return;
+    var overlapNames = [], lockNames = [];
+    (c.uldGroups||[]).forEach(function(g){
+      (g.positions||[]).forEach(function(p){
+        var f2 = parseFloat(p.fwd), a2 = parseFloat(p.aft);
+        if(fwd < a2 && f2 < aft && overlapNames.indexOf(p.name) < 0) overlapNames.push(p.name);
+      });
+      (g.combos||[]).forEach(function(combo){
+        (combo.locks||[]).forEach(function(nm){
+          if(names.indexOf(nm) >= 0 && lockNames.indexOf(nm) < 0) lockNames.push(nm);
+        });
+      });
+    });
+    (layout.locks||[]).forEach(function(nm){
+      if(compartmentsOf(nm).indexOf(c.number) >= 0 && lockNames.indexOf(nm) < 0) lockNames.push(nm);
+    });
+    if(overlapNames.length) out.push({ n2:c.number, kind:"overlap", positions:overlapNames });
+    if(lockNames.length) out.push({ n2:c.number, kind:"lock", positions:lockNames });
+  });
+  return out;
+}
+
 function renderLayoutList(compNum, list){
   var limit = U.layoutLimit[compNum] || LAYOUT_PAGE;
   var shown = list.slice(0, limit);
   var html = shown.map(function(l, i){
     var key = compNum + ":" + i;
     var open = !!U.openLayout[key];
+    var conflicts = layoutConflicts(compNum, l);
+    var conflictNote = conflicts.length
+      ? '<div class="note" style="color:var(--amber);margin-top:8px">&#9888; Conflicts with Compartment '+
+          conflicts.map(function(cf){
+            var why = cf.kind==="lock" ? "kept empty by a fixed combination" : "same physical zone";
+            return cf.n2+' <b>'+esc(cf.positions.join(", "))+'</b> ('+why+')';
+          }).join("; Compartment ")+
+        '</div>'
+      : '';
     var body = open
       ? deckStrip(l) +
         '<div style="overflow-x:auto;margin-top:8px"><table><thead><tr><th>Position</th><th>ULD</th>'+
@@ -965,7 +1011,7 @@ function renderLayoutList(compNum, list){
             esc(p.uld)+'</span> <span style="color:'+pc+'">'+esc(p.uldType)+'</span></td>'+
             '<td style="color:var(--dim)">'+cert+'</td>'+
             '<td>'+esc(p.fwd)+'</td><td>'+esc(p.aft)+'</td><td>'+esc(p.index)+'</td><td>'+esc(p.maxWeight)+'</td></tr>';
-        }).join("")+'</tbody></table></div>'
+        }).join("")+'</tbody></table></div>'+ conflictNote
       : '';
     return '<div class="layout-item">'+
       '<div class="layout-name" data-act="toggle-layout" data-k="'+esc(key)+'">'+
@@ -975,6 +1021,7 @@ function renderLayoutList(compNum, list){
                   : /LD8/.test(part) ? "LD8" : /LD3/.test(part) ? "LD3" : null;
             return t ? '<span style="color:'+groupColor(t)+'">'+part+'</span>' : part;
           }).join('<span style="color:var(--faint)">/</span>')+'</span>'+
+        (conflicts.length ? '<span style="color:var(--amber)" title="Conflicts with another compartment — see details below">&#9888;</span>' : '')+
         '<span class="collapsed-hint" style="margin-left:auto">'+l.positions.length+' pos</span>'+
       '</div>'+ body +'</div>';
   }).join("");
