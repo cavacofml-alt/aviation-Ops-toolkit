@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-22 — PR #127
+Reescrita a explicação das "Fixed combinations" no Gerador de Layout de ULDs: já não faz referência ao manual da aeronave e diz de forma mais direta o que a funcionalidade faz.
+
 ## 2026-09-22 — PR #126
 Simplificado o aviso do PR anterior no Gerador de Layout de ULDs: em vez de explicar que "só avisa, nunca bloqueia" (linguagem interna da ferramenta), passa a dizer diretamente "only positions in this compartment are allowed" — mais direto para quem preenche o campo.
 
