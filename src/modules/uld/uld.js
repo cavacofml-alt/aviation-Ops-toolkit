@@ -566,8 +566,8 @@ function comboSection(comp, g, gi){
   }).join("");
   return '<div style="border-top:1px dashed var(--line);padding-top:8px;margin-top:8px">'+
     '<div class="sec" style="margin-bottom:4px">Fixed combinations</div>'+
-    '<div class="note" style="margin-bottom:8px">Only needed for a type that can never be loaded on its own in some positions — always as one exact set, ' +
-      'which also means specific other positions must stay empty (check the aircraft manual\'s remarks for that hold). Most types never need this — leave it empty.</div>'+
+    '<div class="note" style="margin-bottom:8px">Use this only if this type must always load as one exact set of positions together, ' +
+      'and loading it that way requires certain other positions to stay empty. Most types don\'t need this — leave it empty.</div>'+
     head + rows +
     '<button class="btn small" data-act="add-combo" data-g="'+gi+'" style="margin-top:6px">+ Add combination</button>'+
   '</div>';
