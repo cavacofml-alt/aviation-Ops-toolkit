@@ -539,7 +539,7 @@ function comboSection(g, gi){
     '</div>';
   }).join("");
   return '<div style="border-top:1px dashed var(--line);padding-top:8px;margin-top:8px">'+
-    '<div class="sec" style="margin-bottom:4px">Fixed combinations <span style="color:var(--amber);font-weight:normal">(beta)</span></div>'+
+    '<div class="sec" style="margin-bottom:4px">Fixed combinations</div>'+
     '<div class="note" style="margin-bottom:8px">Only needed for a type that can never be loaded on its own in some positions — always as one exact set, ' +
       'which also means specific other positions must stay empty (check the aircraft manual\'s remarks for that hold). Most types never need this — leave it empty.</div>'+
     head + rows +

@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Operations Center v1.2.267</title>
+<title>Operations Center v1.2.269</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -910,7 +910,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.267</span>
+      <span class="build-ver">v1.2.269</span>
     </header>
 
     <main>
@@ -1274,7 +1274,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.267 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.269 — Luís Cavaco
     Built 2026-09-22 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -7860,7 +7860,7 @@ function comboSection(g, gi){
     '</div>';
   }).join("");
   return '<div style="border-top:1px dashed var(--line);padding-top:8px;margin-top:8px">'+
-    '<div class="sec" style="margin-bottom:4px">Fixed combinations <span style="color:var(--amber);font-weight:normal">(beta)</span></div>'+
+    '<div class="sec" style="margin-bottom:4px">Fixed combinations</div>'+
     '<div class="note" style="margin-bottom:8px">Only needed for a type that can never be loaded on its own in some positions — always as one exact set, ' +
       'which also means specific other positions must stay empty (check the aircraft manual\'s remarks for that hold). Most types never need this — leave it empty.</div>'+
     head + rows +
