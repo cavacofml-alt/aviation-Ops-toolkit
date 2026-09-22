@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-22 — PR #120
+Corrigido: posições `PL`/`PR` (ex. LD-8) deixaram também de copiar estação/índice/peso máximo automaticamente uma da outra depois de criadas — só posições L/R normais (ex. LD-3) continuam a espelhar-se, já que os dois lados de uma posição "P" nem sempre têm os mesmos números.
+
 ## 2026-09-22 — PR #119
 Nova funcionalidade no Gerador de Layout de ULDs, aprovada e já em produção: "Fixed combinations" por grupo, para tipos que só carregam numa combinação fixa de posições e que obrigam a deixar outras posições vazias (ex. LD-8 em holds size code Q, conforme AHM565). O gerador passa a respeitar isso ao montar os layouts.
 Corrigido (dentro da mesma PR): assim que um grupo tinha qualquer combinação definida, as posições desse grupo que não pertenciam a nenhuma combinação deixavam de ser geradas, sem aviso — confirmado com um ficheiro real onde `13PL`/`13PR` desapareceram do export só por o `12PL` ter uma combinação. Agora só as posições da combinação ficam geridas por ela; as restantes continuam normais.

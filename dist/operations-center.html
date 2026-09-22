@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Operations Center v1.2.258</title>
+<title>Operations Center v1.2.262</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -910,7 +910,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.258</span>
+      <span class="build-ver">v1.2.262</span>
     </header>
 
     <main>
@@ -1274,7 +1274,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.258 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.262 — Luís Cavaco
     Built 2026-09-22 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -8771,7 +8771,11 @@ function bindStep(){
       }
       // auto-mirror L/R pairs both ways (fwd/aft/index/max weight shared,
       // left/right swapped) — editing either side keeps the other in sync.
-      if(/[LR]$/.test(pos.name||"")){
+      // Never for a "PL"/"PR" position: unlike a plain container's L/R
+      // split, a pallet-style position's two sides are not guaranteed to
+      // share the same numbers — the operator's own manual is the only
+      // source for each side, so nothing here is inherited between them.
+      if(/[LR]$/.test(pos.name||"") && !/P[LR]$/.test(pos.name||"")){
         var side = pos.name.slice(-1), otherSide = side==="L" ? "R" : "L";
         var base = pos.name.slice(0,-1);
         var ri = -1;
