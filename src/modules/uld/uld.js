@@ -292,7 +292,14 @@ function viewStep2(){
         '<div style="display:flex;gap:8px;align-items:end;margin-top:14px;flex-wrap:wrap">'+
         '<div class="field" style="min-width:220px"><label for="newGroupType">Add ULD group</label>'+
         '<select id="newGroupType">'+avail.map(function(t){
-          return '<option value="'+esc(t)+'">'+esc(ULD_TYPE_LABELS[t]||t)+'</option>'; }).join("")+'</select></div>'+
+          // Once the operator has added ULDs, the group they are about to
+          // create is tied to those, not to the generic hint shown before
+          // any catalog existed — showing the hint here drifts from the
+          // catalog the moment it differs (an LD8 catalog entry has no
+          // hint at all; an LD2 with only DPE still claimed "AKH / DPE").
+          var ia = iatasOfType(t);
+          var label = ia.length ? t+" ("+ia.join(" / ")+")" : t;
+          return '<option value="'+esc(t)+'">'+esc(label)+'</option>'; }).join("")+'</select></div>'+
         '<button class="btn small" data-act="add-group">+ Add group</button></div>'
         : '<div class="note" style="margin-top:12px">All ULD types available have already been added.</div>')+
     '</div>'+ (groups || '') + bulkSection();

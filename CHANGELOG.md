@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-22 — PR #118
+Corrigido: no Gerador de Layout de ULDs, o menu "Add ULD group" mostrava sempre os mesmos IATA de exemplo (ex. "LD2 (AKH / DPE)") em vez dos que tu realmente adicionaste ao catálogo — o LD8 nem sequer tinha exemplo e aparecia sem nada. Agora mostra sempre os IATA reais do teu catálogo.
+
 ## 2026-09-21 — PR #117
 Corrigido: no Gerador de Layout de ULDs, a explicação da opção "Combine ULDs certified for the same position" dizia sempre que os tipos se iam combinar — mesmo quando nenhum tipo partilhava a mesma estação/índice/peso máximo e por isso nada se ia combinar de facto. Agora avisa quando não há nada para combinar.
 
