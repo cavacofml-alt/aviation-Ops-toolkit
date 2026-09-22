@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-22 — PR #121
+Adicionado o template "Boeing 787-8" à lista de aeronaves do Gerador de Layout de ULDs, com base na configuração real fornecida (4 compartimentos + bulk, incluindo a combinação fixa do LD-8).
+
 ## 2026-09-22 — PR #120
 Corrigido: posições `PL`/`PR` (ex. LD-8) deixaram também de copiar estação/índice/peso máximo automaticamente uma da outra depois de criadas — só posições L/R normais (ex. LD-3) continuam a espelhar-se, já que os dois lados de uma posição "P" nem sempre têm os mesmos números.
 
