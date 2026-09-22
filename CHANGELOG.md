@@ -3,7 +3,7 @@
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
 ## 2026-09-22 — PR #131
-No separador Layouts do Gerador de Layout de ULDs, passa a ser possível marcar um layout como "usado" em cada compartimento. A partir daí, os layouts de outros compartimentos que entrem em conflito com essa escolha deixam de aparecer na lista, em vez de só terem um aviso — se uma seleção já feita ficar inválida por causa de outra mais tarde, fica marcada a vermelho em vez de ser trocada sozinha.
+No separador Layouts do Gerador de Layout de ULDs: (1) passa a ser possível marcar um layout como "usado" em cada compartimento — os layouts de outros compartimentos que colidam com essa escolha deixam de aparecer na lista, em vez de só terem um aviso; (2) novo botão "Export selected configuration", que exporta só os layouts marcados (uma linha por compartimento) em vez do catálogo completo, e recusa-se a gerar o ficheiro se faltar alguma seleção ou se duas seleções colidirem entre si — é este ficheiro, e não o catálogo completo, que garante que uma combinação impossível (ex. um LD-8 em duas posições incompatíveis entre compartimentos) nunca chega a sair da ferramenta.
 
 ## 2026-09-22 — PR #130
 Corrigido o símbolo do aviso do PR anterior (campo "positions that must stay empty"): o ícone não aparecia direito na letra usada pela aplicação e ficava a parecer um "i" solto por engano — trocado por um símbolo que já é usado em confirmações noutros sítios da ferramenta.

@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Operations Center v1.2.300</title>
+<title>Operations Center v1.2.304</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -910,7 +910,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.300</span>
+      <span class="build-ver">v1.2.304</span>
     </header>
 
     <main>
@@ -1274,7 +1274,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.300 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.304 — Luís Cavaco
     Built 2026-09-22 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -7981,7 +7981,8 @@ function viewStep3(){
 
   var head = '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'+
     '<button class="btn primary" data-act="generate"'+(blocked?" disabled":"")+'>&#9889; Generate all layouts</button>'+
-    (U.layouts && !blocked ? '<button class="btn" data-act="xlsx-all">&#8595; Export all (Excel)</button>':'')+'</div>' + mergeBox + gate+
+    (U.layouts && !blocked ? '<button class="btn" data-act="xlsx-all">&#8595; Export all (Excel)</button>':'')+
+    (U.layouts && !blocked ? '<button class="btn primary" data-act="xlsx-selected">&#8595; Export selected configuration</button>':'')+'</div>' + mergeBox + gate+
     (U.layouts && U.layoutsStale && !blocked ? '<div class="warnbox" style="margin-bottom:14px">'+
       '<b>&#9888; Data changed since these layouts were generated</b>'+
       '<div style="margin-top:4px;color:var(--dim)">A position was edited after the layouts below were computed — '+
@@ -8912,6 +8913,71 @@ function allLayoutRows(){
   return out.concat(bulkRows());
 }
 
+/* Compartments that have candidate layouts but no layout marked as used —
+   the final-configuration export needs one concrete choice per compartment,
+   not "whichever one, pick any". */
+function missingSelections(){
+  return U.compartments.filter(function(c){
+    return (U.layouts[c.number]||[]).length && U.selectedLayout[c.number] == null;
+  }).map(function(c){ return c.number; });
+}
+
+/* Real conflicts between the layouts actually marked as used, compartment
+   by compartment — the same overlap/lock test as conflictsWithSelection,
+   just run once over every selected pair instead of one layout at a time.
+   This is what the final-configuration export refuses to ship: unlike the
+   full catalogue (every candidate, warnings only), this file is meant to be
+   the one thing downstream loads without knowing any of this tool's rules —
+   so it can never contain two selections that cannot coexist. */
+function selectedConfigConflicts(){
+  var nums = U.compartments.map(function(c){ return c.number; });
+  var conflicts = [];
+  for(var i=0; i<nums.length; i++){
+    for(var j=i+1; j<nums.length; j++){
+      var n1=nums[i], n2=nums[j];
+      var i1=U.selectedLayout[n1], i2=U.selectedLayout[n2];
+      if(i1==null || i2==null) continue;
+      var l1=(U.layouts[n1]||[])[i1], l2=(U.layouts[n2]||[])[i2];
+      if(!l1 || !l2) continue;
+      var names1=l1.positions.map(function(p){return p.name;}), names2=l2.positions.map(function(p){return p.name;});
+      var fwds1=l1.positions.map(function(p){return parseFloat(p.fwd);}), afts1=l1.positions.map(function(p){return parseFloat(p.aft);});
+      var fwds2=l2.positions.map(function(p){return parseFloat(p.fwd);}), afts2=l2.positions.map(function(p){return parseFloat(p.aft);});
+      var f1=Math.min.apply(null,fwds1), a1=Math.max.apply(null,afts1);
+      var f2=Math.min.apply(null,fwds2), a2=Math.max.apply(null,afts2);
+      var overlap = f1<a2 && f2<a1;
+      var lockClash = (l1.locks||[]).some(function(nm){ return names2.indexOf(nm)>=0; })
+                   || (l2.locks||[]).some(function(nm){ return names1.indexOf(nm)>=0; });
+      if(overlap || lockClash) conflicts.push({ n1:n1, n2:n2, name1:l1.name, name2:l2.name, kind: lockClash?"lock":"overlap" });
+    }
+  }
+  return conflicts;
+}
+
+// One row per position of the layout actually marked as used in each
+// compartment — never the full catalogue. This is the file meant to leave
+// the tool and be trusted as-is: it cannot be built at all while a
+// compartment has no selection, or while two selections conflict (see
+// selectedConfigConflicts) — there is no "export anyway" for either, unlike
+// the reference export above.
+function selectedConfigRows(){
+  var rows = [];
+  U.compartments.forEach(function(c){
+    var idx = U.selectedLayout[c.number];
+    var layout = idx == null ? null : (U.layouts[c.number]||[])[idx];
+    if(!layout) return;
+    layout.positions.forEach(function(pos){
+      var seenTypes = {}, certTypes = (pos.certified||[{type:pos.uldType}])
+        .filter(function(cc){ if(seenTypes[cc.type]) return false; return seenTypes[cc.type]=true; })
+        .map(function(cc){ return cc.type+",LA"; }).join(";");
+      rows.push([c.number, layout.name, pos.name, certTypes, +pos.fwd, +pos.aft,
+        (pos.left===""||pos.left==null)?0:+pos.left,
+        (pos.right===""||pos.right==null)?0:+pos.right,
+        exportIndex(pos.index), 0, +pos.maxWeight]);
+    });
+  });
+  return rows.concat(bulkRows());
+}
+
 /* ---------- the check before the file leaves the tool ----------
    The gate before generation reads the editor; this reads what the file is
    actually going to say, which is not the same thing. An index is rounded
@@ -9475,6 +9541,14 @@ function onUldClick(e){
     exportGuard(undefined, true, function(){
       downloadXlsx("D3", EXPORT_HEADERS, allLayoutRows(), "all_layouts.xlsx"); });
   }
+  else if(act==="xlsx-selected"){
+    var missing = missingSelections();
+    if(missing.length){ selectionRequiredModal(missing); return; }
+    var confl = selectedConfigConflicts();
+    if(confl.length){ selectionConflictModal(confl); return; }
+    exportGuard(undefined, true, function(){
+      downloadXlsx("D3", EXPORT_HEADERS, selectedConfigRows(), "selected_configuration.xlsx"); });
+  }
 }
 
 /* Nothing to say, nothing to click through: the check only interrupts when
@@ -9548,6 +9622,57 @@ function bulkRequiredModal(){
     var what = btn ? btn.getAttribute("data-x") : "close";
     host.innerHTML = "";
     if(what === "go-bulk"){ U.step = 1; uldRender(); }
+  });
+}
+
+/* No "export anyway": the whole point of this export is that the file
+   leaving the tool never contains a compartment with no concrete choice —
+   that ambiguity is exactly what the full catalogue export is for. */
+function selectionRequiredModal(missing){
+  var host = $("modalHost");
+  host.innerHTML = '<div class="modal-back"><div class="modal">'+
+    '<div class="mh"><b style="color:var(--red)">&#9888; Missing a selection</b>'+
+      '<button class="btn small quiet" data-x="close">Close</button></div>'+
+    '<div class="mb">'+
+      '<p class="note" style="margin-top:0;color:var(--red)">Compartment'+(missing.length!==1?"s":"")+' '+
+      esc(missing.join(", "))+' '+(missing.length!==1?"have":"has")+' candidate layouts but nothing marked as used yet. '+
+      'This export only ever contains the layout you chose for each compartment — go to Layouts and mark one in each.</p>'+
+      '<div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">'+
+        '<button class="btn small primary" data-x="close">Go back and choose</button>'+
+      '</div>'+
+    '</div></div></div>';
+  host.addEventListener("click", function(e){
+    var btn = e.target.closest ? e.target.closest("[data-x]") : null;
+    if(!btn && e.target !== host.querySelector(".modal-back")) return;
+    host.innerHTML = "";
+  });
+}
+
+/* Also no "export anyway": a file meant to be trusted as-is by whatever
+   reads it downstream can never carry two selections that physically or by
+   a fixed combination's lock cannot coexist — that is the one thing this
+   export exists to guarantee that the full-catalogue export does not. */
+function selectionConflictModal(conflicts){
+  var host = $("modalHost");
+  var rows = conflicts.map(function(cf){
+    var why = cf.kind==="lock" ? "one keeps a position empty the other uses" : "same physical zone";
+    return '<li>Compartment '+cf.n1+' "'+esc(cf.name1)+'" &harr; Compartment '+cf.n2+' "'+esc(cf.name2)+'" — '+why+'</li>';
+  }).join("");
+  host.innerHTML = '<div class="modal-back"><div class="modal">'+
+    '<div class="mh"><b style="color:var(--red)">&#9888; Selections conflict with each other</b>'+
+      '<button class="btn small quiet" data-x="close">Close</button></div>'+
+    '<div class="mb">'+
+      '<p class="note" style="margin-top:0;color:var(--red)">The layouts marked as used cannot coexist — this export '+
+      'refuses to ship a configuration that could never actually be loaded. Change one of the selections below in Layouts.</p>'+
+      '<ul style="margin:0;padding-left:18px;color:var(--dim)">'+ rows +'</ul>'+
+      '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">'+
+        '<button class="btn small primary" data-x="close">Go back and fix</button>'+
+      '</div>'+
+    '</div></div></div>';
+  host.addEventListener("click", function(e){
+    var btn = e.target.closest ? e.target.closest("[data-x]") : null;
+    if(!btn && e.target !== host.querySelector(".modal-back")) return;
+    host.innerHTML = "";
   });
 }
 
