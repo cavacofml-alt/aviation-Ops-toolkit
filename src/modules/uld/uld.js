@@ -159,7 +159,7 @@ function uldRender(){
   else host.innerHTML = viewStep3();
   bindStep();
   var canNext = [
-    U.ulds.length>0,
+    U.ulds.length>0 && hasRefStation(),
     U.compartments.length>0 && U.compartments.every(function(c){
       return c.uldGroups && c.uldGroups.length>0 &&
              c.uldGroups.every(function(g){ return g.positions.length>0; }); }),
@@ -169,11 +169,17 @@ function uldRender(){
   $("btnNext").style.display = U.step<2 ? "" : "none";
   $("btnNext").disabled = !canNext[U.step];
   $("nextHint").textContent = canNext[U.step] ? "" :
-    (U.step===0 ? "Add at least 1 ULD" : "Add positions to every group");
+    (U.step===0 ? (U.ulds.length===0 ? "Add at least 1 ULD" : "Enter the reference station above")
+                : "Add positions to every group");
 }
+function hasRefStation(){ return !!(U.refStation && String(U.refStation).trim()); }
 function stepReady(i){
   if(i<=0) return true;
-  if(i===1) return U.ulds.length>0;
+  // The reference station decides every index-sign check from here on
+  // (validateIndex, the export gate, the "worth checking" list) — moving
+  // on without it means every position typed in step 2 goes unchecked
+  // until the operator remembers to come back and fill it in.
+  if(i===1) return U.ulds.length>0 && hasRefStation();
   return U.compartments.length>0 && U.compartments.every(function(c){
     return c.uldGroups && c.uldGroups.length>0 &&
            c.uldGroups.every(function(g){ return g.positions.length>0; }); });
@@ -181,7 +187,9 @@ function stepReady(i){
 function renderStepbar(){
   $("stepbar").innerHTML = STEP_LABELS.map(function(l,i){
     var can = stepReady(i);
-    var tip = can ? "" : (i===1 ? "Add at least one ULD first" : "Give every group at least one position first");
+    var tip = can ? "" : (i===1
+      ? (U.ulds.length===0 ? "Add at least one ULD first" : "Enter the reference station first")
+      : "Give every group at least one position first");
     return '<button class="st stepbar-btn" data-act="goto-step" data-s="'+i+'" '+
       'data-on="'+(U.step===i?1:0)+'" data-done="'+(U.step>i?1:0)+'"'+
       (can?'':' disabled title="'+esc(tip)+'"')+'>'+
@@ -502,28 +510,38 @@ function comboSection(g, gi){
   var combos = g.combos || [];
   var head = combos.length
     ? '<div class="posrow" style="grid-template-columns:1.3fr 1.3fr auto;margin:8px 0 2px">'+
-        ["Positions in this combination","Leave these empty when used",""].map(function(h){
+        ["Positions used together","Positions that must stay empty",""].map(function(h){
           return '<div style="font-family:var(--mono);font-size:9px;letter-spacing:1.2px;'+
             'text-transform:uppercase;color:var(--dim)">'+esc(h)+'</div>'; }).join("")+
       '</div>'
     : '';
   var rows = combos.map(function(c, ci){
-    var missing = (c.posNames||[]).filter(function(n){ return posNames.indexOf(n)<0; });
+    var names = c.posNames||[], locks = c.locks||[];
+    var missing = names.filter(function(n){ return posNames.indexOf(n)<0; });
+    // A plain-English restatement of the two lists — the two text fields
+    // read as raw data entry; this line is what the operator is actually
+    // telling the generator, in one sentence.
+    var summary = names.length
+      ? 'Loading <b>'+esc(names.join(" + "))+'</b>'+(names.length>1?' together':'')+
+        (locks.length ? ' keeps <b>'+esc(locks.join(", "))+'</b> empty.' : ' — nothing else is kept empty yet.')
+      : '';
     return '<div class="posrow" style="grid-template-columns:1.3fr 1.3fr auto">'+
-      '<div class="field"><input type="text" value="'+esc((c.posNames||[]).join(", "))+'" '+
+      '<div class="field"><input type="text" value="'+esc(names.join(", "))+'" '+
         'placeholder="e.g. 12PL, 21PL, 21PR" data-combo="1" data-g="'+gi+'" data-c="'+ci+'" data-ck="posNames">'+
         '<span class="fielderr" style="'+(missing.length?'':'display:none')+'">'+
           (missing.length ? 'not a position of this group: '+esc(missing.join(", ")) : '')+'</span>'+
       '</div>'+
-      '<div class="field"><input type="text" value="'+esc((c.locks||[]).join(", "))+'" '+
+      '<div class="field"><input type="text" value="'+esc(locks.join(", "))+'" '+
         'placeholder="e.g. 11P, 22P" data-combo="1" data-g="'+gi+'" data-c="'+ci+'" data-ck="locks"></div>'+
       '<button class="btn small danger" data-act="del-combo" data-g="'+gi+'" data-c="'+ci+'" '+
         'style="align-self:start;margin-top:1px">&times;</button>'+
+      (summary ? '<div class="note" style="grid-column:1/3;margin-top:-4px">'+summary+'</div>' : '')+
     '</div>';
   }).join("");
   return '<div style="border-top:1px dashed var(--line);padding-top:8px;margin-top:8px">'+
-    '<span class="note" style="letter-spacing:1px">FIXED COMBINATIONS <span style="color:var(--amber)">(beta)</span></span> '+
-    '<i title="For a type that only loads as one fixed set of positions from this group, where using it means named positions elsewhere must stay empty — per the aircraft manual\'s remarks for that hold. Leave empty if this type does not need it.">&#9432;</i>'+
+    '<div class="sec" style="margin-bottom:4px">Fixed combinations <span style="color:var(--amber);font-weight:normal">(beta)</span></div>'+
+    '<div class="note" style="margin-bottom:8px">Only needed for a type that can never be loaded on its own in some positions — always as one exact set, ' +
+      'which also means specific other positions must stay empty (check the aircraft manual\'s remarks for that hold). Most types never need this — leave it empty.</div>'+
     head + rows +
     '<button class="btn small" data-act="add-combo" data-g="'+gi+'" style="margin-top:6px">+ Add combination</button>'+
   '</div>';
@@ -1712,7 +1730,14 @@ function mirrorDom(g,p,k,val){
 function fillPairFormFromBase(){
   var comp = U.compartments[U.activeComp];
   if(!comp) return;
-  var src = pairAtBase(comp, ($("pf_base")||{}).value);
+  var base = (($("pf_base")||{}).value||"").trim().toUpperCase();
+  // A "P" base (a pallet-style bay, e.g. 12P) is its own type's own bay —
+  // it must never silently pick up FWD/AFT/index from an unrelated
+  // position elsewhere just because the base number happens to match.
+  // Plain numeric bases still inherit from an L/R pair already in the
+  // compartment, same as before.
+  if(/P$/.test(base)) return;
+  var src = pairAtBase(comp, base);
   if(!src) return;
   [["pf_fwd", src.fwd], ["pf_aft", src.aft], ["pf_index", src.index],
    ["pf_off", pairOffsetOf(src)]].forEach(function(pair){
@@ -2006,6 +2031,19 @@ $("refStation").addEventListener("input", function(){
   // a full uldRender() here would take the caret out of this input
   var panel = $("uldAircraft");
   if(panel && AIRCRAFT_VIEW) panel.outerHTML = aircraftPanel(AIRCRAFT_VIEW.num, AIRCRAFT_VIEW.mode);
+  // filling it in is now what unlocks step 2 — reflect that immediately,
+  // the same targeted way as the diagram redraw above
+  if(U.step===0){
+    var ready = U.ulds.length>0 && hasRefStation();
+    $("btnNext").disabled = !ready;
+    $("nextHint").textContent = ready ? "" :
+      (U.ulds.length===0 ? "Add at least 1 ULD" : "Enter the reference station above");
+    var tab = $("stepbar").querySelector('[data-s="1"]');
+    if(tab){
+      tab.disabled = !ready;
+      tab.title = ready ? "" : (U.ulds.length===0 ? "Add at least one ULD first" : "Enter the reference station first");
+    }
+  }
 });
 $("btnSaveCfg").addEventListener("click", function(){
   if(typeof uldSaveNow === "function") uldSaveNow();
