@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-22 — PR #128
+No separador Layouts do Gerador de Layout de ULDs, o aviso de "conflitos entre compartimentos" deixou de mostrar um número gigante de combinações impossíveis: agora cada layout mostra diretamente, só nele, com quais layouts de outros compartimentos não pode coexistir.
+
 ## 2026-09-22 — PR #127
 Reescrita a explicação das "Fixed combinations" no Gerador de Layout de ULDs: já não faz referência ao manual da aeronave e diz de forma mais direta o que a funcionalidade faz.
 
