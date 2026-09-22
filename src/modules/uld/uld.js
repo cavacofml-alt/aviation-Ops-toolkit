@@ -1619,7 +1619,11 @@ function bindStep(){
       }
       // auto-mirror L/R pairs both ways (fwd/aft/index/max weight shared,
       // left/right swapped) — editing either side keeps the other in sync.
-      if(/[LR]$/.test(pos.name||"")){
+      // Never for a "PL"/"PR" position: unlike a plain container's L/R
+      // split, a pallet-style position's two sides are not guaranteed to
+      // share the same numbers — the operator's own manual is the only
+      // source for each side, so nothing here is inherited between them.
+      if(/[LR]$/.test(pos.name||"") && !/P[LR]$/.test(pos.name||"")){
         var side = pos.name.slice(-1), otherSide = side==="L" ? "R" : "L";
         var base = pos.name.slice(0,-1);
         var ri = -1;
