@@ -559,7 +559,7 @@ function comboSection(comp, g, gi){
       '<div class="field"><input type="text" value="'+esc(locks.join(", "))+'" '+
         'placeholder="e.g. 11P, 22P" data-combo="1" data-g="'+gi+'" data-c="'+ci+'" data-ck="locks">'+
         '<span class="fielderr" style="'+(foreign.length?'':'display:none')+'; color:var(--amber)">'+
-          (foreign.length ? '&#8505; in another compartment: '+esc(foreign.join(", "))+' — will show as a conflict in Layouts' : '')+'</span>'+
+          (foreign.length ? '&#10003; in another compartment: '+esc(foreign.join(", "))+' — will show as a conflict in Layouts' : '')+'</span>'+
       '</div>'+
       '<button class="btn small danger" data-act="del-combo" data-g="'+gi+'" data-c="'+ci+'" '+
         'style="align-self:start;margin-top:1px">&times;</button>'+

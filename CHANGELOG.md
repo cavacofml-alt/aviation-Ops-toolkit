@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-22 — PR #130
+Corrigido o símbolo do aviso do PR anterior (campo "positions that must stay empty"): o ícone não aparecia direito na letra usada pela aplicação e ficava a parecer um "i" solto por engano — trocado por um símbolo que já é usado em confirmações noutros sítios da ferramenta.
+
 ## 2026-09-22 — PR #129
 No campo "positions that must stay empty" (combinações fixas), o aviso para uma posição de outro compartimento dizia "só são permitidas posições deste compartimento" — o que dava a entender que isso era rejeitado, quando na verdade é a forma correta e prevista de usar o campo. Passa a confirmar que a posição fica registada e vai aparecer como conflito no separador Layouts.
 
