@@ -10,7 +10,7 @@
   Created by Luís Cavaco.
   Single self-contained file: no dependencies, no network, no telemetry.
 -->
-<title>Operations Center v1.2.287</title>
+<title>Operations Center v1.2.289</title>
 <style>
 /* ============================================================================
    EFIS THEME — colours follow flight-deck convention:
@@ -910,7 +910,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
       <span class="sys" id="sysFlag" title="Everything runs in this browser — no uploads, no accounts, no telemetry">
         <span class="led"></span><span class="sys-text">OFFLINE &middot; LOCAL</span>
       </span>
-      <span class="build-ver">v1.2.287</span>
+      <span class="build-ver">v1.2.289</span>
     </header>
 
     <main>
@@ -1274,7 +1274,7 @@ html:not([data-theme="light"]) .tool-panel{padding:14px}
 <div id="modalHost"></div>
 
 <script>
-/*! Aviation Ops Toolkit v1.2.287 — Luís Cavaco
+/*! Aviation Ops Toolkit v1.2.289 — Luís Cavaco
     Built 2026-09-22 from the source tree; see build.manifest.json.
     Copyright (c) 2026 Luís Cavaco. All rights reserved. */
 
@@ -8285,6 +8285,11 @@ var LAYOUT_PAGE = 25;
    (see the note above crossCompartmentWarnings). Two kinds of clash: a
    station overlap (both would occupy the same physical zone) and a lock
    clash (one keeps empty a position the other actually uses). */
+// Checked against the OTHER compartment's own position definitions, not its
+// generated layouts — counting generated layouts multiplies one real clash
+// (a single overlapping bay, or a single locked name) by every unrelated way
+// the rest of that compartment can be filled, which says nothing about how
+// many physical positions are actually in conflict.
 function layoutConflicts(compNum, layout){
   var out = [];
   var names = layout.positions.map(function(p){ return p.name; });
@@ -8293,16 +8298,23 @@ function layoutConflicts(compNum, layout){
   var fwd = Math.min.apply(null, fwds), aft = Math.max.apply(null, afts);
   U.compartments.forEach(function(c){
     if(c.number === compNum) return;
-    (U.layouts[c.number]||[]).forEach(function(l2){
-      var names2 = l2.positions.map(function(p){ return p.name; });
-      var fwds2 = l2.positions.map(function(p){ return parseFloat(p.fwd); });
-      var afts2 = l2.positions.map(function(p){ return parseFloat(p.aft); });
-      var fwd2 = Math.min.apply(null, fwds2), aft2 = Math.max.apply(null, afts2);
-      var lockClash = (layout.locks||[]).some(function(nm){ return names2.indexOf(nm)>=0; })
-                   || (l2.locks||[]).some(function(nm){ return names.indexOf(nm)>=0; });
-      var overlap = fwd < aft2 && fwd2 < aft;
-      if(lockClash || overlap) out.push({ n2:c.number, name2:l2.name, kind: lockClash?"lock":"overlap" });
+    var overlapNames = [], lockNames = [];
+    (c.uldGroups||[]).forEach(function(g){
+      (g.positions||[]).forEach(function(p){
+        var f2 = parseFloat(p.fwd), a2 = parseFloat(p.aft);
+        if(fwd < a2 && f2 < aft && overlapNames.indexOf(p.name) < 0) overlapNames.push(p.name);
+      });
+      (g.combos||[]).forEach(function(combo){
+        (combo.locks||[]).forEach(function(nm){
+          if(names.indexOf(nm) >= 0 && lockNames.indexOf(nm) < 0) lockNames.push(nm);
+        });
+      });
     });
+    (layout.locks||[]).forEach(function(nm){
+      if(compartmentsOf(nm).indexOf(c.number) >= 0 && lockNames.indexOf(nm) < 0) lockNames.push(nm);
+    });
+    if(overlapNames.length) out.push({ n2:c.number, kind:"overlap", positions:overlapNames });
+    if(lockNames.length) out.push({ n2:c.number, kind:"lock", positions:lockNames });
   });
   return out;
 }
@@ -8314,22 +8326,12 @@ function renderLayoutList(compNum, list){
     var key = compNum + ":" + i;
     var open = !!U.openLayout[key];
     var conflicts = layoutConflicts(compNum, l);
-    // Grouped by compartment and kind rather than named one by one — a busy
-    // compartment can have hundreds of layouts that overlap this one, and a
-    // wall of names is exactly the "big confusing number" this replaced.
-    var byComp = {};
-    conflicts.forEach(function(cf){
-      var k = cf.n2+":"+cf.kind;
-      if(!byComp[k]) byComp[k] = { n2:cf.n2, kind:cf.kind, count:0, example:cf.name2 };
-      byComp[k].count++;
-    });
     var conflictNote = conflicts.length
-      ? '<div class="note" style="color:var(--amber);margin-top:8px">&#9888; Can\'t be used at the same time as: '+
-          Object.keys(byComp).map(function(k){
-            var g = byComp[k];
-            var why = g.kind==="lock" ? "keeps a position empty this one uses" : "same physical zone";
-            return g.count+' layout'+(g.count!==1?'s':'')+' in Compartment '+g.n2+' ('+why+', e.g. “'+esc(g.example)+'”)';
-          }).join("; ")+
+      ? '<div class="note" style="color:var(--amber);margin-top:8px">&#9888; Conflicts with Compartment '+
+          conflicts.map(function(cf){
+            var why = cf.kind==="lock" ? "kept empty by a fixed combination" : "same physical zone";
+            return cf.n2+' <b>'+esc(cf.positions.join(", "))+'</b> ('+why+')';
+          }).join("; Compartment ")+
         '</div>'
       : '';
     var body = open
@@ -8353,7 +8355,7 @@ function renderLayoutList(compNum, list){
                   : /LD8/.test(part) ? "LD8" : /LD3/.test(part) ? "LD3" : null;
             return t ? '<span style="color:'+groupColor(t)+'">'+part+'</span>' : part;
           }).join('<span style="color:var(--faint)">/</span>')+'</span>'+
-        (conflicts.length ? '<span style="color:var(--amber)" title="Can\'t be used with '+conflicts.length+' layout(s) in other compartments">&#9888;</span>' : '')+
+        (conflicts.length ? '<span style="color:var(--amber)" title="Conflicts with another compartment — see details below">&#9888;</span>' : '')+
         '<span class="collapsed-hint" style="margin-left:auto">'+l.positions.length+' pos</span>'+
       '</div>'+ body +'</div>';
   }).join("");
