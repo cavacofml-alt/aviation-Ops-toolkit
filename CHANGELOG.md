@@ -2,6 +2,9 @@
 
 Histórico de versões, em linguagem simples. Cada entrada explica o que mudou e porquê, em no máximo 2 linhas.
 
+## 2026-09-22 — PR #125
+No Gerador de Layout de ULDs, o campo "positions that must stay empty" de uma combinação fixa agora avisa quando escreves lá uma posição de outro compartimento — esse tipo de bloqueio nunca chega a impedir nada de verdade (só avisa mais tarde, em Layouts), por isso é melhor saber logo ao escrever.
+
 ## 2026-09-22 — PR #124
 Atualizado o template "Boeing 787-8": a `21PL`/`21PR` passa a sobrepor-se ligeiramente à `13PL`/`13PR` (FWD 638.8, índice sem alteração), para que o sistema de carregamento do operador — que já bloqueia posições fisicamente sobrepostas — impeça sozinho essa combinação. Removida a combinação fixa entre Compartment 1 e 2, que só avisava e não bloqueava; a combinação fixa dentro do Compartment 1 (`12PL` vs `13PL`/`13PR`), essa sim bloqueada de verdade pela ferramenta, mantém-se.
 

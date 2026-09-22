@@ -489,7 +489,7 @@ function groupBox(comp,g,gi){
     (rows || '<div class="note" style="margin-bottom:8px">No positions yet.</div>')+
     pairForm+
     '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">'+addBtn+'</div>'+
-    comboSection(g, gi)+
+    comboSection(comp, g, gi)+
     '</div></div>';
 }
 function pairInp(id,label,type,ph){
@@ -505,7 +505,23 @@ function pairInp(id,label,type,ph){
    understands adjacency or container shape; the operator reads that off the
    manual and types the position names, same as every other number in this
    tool. Most groups will never need this section. */
-function comboSection(g, gi){
+/* Which compartment(s) actually have a position by this name — used to warn
+   when a "must stay empty" name lives outside this group's own
+   compartment. A lock like that isn't invalid (crossCompartmentWarnings
+   still catches it and flags it in Layouts), but it only ever warns, never
+   blocks the way a same-compartment lock does — worth surfacing right
+   where it's typed, not only after generating layouts. */
+function compartmentsOf(name){
+  var out = [];
+  U.compartments.forEach(function(c){
+    var here = (c.uldGroups||[]).some(function(g2){
+      return (g2.positions||[]).some(function(p){ return p.name===name; });
+    });
+    if(here) out.push(c.number);
+  });
+  return out;
+}
+function comboSection(comp, g, gi){
   var posNames = (g.positions||[]).map(function(p){ return p.name; });
   var combos = g.combos || [];
   var head = combos.length
@@ -518,6 +534,15 @@ function comboSection(g, gi){
   var rows = combos.map(function(c, ci){
     var names = c.posNames||[], locks = c.locks||[];
     var missing = names.filter(function(n){ return posNames.indexOf(n)<0; });
+    // A lock naming a position outside this compartment isn't wrong, but it
+    // only ever warns (crossCompartmentWarnings, in Layouts) — it can never
+    // actually block the way a same-compartment lock does. Flag it right
+    // here, before the operator finds out the hard way that it didn't stop
+    // anything.
+    var foreign = locks.filter(function(n){
+      var owners = compartmentsOf(n);
+      return owners.length && owners.indexOf(comp.number) < 0;
+    });
     // A plain-English restatement of the two lists — the two text fields
     // read as raw data entry; this line is what the operator is actually
     // telling the generator, in one sentence.
@@ -532,7 +557,10 @@ function comboSection(g, gi){
           (missing.length ? 'not a position of this group: '+esc(missing.join(", ")) : '')+'</span>'+
       '</div>'+
       '<div class="field"><input type="text" value="'+esc(locks.join(", "))+'" '+
-        'placeholder="e.g. 11P, 22P" data-combo="1" data-g="'+gi+'" data-c="'+ci+'" data-ck="locks"></div>'+
+        'placeholder="e.g. 11P, 22P" data-combo="1" data-g="'+gi+'" data-c="'+ci+'" data-ck="locks">'+
+        '<span class="fielderr" style="'+(foreign.length?'':'display:none')+'; color:var(--amber)">'+
+          (foreign.length ? '⚠ in another compartment ('+esc(foreign.join(", "))+') — this only warns, it never blocks' : '')+'</span>'+
+      '</div>'+
       '<button class="btn small danger" data-act="del-combo" data-g="'+gi+'" data-c="'+ci+'" '+
         'style="align-self:start;margin-top:1px">&times;</button>'+
       (summary ? '<div class="note" style="grid-column:1/3;margin-top:-4px">'+summary+'</div>' : '')+
